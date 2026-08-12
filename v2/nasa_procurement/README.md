@@ -190,6 +190,38 @@ coverage, rather than only the most recent months (which is what a single
 flat cap on a most-recent-first sort would otherwise produce). Omitting
 `--limit` runs a fully uncapped refresh across the entire range.
 
+## Dashboard: branding and Standout Suppliers (added in v2)
+
+Two additions on top of the original five-tab dashboard, both computed in
+Python and rendered the same disclosed way as everything else here (never
+hand-edited):
+
+- **NASA-themed header.** A stylized orbit/rocket mark and "NASA" wordmark in
+  NASA's brand blue/red, plus a visible "Unofficial · Not NASA-affiliated"
+  badge. This intentionally does **not** use NASA's actual insignia (the
+  "meatball") or wordmark logotype -- both are protected under 14 CFR Part
+  1221, and reproducing them risks implying an official endorsement this
+  project explicitly disclaims. The color palette and a generic space icon
+  make the domain obvious without borrowing the real mark.
+- **Standout Suppliers panel** (Executive Overview tab, `_standout_suppliers`
+  in `src/dashboard/data_prep.py`). Surfaces up to 5 suppliers via three
+  disclosed, evidence-based signals -- spend concentration, deobligation
+  share, and year-over-year swings -- each citing the exact supporting
+  metric. Same rule as the Insights Agent: never a performance rating or a
+  claim of wrongdoing, only "worth confirming against the award record."
+  Each card has three actions: **View on USAspending.gov** (opens the real
+  public search for that recipient), **Export supplier CSV** (client-side,
+  from the embedded transaction rows), and **Mark for review** (a local
+  annotation saved to this browser's `localStorage` only -- it does not
+  notify or file anything anywhere).
+
+`outputs/nasa_fy2025_realdata_dashboard.html` demonstrates both against a
+teammate's real 21,240-row NASA FY2025 pull (`../data/nasa_fy2025_contract_transactions.csv`,
+ingested via `fetch_from_repo_csv`) rather than the small offline sample:
+$15.78B net obligations, 20,354 deduplicated transactions, 2,867 normalized
+suppliers. `outputs/nasa_procurement_dashboard_presentation.html` (the
+originally frozen live-API pull) is left untouched.
+
 ## Environment / secrets
 
 Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY` to enable

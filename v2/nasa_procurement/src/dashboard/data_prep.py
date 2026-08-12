@@ -89,6 +89,88 @@ def _category_detail(df: pd.DataFrame) -> dict:
     return detail
 
 
+def _standout_suppliers(suppliers_detail: dict, max_results: int = 5) -> list[dict]:
+    """Surfaces a short, evidence-based list of suppliers worth a second look --
+    not a fraud or performance determination, just three neutral, disclosed
+    signals computed from data already in `suppliers_detail`: spend
+    concentration, deobligation share, and year-over-year swings. Each
+    reason cites the exact supporting metric so a reviewer can check it,
+    consistent with this project's rule that agents/heuristics never assert
+    wrongdoing -- see src/agents/insights_agent.py.
+    """
+    candidates = []
+    for name, d in suppliers_detail.items():
+        gross = d["gross_positive_obligations"]
+        deob = d["deobligations"]
+        deob_rate = (deob / gross) if gross else 0.0
+        annual = sorted(d["annual"], key=lambda r: r["fiscal_year"])
+        yoy_pct = None
+        yoy_from_fy = yoy_to_fy = None
+        if len(annual) >= 2:
+            prev, cur = annual[-2], annual[-1]
+            if abs(prev["net_obligations"]) >= 50_000:
+                yoy_pct = (cur["net_obligations"] - prev["net_obligations"]) / abs(prev["net_obligations"]) * 100
+                yoy_from_fy, yoy_to_fy = prev["fiscal_year"], cur["fiscal_year"]
+
+        reasons = []
+        if deob >= 10_000 and deob_rate >= 0.05:
+            reasons.append({
+                "type": "deobligation_flag",
+                "label": "Notable deobligations",
+                "detail": (
+                    f"${deob:,.0f} deobligated ({deob_rate * 100:.1f}% of gross positive obligations) -- "
+                    "worth confirming these reflect ordinary contract modifications rather than a data issue."
+                ),
+            })
+        if yoy_pct is not None and abs(yoy_pct) >= 75:
+            direction = "growth" if yoy_pct > 0 else "decline"
+            reasons.append({
+                "type": f"rapid_{direction}",
+                "label": f"Rapid year-over-year {direction}",
+                "detail": (
+                    f"Net obligations changed {yoy_pct:+.1f}% from FY{yoy_from_fy} to FY{yoy_to_fy} -- "
+                    "worth confirming against the award record (new award, option exercise, or contract completion)."
+                ),
+            })
+
+        candidates.append({
+            "supplier": name,
+            "net_obligations": d["total_net_obligations"],
+            "concentration_pct": d["share_of_agency_obligations"] * 100,
+            "transaction_count": d["transaction_count"],
+            "unique_awards": d["unique_awards"],
+            "reasons": reasons,
+        })
+
+    candidates.sort(key=lambda c: -c["concentration_pct"])
+    standout = []
+    seen = set()
+    # Always surface the top 3 by spend concentration -- sheer size is itself
+    # worth a look, flagged even with no other signal present.
+    for c in candidates[:3]:
+        c["reasons"] = [{
+            "type": "high_concentration",
+            "label": "High spend concentration",
+            "detail": (
+                f"${c['net_obligations']:,.0f} ({c['concentration_pct']:.1f}%) of total NASA net obligations "
+                "in this dataset -- among the largest single-supplier shares."
+            ),
+        }] + c["reasons"]
+        standout.append(c)
+        seen.add(c["supplier"])
+    # Fill remaining slots with any supplier flagged by deobligation/YoY
+    # signals alone, ranked by concentration among that subset.
+    for c in candidates:
+        if len(standout) >= max_results:
+            break
+        if c["supplier"] in seen:
+            continue
+        if c["reasons"]:
+            standout.append(c)
+            seen.add(c["supplier"])
+    return standout[:max_results]
+
+
 def build_payload(
     transactions: list[EnrichedTransaction],
     analytics: dict,
@@ -143,5 +225,6 @@ def build_payload(
         "explorer_rows": explorer_rows,
         "suppliers_detail": suppliers_detail,
         "categories_detail": categories_detail,
+        "standout_suppliers": _standout_suppliers(suppliers_detail),
     }
     return payload

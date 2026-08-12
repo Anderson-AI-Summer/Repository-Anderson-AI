@@ -16,6 +16,53 @@
   }
   function fmtPct(v) { return v === null || v === undefined || isNaN(v) ? "—" : (v * 100).toFixed(1) + "%"; }
   function fmtNum(v) { return v === null || v === undefined ? "—" : Number(v).toLocaleString(); }
+
+  const EXPLORER_COLS = [
+    ["fiscal_year", "FY"], ["action_date", "Action Date"], ["recipient_name_raw", "Raw Recipient"],
+    ["normalized_supplier", "Normalized Supplier"], ["transaction_obligation_signed", "Signed Amount"],
+    ["obligation_direction", "Direction"], ["award_id_piid", "Award ID"], ["modification_number", "Mod"],
+    ["action_type_description", "Action Type"], ["transaction_description", "Description"],
+    ["psc_code", "PSC"], ["naics_code", "NAICS"], ["ai_spend_category", "Category"], ["ai_spend_subcategory", "Subcategory"],
+    ["classification_confidence", "Class. Confidence"], ["review_status", "Review"], ["flags", "Flags"],
+  ];
+
+  function rowsToCsv(rows) {
+    const header = EXPLORER_COLS.map(c => c[1]).join(",");
+    const csvRows = rows.map(r => {
+      const flags = [...(r.opportunity_flags || []), ...(r.data_quality_flags || [])].join("; ");
+      const vals = [
+        r.fiscal_year, r.action_date, r.recipient_name_raw, r.normalized_supplier,
+        r.transaction_obligation_signed, r.obligation_direction, r.award_id_piid, r.modification_number || "",
+        r.action_type_description || "", r.transaction_description || "", r.psc_code || "", r.naics_code || "",
+        r.ai_spend_category, r.ai_spend_subcategory, r.classification_confidence, r.review_status, flags,
+      ];
+      return vals.map(v => `"${String(v === undefined || v === null ? "" : v).replace(/"/g, '""')}"`).join(",");
+    });
+    return [header, ...csvRows].join("\n");
+  }
+
+  function downloadCsv(filename, csv) {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+
+  // ---------------- Local-only "mark for review" flags ----------------
+  // Persisted to this browser's localStorage only -- does not send, notify,
+  // or file anything anywhere. Purely a personal annotation for this device.
+  const REVIEW_FLAG_KEY = "nasa_dashboard_review_flags_v1";
+  function getReviewFlags() {
+    try { return JSON.parse(localStorage.getItem(REVIEW_FLAG_KEY) || "{}"); }
+    catch (e) { return {}; }
+  }
+  function toggleReviewFlag(supplier) {
+    const flags = getReviewFlags();
+    flags[supplier] = !flags[supplier];
+    localStorage.setItem(REVIEW_FLAG_KEY, JSON.stringify(flags));
+    return flags[supplier];
+  }
   function el(tag, attrs, children) {
     const e = document.createElement(tag);
     if (attrs) for (const k in attrs) {
@@ -128,6 +175,58 @@
         el("h4", {}, [f.title]),
         el("div", {}, [f.description]),
         el("div", { class: "metrics" }, ["Supporting metrics: " + (f.supporting_metrics || []).join(", ")]),
+      ]);
+      container.appendChild(card);
+    });
+  }
+
+  // ---------------- Standout Suppliers (Executive Overview) ----------------
+  function usaspendingSearchUrl(supplier) {
+    return "https://www.usaspending.gov/search/?keyword=" + encodeURIComponent(supplier);
+  }
+
+  function renderStandoutSuppliers() {
+    const container = document.getElementById("standout-suppliers");
+    const list = DATA.standout_suppliers || [];
+    if (!list.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["No supplier met the standout criteria for this dataset."]));
+      return;
+    }
+    const flags = getReviewFlags();
+
+    list.forEach(s => {
+      const tagRow = el("div", {}, s.reasons.map(r => el("span", { class: "reason-tag " + r.type }, [r.label])));
+      const detailBlocks = s.reasons.map(r => el("div", { class: "sc-reason-detail" }, [r.detail]));
+
+      const flagBtn = el("button", { class: "flag-btn" + (flags[s.supplier] ? " marked" : "") },
+        [flags[s.supplier] ? "★ Marked for review" : "Mark for review"]);
+      flagBtn.title = "Saved locally in this browser only -- does not notify or send anything to anyone.";
+      flagBtn.addEventListener("click", () => {
+        const nowMarked = toggleReviewFlag(s.supplier);
+        flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
+        flagBtn.classList.toggle("marked", nowMarked);
+      });
+
+      const viewBtn = el("button", { class: "primary" }, ["View on USAspending.gov ↗"]);
+      viewBtn.title = "Opens the official public search on usaspending.gov in a new tab.";
+      viewBtn.addEventListener("click", () => window.open(usaspendingSearchUrl(s.supplier), "_blank", "noopener"));
+
+      const exportBtn = el("button", {}, ["Export supplier CSV"]);
+      exportBtn.addEventListener("click", () => {
+        const rows = DATA.explorer_rows.filter(r => r.normalized_supplier === s.supplier);
+        const safeName = s.supplier.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
+        downloadCsv(`nasa_supplier_${safeName}.csv`, rowsToCsv(rows));
+      });
+
+      const card = el("div", { class: "standout-card" }, [
+        el("div", { class: "sc-head" }, [
+          el("div", { class: "sc-name" }, [s.supplier]),
+          el("div", { class: "sc-amount" }, [fmtMoney(s.net_obligations)]),
+        ]),
+        el("div", { class: "sc-sub" }, [`${fmtNum(s.transaction_count)} transactions · ${fmtNum(s.unique_awards)} awards · ${s.concentration_pct.toFixed(1)}% of total`]),
+        tagRow,
+        ...detailBlocks,
+        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
       ]);
       container.appendChild(card);
     });
@@ -320,24 +419,7 @@
       draw();
     });
     document.getElementById("ex-export").addEventListener("click", () => {
-      const filtered = currentFiltered();
-      const header = COLS.map(c => c[1]).join(",");
-      const csvRows = filtered.map(r => {
-        const flags = [...(r.opportunity_flags || []), ...(r.data_quality_flags || [])].join("; ");
-        const vals = [
-          r.fiscal_year, r.action_date, r.recipient_name_raw, r.normalized_supplier,
-          r.transaction_obligation_signed, r.obligation_direction, r.award_id_piid, r.modification_number || "",
-          r.action_type_description || "", r.transaction_description || "", r.psc_code || "", r.naics_code || "",
-          r.ai_spend_category, r.ai_spend_subcategory, r.classification_confidence, r.review_status, flags,
-        ];
-        return vals.map(v => `"${String(v === undefined || v === null ? "" : v).replace(/"/g, '""')}"`).join(",");
-      });
-      const csv = [header, ...csvRows].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "nasa_procurement_filtered_export.csv";
-      link.click();
+      downloadCsv("nasa_procurement_filtered_export.csv", rowsToCsv(currentFiltered()));
     });
 
     draw();
@@ -455,6 +537,7 @@
   renderHeader();
   setupTabs();
   renderOverview();
+  renderStandoutSuppliers();
   renderYoY();
   renderExplorer();
   renderSupplierTab();

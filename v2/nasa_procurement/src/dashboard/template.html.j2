@@ -17,6 +17,8 @@
   --text-muted: #5b6579;
   --ok: #1f8a4c;
   --warn: #b5790a;
+  --nasa-blue: #0b3d91;
+  --nasa-red: #fc3d21;
 }
 * { box-sizing: border-box; }
 body {
@@ -24,11 +26,31 @@ body {
   background: var(--bg); color: var(--text); font-size: 14px;
 }
 header.top {
-  background: linear-gradient(120deg, var(--navy), var(--navy-2));
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255,255,255,0.10) 0, transparent 1.4px),
+    radial-gradient(circle at 78% 55%, rgba(255,255,255,0.08) 0, transparent 1.2px),
+    radial-gradient(circle at 45% 80%, rgba(255,255,255,0.07) 0, transparent 1.1px),
+    radial-gradient(circle at 92% 15%, rgba(255,255,255,0.09) 0, transparent 1.3px),
+    linear-gradient(120deg, var(--navy), var(--navy-2));
+  background-size: 140px 140px, 160px 160px, 130px 130px, 150px 150px, 100% 100%;
   color: #fff; padding: 18px 28px;
 }
-header.top h1 { margin: 0 0 4px 0; font-size: 21px; letter-spacing: 0.3px; }
-header.top .disclosure { font-size: 12px; color: #ffcf9e; margin-bottom: 10px; }
+.header-row { display: flex; align-items: center; gap: 14px; }
+.nasa-mark { flex: 0 0 auto; }
+.header-title-block { flex: 1 1 auto; min-width: 0; }
+.header-title-block .title-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.nasa-wordmark {
+  font-weight: 800; letter-spacing: 1.5px; font-size: 15px;
+  background: linear-gradient(90deg, var(--nasa-red), #ff8a68);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.unofficial-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+  text-transform: uppercase; color: #ffcf9e; border: 1px solid rgba(255,207,158,0.5);
+  border-radius: 10px; padding: 1px 8px; margin-left: 2px;
+}
+header.top h1 { margin: 0; font-size: 21px; letter-spacing: 0.3px; }
+header.top .disclosure { font-size: 12px; color: #ffcf9e; margin: 6px 0 10px 0; }
 .meta-bar { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12.5px; color: #cfd9ef; }
 .meta-bar b { color: #fff; }
 .meta-bar .badge {
@@ -105,14 +127,60 @@ table.data-table tr:hover td { background: #f8fafd; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .chip { background: #eef2f9; border-radius: 12px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
 footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 11.5px; }
+
+.standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.standout-card {
+  border: 1px solid var(--border); border-left: 4px solid var(--nasa-blue); border-radius: 8px;
+  padding: 12px 14px; background: #fbfcfe;
+}
+.standout-card .sc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.standout-card .sc-name { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.standout-card .sc-amount { font-weight: 700; color: var(--navy-2); font-size: 13px; white-space: nowrap; }
+.standout-card .sc-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.reason-tag {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600;
+  border-radius: 10px; padding: 2px 8px; margin: 0 4px 4px 0;
+}
+.reason-tag.high_concentration { background: #eaf0ff; color: var(--nasa-blue); }
+.reason-tag.deobligation_flag { background: #fdeeee; color: var(--red); }
+.reason-tag.rapid_growth { background: #e9f8ee; color: var(--ok); }
+.reason-tag.rapid_decline { background: #fff3d9; color: var(--warn); }
+.standout-card .sc-reason-detail { font-size: 11.5px; color: var(--text); margin: 4px 0 8px; }
+.standout-card .sc-reason-detail:last-of-type { margin-bottom: 10px; }
+.sc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.sc-actions button {
+  font-size: 11px; font-weight: 600; border-radius: 5px; padding: 5px 9px; cursor: pointer;
+  border: 1px solid var(--border); background: #fff; color: var(--navy-2);
+}
+.sc-actions button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.sc-actions button.flag-btn.marked { background: #fff3d9; color: var(--warn); border-color: #f0c877; }
+.sc-actions button:hover { filter: brightness(0.96); }
 </style>
 </head>
 <body>
 
 <header class="top">
-  <h1 id="dash-title">NASA Procurement Intelligence Dashboard</h1>
-  <div class="disclosure" id="dash-disclosure"></div>
-  <div class="meta-bar" id="meta-bar"></div>
+  <div class="header-row">
+    <div class="nasa-mark" title="Stylized mark -- not the official NASA insignia">
+      <svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="23" cy="23" r="21" fill="#0b3d91" stroke="#ffffff" stroke-width="1.5"/>
+        <ellipse cx="23" cy="23" rx="19" ry="7" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.55"/>
+        <ellipse cx="23" cy="23" rx="19" ry="7" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.55" transform="rotate(60 23 23)"/>
+        <ellipse cx="23" cy="23" rx="19" ry="7" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.55" transform="rotate(120 23 23)"/>
+        <path d="M23 10 C 25 16, 25 30, 23 36 C 21 30, 21 16, 23 10 Z" fill="#fc3d21"/>
+        <circle cx="23" cy="23" r="2.6" fill="#ffffff"/>
+      </svg>
+    </div>
+    <div class="header-title-block">
+      <div class="title-line">
+        <h1 id="dash-title">NASA Procurement Intelligence Dashboard</h1>
+        <span class="nasa-wordmark">NASA</span>
+        <span class="unofficial-badge">Unofficial · Not NASA-affiliated</span>
+      </div>
+      <div class="disclosure" id="dash-disclosure"></div>
+      <div class="meta-bar" id="meta-bar"></div>
+    </div>
+  </div>
 </header>
 
 <nav class="tabs">
@@ -142,6 +210,16 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
         <h2>Key Findings</h2>
         <div id="overview-findings"></div>
       </div>
+    </div>
+    <div class="panel">
+      <h2>Standout Suppliers</h2>
+      <div class="small-note">
+        Up to 5 suppliers surfaced by disclosed, evidence-based signals (spend
+        concentration, deobligation share, year-over-year swings) -- not a
+        performance rating or a finding of wrongdoing. Each reason cites the
+        exact supporting metric so it can be checked against the award record.
+      </div>
+      <div class="standout-grid" id="standout-suppliers" style="margin-top:10px;"></div>
     </div>
   </section>
 
