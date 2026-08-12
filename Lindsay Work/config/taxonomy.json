@@ -1,0 +1,204 @@
+{
+  "version": "1.1.0",
+  "description": "Two-level NASA procurement spend taxonomy. Hand-authored mapping from PSC/NAICS prefixes and description keywords to category/subcategory, scoped per-subcategory so a matched signal maps to the specific subcategory it is evidence for (not just the first subcategory in the category). Not an official government crosswalk -- documented in PROJECT_SUMMARY.md as a deterministic first pass; ambiguous or unmatched records are routed to the classification agent or left Needs Review, never guessed.",
+  "categories": {
+    "Aerospace, Spacecraft, and Mission Systems": {
+      "subcategories": {
+        "Spacecraft & Satellite Systems": {
+          "psc_prefixes": ["1810", "1830", "1840"],
+          "naics_codes": ["336414", "336419"],
+          "keywords": ["spacecraft", "satellite", "payload", "space vehicle"]
+        },
+        "Launch Vehicles & Propulsion": {
+          "psc_prefixes": ["1820", "1850"],
+          "naics_codes": ["336415"],
+          "keywords": ["launch vehicle", "rocket", "propulsion", "propellant tank"]
+        },
+        "Mission Operations & Ground Systems": {
+          "psc_prefixes": ["1860", "1870"],
+          "naics_codes": [],
+          "keywords": ["mission operations", "ground system", "ground station", "orbital"]
+        },
+        "Aeronautics & Flight Systems": {
+          "psc_prefixes": ["16", "17", "1880", "1890"],
+          "naics_codes": ["927110"],
+          "keywords": ["aeronautic", "flight system", "aircraft", "rover"]
+        }
+      }
+    },
+    "Research, Engineering, and Technical Services": {
+      "subcategories": {
+        "Basic & Applied Research": {
+          "psc_prefixes": ["AC", "AN", "AR"],
+          "naics_codes": ["541715"],
+          "keywords": ["basic research", "applied research", "research and development"]
+        },
+        "Engineering & Technical Support": {
+          "psc_prefixes": ["R425", "AJ"],
+          "naics_codes": ["541330", "541713", "541714"],
+          "keywords": ["engineering support", "technical support", "engineering services"]
+        },
+        "Test, Evaluation & Analysis": {
+          "psc_prefixes": ["AA", "AB"],
+          "naics_codes": ["541690"],
+          "keywords": ["test and evaluation", "feasibility", "analysis services"]
+        },
+        "Modeling & Simulation": {
+          "psc_prefixes": ["AD"],
+          "naics_codes": ["541712", "541990"],
+          "keywords": ["modeling", "simulation", "prototype"]
+        }
+      }
+    },
+    "Information Technology and Cybersecurity": {
+      "subcategories": {
+        "Software & Applications": {
+          "psc_prefixes": ["D302", "D316"],
+          "naics_codes": ["541511", "541519"],
+          "keywords": ["software", "application development", "database"]
+        },
+        "IT Infrastructure & Cloud": {
+          "psc_prefixes": ["7010", "7030", "7035"],
+          "naics_codes": ["518210", "541512"],
+          "keywords": ["cloud", "data center", "server", "network infrastructure"]
+        },
+        "Cybersecurity Services": {
+          "psc_prefixes": ["D399", "R425C"],
+          "naics_codes": ["541513", "561621"],
+          "keywords": ["cybersecurity", "information security", "cyber defense"]
+        },
+        "IT Support Services": {
+          "psc_prefixes": ["7042", "D306"],
+          "naics_codes": [],
+          "keywords": ["it support", "help desk", "information system"]
+        }
+      }
+    },
+    "Facilities, Construction, and Maintenance": {
+      "subcategories": {
+        "New Construction": {
+          "psc_prefixes": ["Y1", "Y2"],
+          "naics_codes": ["236220", "238210", "238220"],
+          "keywords": ["construction", "renovation", "new building"]
+        },
+        "Facility Maintenance & Repair": {
+          "psc_prefixes": ["Z1", "Z2"],
+          "naics_codes": [],
+          "keywords": ["facility maintenance", "repair", "roofing", "hvac repair"]
+        },
+        "Custodial & Grounds Services": {
+          "psc_prefixes": ["S2"],
+          "naics_codes": ["561720"],
+          "keywords": ["custodial", "grounds maintenance", "janitorial"]
+        },
+        "Utilities & Energy Systems": {
+          "psc_prefixes": ["S1"],
+          "naics_codes": ["221122"],
+          "keywords": ["utilities", "electricity", "energy systems", "water service"]
+        }
+      }
+    },
+    "Scientific Instruments and Laboratory Supplies": {
+      "subcategories": {
+        "Laboratory Instruments & Equipment": {
+          "psc_prefixes": ["66"],
+          "naics_codes": ["334516"],
+          "keywords": ["laboratory instrument", "lab equipment"]
+        },
+        "Sensors & Detectors": {
+          "psc_prefixes": ["6650"],
+          "naics_codes": ["339112"],
+          "keywords": ["sensor", "detector", "spectrometer", "telescope", "optics"]
+        },
+        "Calibration & Testing Services": {
+          "psc_prefixes": ["6699"],
+          "naics_codes": ["541380"],
+          "keywords": ["calibration", "testing services"]
+        },
+        "Chemicals & Lab Supplies": {
+          "psc_prefixes": ["68"],
+          "naics_codes": ["325998"],
+          "keywords": ["chemicals", "lab supplies", "reagent"]
+        }
+      }
+    },
+    "Professional and Administrative Services": {
+      "subcategories": {
+        "Management & Program Support": {
+          "psc_prefixes": ["R707", "R408"],
+          "naics_codes": ["541611"],
+          "keywords": ["program management", "management support"]
+        },
+        "Consulting Services": {
+          "psc_prefixes": ["R497"],
+          "naics_codes": ["541618"],
+          "keywords": ["consulting", "advisory"]
+        },
+        "Training & Education": {
+          "psc_prefixes": ["U008", "U009"],
+          "naics_codes": ["611430"],
+          "keywords": ["training", "education services"]
+        },
+        "Financial & Legal Services": {
+          "psc_prefixes": ["R199"],
+          "naics_codes": ["541211", "541110"],
+          "keywords": ["financial services", "legal services", "audit services"]
+        }
+      }
+    },
+    "Logistics, Transportation, and Operations": {
+      "subcategories": {
+        "Transportation & Freight": {
+          "psc_prefixes": ["V1", "V2"],
+          "naics_codes": ["488990", "492110"],
+          "keywords": ["transportation services", "freight", "shipping"]
+        },
+        "Warehousing & Supply Chain": {
+          "psc_prefixes": ["V3"],
+          "naics_codes": ["541614", "493110"],
+          "keywords": ["warehouse", "supply chain", "logistics support"]
+        },
+        "Fuel & Propellants": {
+          "psc_prefixes": ["9130", "9140"],
+          "naics_codes": ["424710"],
+          "keywords": ["fuel", "propellant supply", "jet fuel"]
+        },
+        "Operations Support": {
+          "psc_prefixes": ["V4", "N"],
+          "naics_codes": [],
+          "keywords": ["operations support", "installation support"]
+        }
+      }
+    },
+    "Communications and Electronics": {
+      "subcategories": {
+        "Communications Equipment": {
+          "psc_prefixes": ["58"],
+          "naics_codes": ["334220"],
+          "keywords": ["communications equipment", "antenna", "radio"]
+        },
+        "Electronic Components": {
+          "psc_prefixes": ["59"],
+          "naics_codes": ["334419", "334418"],
+          "keywords": ["electronic components", "circuit board", "semiconductor"]
+        },
+        "Telemetry & Tracking Systems": {
+          "psc_prefixes": ["5865"],
+          "naics_codes": [],
+          "keywords": ["telemetry", "tracking system", "transceiver"]
+        },
+        "Broadcast & Imaging Systems": {
+          "psc_prefixes": ["58 IM"],
+          "naics_codes": ["334310"],
+          "keywords": ["broadcast", "imaging system", "camera system"]
+        }
+      }
+    },
+    "Other or Unclassified": {
+      "subcategories": {
+        "Unclassified Spend": {"psc_prefixes": [], "naics_codes": [], "keywords": []},
+        "Needs Review — Ambiguous Evidence": {"psc_prefixes": [], "naics_codes": [], "keywords": []}
+      }
+    }
+  }
+}
