@@ -27,3 +27,5 @@ class ClassifiedTransaction:
     vendor_alias_count: int
     preferred_supplier: Optional[str]
     bypassed_preferred_supplier: bool
+    llm_assisted: bool = False
+    llm_reasoning: Optional[str] = None

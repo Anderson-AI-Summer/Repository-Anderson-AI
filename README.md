@@ -27,6 +27,31 @@ Reports are written to `--outdir`:
 - `classified_transactions.csv` — every row with its resolved vendor, category, and bypass flag
 - `vendor_alias_report.md` — vendors detected under more than one raw name
 - `maverick_spend_report.md` — flagged purchases, grouped by category, with totals
+- `llm_assisted_report.md` — only written when `--llm-fallback` classified at least one row (see below)
+
+### Optional LLM fallback for unresolved rows
+
+The taxonomy classifier is intentionally rule-based (see below) — but a fixed
+keyword list can't resolve every row, and those are worth a second look
+smarter than "leave it Uncategorized forever." Pass `--llm-fallback` to have
+`spend_agent/llm_classifier.py` ask Claude (`claude-opus-5`, via the
+`anthropic` SDK) to pick a category from the same taxonomy for any row the
+keyword classifier leaves as `Uncategorized`, or to honestly say none fit:
+
+```bash
+python3 -m spend_agent.cli data/sample_transactions.csv --outdir out --llm-fallback
+```
+
+This is genuinely optional, in the same sense as `ppp/`: nothing else in the
+package imports `llm_classifier.py`, it requires `pip install anthropic` and
+an `ANTHROPIC_API_KEY`, and the CLI degrades gracefully (prints a warning,
+runs the deterministic pipeline as normal) if either is missing. The base
+package's "no third-party dependencies" claim below only applies without this
+flag. Every LLM-assisted row is marked in the CSV (`llm_assisted` column) and
+gets its stated reasoning logged to `llm_assisted_report.md`, so — consistent
+with the auditability goal that made the base classifier rule-based in the
+first place — a reviewer can see *why* a non-keyword-matched row landed where
+it did instead of just trusting it.
 
 ## How it works
 
@@ -150,4 +175,5 @@ python3 -m unittest discover -s tests -v
 ```
 
 No third-party dependencies — everything runs on the Python 3 standard
-library.
+library, except the optional `--llm-fallback` flag above, which needs
+`pip install anthropic` and an `ANTHROPIC_API_KEY` only if you opt into it.

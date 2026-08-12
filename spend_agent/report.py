@@ -16,6 +16,7 @@ def write_classified_csv(path: str, results: List[ClassifiedTransaction]) -> Non
             [
                 "row_id", "date", "vendor_raw", "canonical_vendor", "description",
                 "amount", "category", "preferred_supplier", "bypassed_preferred_supplier",
+                "llm_assisted",
             ]
         )
         for r in results:
@@ -25,6 +26,7 @@ def write_classified_csv(path: str, results: List[ClassifiedTransaction]) -> Non
                     t.row_id, t.date, t.vendor_raw, r.canonical_vendor, t.description,
                     f"{t.amount:.2f}", r.category, r.preferred_supplier or "",
                     "yes" if r.bypassed_preferred_supplier else "no",
+                    "yes" if r.llm_assisted else "no",
                 ]
             )
 
@@ -78,8 +80,32 @@ def write_maverick_report(path: str, results: List[ClassifiedTransaction]) -> No
             )
 
 
+def write_llm_assisted_report(path: str, results: List[ClassifiedTransaction]) -> None:
+    assisted = [r for r in results if r.llm_assisted]
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("# LLM-Assisted Classification Report\n\n")
+        fh.write(
+            "Rows the keyword taxonomy left as Uncategorized, classified instead by "
+            "the optional LLM fallback (`--llm-fallback`). Each entry is the model's "
+            "stated reasoning, kept here so the call stays auditable even though it "
+            "isn't a keyword match — review these before trusting them the way a "
+            "keyword match is trusted by default.\n\n"
+        )
+        if not assisted:
+            fh.write("No rows required LLM assistance.\n")
+            return
+        for r in assisted:
+            t = r.transaction
+            fh.write(f"## Row {t.row_id}: {r.canonical_vendor} → {r.category}\n")
+            fh.write(f"- Description: {t.description}\n")
+            fh.write(f"- Amount: ${t.amount:,.2f}\n")
+            fh.write(f"- Reasoning: {r.llm_reasoning}\n\n")
+
+
 def write_all_reports(
-    outdir: str, results: List[ClassifiedTransaction], clusters: Dict[int, VendorCluster]
+    outdir: str,
+    results: List[ClassifiedTransaction],
+    clusters: Dict[int, VendorCluster],
 ) -> Dict[str, str]:
     os.makedirs(outdir, exist_ok=True)
     paths = {
@@ -90,4 +116,9 @@ def write_all_reports(
     write_classified_csv(paths["classified_csv"], results)
     write_vendor_alias_report(paths["vendor_aliases_md"], clusters)
     write_maverick_report(paths["maverick_md"], results)
+
+    if any(r.llm_assisted for r in results):
+        paths["llm_assisted_md"] = os.path.join(outdir, "llm_assisted_report.md")
+        write_llm_assisted_report(paths["llm_assisted_md"], results)
+
     return paths
