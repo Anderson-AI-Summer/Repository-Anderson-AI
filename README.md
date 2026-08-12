@@ -144,6 +144,21 @@ Title Case (`Recipient Name`, `Award Amount`, `NAICS Description`). Header
 matching is tolerant across both, the same approach `ingest.py` uses for
 messy transaction exports.
 
+A second synthetic sample, `usaspending/data/sample_hud_contracts.csv` (with
+its own `usaspending/data/sample_hud_preferred_suppliers.json` policy),
+scopes the same demo to a different single agency (HUD) to show the pipeline
+isn't NASA-specific — same synthetic-data caveat applies. Generate its
+dashboard with:
+
+```bash
+python3 usaspending/run_usaspending_agent.py usaspending/data/sample_hud_contracts.csv \
+  --suppliers usaspending/data/sample_hud_preferred_suppliers.json --outdir usaspending/out
+python3 dashboard/generate_dashboard.py usaspending/out/converted_transactions.csv \
+  --taxonomy config/usaspending_taxonomy.json \
+  --suppliers usaspending/data/sample_hud_preferred_suppliers.json \
+  --out dashboard/usaspending_hud_dashboard.html
+```
+
 ### Sample data is synthetic, not a live pull, and scoped to NASA
 
 This environment's egress policy blocks outbound requests to
