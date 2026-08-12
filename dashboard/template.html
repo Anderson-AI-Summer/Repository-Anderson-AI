@@ -1,0 +1,785 @@
+<title>Spend Ledger</title>
+<style>
+/* ---------- fonts ---------- */
+__FONT_FACES__
+
+/* ---------- tokens ---------- */
+:root {
+  --paper: #F2F5F3;
+  --surface: #FFFFFF;
+  --ink-900: #142621;
+  --ink-700: #2E4A42;
+  --ink-500: #5B7269;
+  --line: #D9E3DE;
+  --line-strong: #B9C9C2;
+  --accent: #1F6F5A;
+  --accent-strong: #14503F;
+  --accent-soft: #DCEEE6;
+  --flag: #A6432A;
+  --flag-soft: #F6E1D6;
+  --flag-strong: #7C2F1C;
+  --shadow: 0 1px 2px rgba(20, 38, 33, 0.06), 0 8px 24px -12px rgba(20, 38, 33, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101915;
+    --surface: #17221D;
+    --ink-900: #EAF2EE;
+    --ink-700: #C3D2CB;
+    --ink-500: #8AA298;
+    --line: #2A3A34;
+    --line-strong: #3B4F47;
+    --accent: #56C4A0;
+    --accent-strong: #7ED8B9;
+    --accent-soft: #1D3A31;
+    --flag: #E08A62;
+    --flag-soft: #35231A;
+    --flag-strong: #F2A67E;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #101915;
+  --surface: #17221D;
+  --ink-900: #EAF2EE;
+  --ink-700: #C3D2CB;
+  --ink-500: #8AA298;
+  --line: #2A3A34;
+  --line-strong: #3B4F47;
+  --accent: #56C4A0;
+  --accent-strong: #7ED8B9;
+  --accent-soft: #1D3A31;
+  --flag: #E08A62;
+  --flag-soft: #35231A;
+  --flag-strong: #F2A67E;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light dark; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink-900);
+  font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 48px) clamp(16px, 4vw, 32px) 64px;
+}
+
+a { color: inherit; }
+
+.mono {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+h1, h2, h3 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* ---------- masthead ---------- */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line-strong);
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.masthead-title { display: flex; flex-direction: column; gap: 10px; }
+
+.masthead h1 {
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.01em;
+}
+
+.masthead-sub {
+  color: var(--ink-700);
+  max-width: 52ch;
+  font-size: 14.5px;
+}
+
+.masthead-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-500);
+  text-align: right;
+}
+
+.run-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-family: 'Work Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.run-pill .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-strong);
+  flex: none;
+}
+
+/* ---------- pipeline strip ---------- */
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin-bottom: 32px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.pipeline-step {
+  padding: 16px 18px;
+  position: relative;
+  border-right: 1px solid var(--line);
+}
+.pipeline-step:last-child { border-right: none; }
+.pipeline-step::after {
+  content: "→";
+  position: absolute;
+  right: -11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-500);
+  font-size: 14px;
+  z-index: 1;
+}
+.pipeline-step:last-child::after { content: none; }
+.pipeline-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+  display: block;
+}
+.pipeline-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-900);
+  display: block;
+  margin-bottom: 3px;
+}
+.pipeline-desc {
+  font-size: 12.5px;
+  color: var(--ink-500);
+  line-height: 1.4;
+}
+
+/* ---------- stat strip ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 36px;
+  box-shadow: var(--shadow);
+}
+.stat {
+  background: var(--surface);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  font-size: clamp(20px, 2.4vw, 26px);
+  color: var(--ink-900);
+  letter-spacing: -0.01em;
+}
+.stat-value.flagged { color: var(--flag-strong); }
+.stat-label {
+  font-size: 12px;
+  color: var(--ink-500);
+  font-weight: 500;
+}
+
+/* ---------- section shell ---------- */
+section { margin-bottom: 36px; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.section-head h2 { font-size: 19px; }
+.section-note { font-size: 12.5px; color: var(--ink-500); }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- two column grid ---------- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 20px;
+  align-items: stretch;
+}
+@media (max-width: 860px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .pipeline { grid-template-columns: 1fr; }
+  .pipeline-step::after { content: "↓"; right: 50%; top: auto; bottom: -11px; transform: translateX(50%); }
+}
+
+/* ---------- category bars ---------- */
+.cat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 158px) 1fr 68px;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 0;
+}
+.cat-row + .cat-row { border-top: 1px solid var(--line); }
+.cat-name {
+  font-size: 12.8px;
+  font-weight: 500;
+  color: var(--ink-900);
+  line-height: 1.3;
+}
+.cat-count { font-size: 11.5px; color: var(--ink-500); font-weight: 400; white-space: nowrap; }
+.cat-track {
+  height: 9px;
+  background: var(--accent-soft);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.cat-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 5px 0 0 5px;
+}
+.cat-amount {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  text-align: right;
+  color: var(--ink-700);
+}
+
+/* ---------- vendor resolution cards ---------- */
+.vendor-card { padding: 14px 0; }
+.vendor-card + .vendor-card { border-top: 1px solid var(--line); }
+.vendor-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  flex-wrap: wrap;
+}
+.vendor-canon {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-900);
+}
+.alias-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+.alias-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+.alias-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  color: var(--ink-700);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+.alias-arrow { color: var(--ink-500); font-size: 12px; }
+.merge-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-500);
+}
+
+/* ---------- maverick table ---------- */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.2px; }
+thead th {
+  text-align: left;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  padding: 0 10px 9px;
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+thead th.num, tbody td.num { text-align: right; }
+tbody td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  color: var(--ink-900);
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--paper); }
+.amount { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pill-flag { background: var(--flag-soft); color: var(--flag-strong); }
+.pill-ok { background: var(--accent-soft); color: var(--accent-strong); }
+.pill-flag .dot, .pill-ok .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.vendor-cell { display: flex; flex-direction: column; gap: 2px; }
+.vendor-cell .raw { font-size: 11px; color: var(--ink-500); font-family: 'IBM Plex Mono', monospace; }
+.vendor-cell .canon { font-weight: 500; }
+
+/* ---------- register controls ---------- */
+.register-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.search-input {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-900);
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+.search-input:focus, .chip:focus-visible, th button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.chip {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-700);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.chip.flag-chip[aria-pressed="true"] {
+  background: var(--flag);
+  border-color: var(--flag);
+}
+th button {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+th button .arrow { font-size: 9px; opacity: 0; }
+th button[data-active="true"] .arrow { opacity: 1; }
+
+.empty-state {
+  padding: 32px 10px;
+  text-align: center;
+  color: var(--ink-500);
+  font-size: 13px;
+}
+
+.results-count { font-size: 12px; color: var(--ink-500); margin-bottom: 10px; }
+
+/* ---------- footer ---------- */
+footer {
+  margin-top: 44px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--ink-500);
+}
+footer .llm-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+footer .llm-note .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-500);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="masthead-title">
+      <span class="eyebrow">Spend Classification Agent · Demo Run</span>
+      <h1>Spend Ledger</h1>
+      <p class="masthead-sub">Classifies transactions, resolves vendor name variants to one identity, and flags purchases that bypassed a preferred supplier.</p>
+    </div>
+    <div class="masthead-meta">
+      <span class="run-pill"><span class="dot"></span>__SOURCE_LABEL__</span>
+      <span>__ROW_COUNT__ transactions · generated __RUN_DATE__</span>
+    </div>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <span class="pipeline-num">01</span>
+      <span class="pipeline-name">Ingest</span>
+      <span class="pipeline-desc">Tolerant CSV parsing — header aliases, currency formatting</span>
+    </div>
+    <div class="pipeline-step">
+      <span class="pipeline-num">02</span>
+      <span class="pipeline-name">Resolve vendors</span>
+      <span class="pipeline-desc">Normalize + cluster name variants to one canonical identity</span>
+    </div>
+    <div class="pipeline-step">
+      <span class="pipeline-num">03</span>
+      <span class="pipeline-name">Classify</span>
+      <span class="pipeline-desc">Keyword taxonomy match, auditable by design</span>
+    </div>
+    <div class="pipeline-step">
+      <span class="pipeline-num">04</span>
+      <span class="pipeline-name">Check suppliers</span>
+      <span class="pipeline-desc">Flag categories routed away from the preferred vendor</span>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <section>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="section-head">
+          <h2>Spend by category</h2>
+          <span class="section-note">sorted by total amount</span>
+        </div>
+        <div id="categoryList"></div>
+      </div>
+      <div class="panel">
+        <div class="section-head">
+          <h2>Vendor identities resolved</h2>
+          <span class="section-note">raw names merged into one vendor</span>
+        </div>
+        <div id="vendorList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="section-head">
+        <h2>Maverick spend</h2>
+        <span class="section-note" id="maverickNote"></span>
+      </div>
+      <div class="table-scroll">
+        <table id="maverickTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Vendor</th>
+              <th>Category</th>
+              <th>Preferred supplier</th>
+              <th class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Transaction register</h2>
+      <span class="section-note">__ROW_COUNT__ rows, keyword-classified</span>
+    </div>
+    <div class="panel">
+      <div class="register-controls">
+        <input type="text" class="search-input" id="searchBox" placeholder="Search vendor or description…" aria-label="Search vendor or description">
+        <div id="categoryChips" role="group" aria-label="Filter by category"></div>
+        <button class="chip flag-chip" id="maverickToggle" aria-pressed="false">Maverick only</button>
+      </div>
+      <div class="results-count" id="resultsCount"></div>
+      <div class="table-scroll">
+        <table id="registerTable">
+          <thead>
+            <tr>
+              <th class="num" data-key="row_id"><button data-active="true">ID <span class="arrow">▾</span></button></th>
+              <th data-key="date"><button>Date <span class="arrow">▾</span></button></th>
+              <th data-key="canonical_vendor"><button>Vendor <span class="arrow">▾</span></button></th>
+              <th data-key="category"><button>Category <span class="arrow">▾</span></button></th>
+              <th class="num" data-key="amount"><button>Amount <span class="arrow">▾</span></button></th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="emptyState" style="display:none;">No transactions match these filters.</div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Rule-based classification for auditability — unmatched rows fall to Uncategorized rather than being guessed at.</span>
+    <span class="llm-note"><span class="dot"></span>LLM fallback (Claude, opt-in via <code class="mono">--llm-fallback</code>) __LLM_STATUS__</span>
+  </footer>
+
+</div>
+
+<script>
+const DATA = __DASHBOARD_DATA__;
+
+const fmtMoney = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtMoneyCompact = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+function renderStats() {
+  const s = DATA.summary;
+  const stats = [
+    { value: fmtMoneyCompact(s.total_amount), label: 'Total spend' },
+    { value: s.total_transactions, label: 'Transactions' },
+    { value: s.vendor_identities, label: 'Vendor identities' },
+    { value: s.multi_alias_vendors, label: 'Vendors with merged aliases' },
+    { value: s.maverick_count, label: 'Maverick spend flagged', flagged: true },
+    { value: fmtMoneyCompact(s.maverick_amount), label: 'Maverick amount', flagged: true },
+  ];
+  document.getElementById('stats').innerHTML = stats.map(st => `
+    <div class="stat">
+      <span class="stat-value${st.flagged ? ' flagged' : ''}">${st.value}</span>
+      <span class="stat-label">${st.label}</span>
+    </div>
+  `).join('');
+}
+
+function renderCategories() {
+  const cats = Object.entries(DATA.categories).sort((a, b) => b[1].amount - a[1].amount);
+  const max = Math.max(...cats.map(c => c[1].amount));
+  document.getElementById('categoryList').innerHTML = cats.map(([name, v]) => `
+    <div class="cat-row">
+      <span class="cat-name">${name} <span class="cat-count">(${v.count})</span></span>
+      <span class="cat-track"><span class="cat-fill" style="width:${(v.amount / max * 100).toFixed(1)}%"></span></span>
+      <span class="cat-amount">${fmtMoneyCompact(v.amount)}</span>
+    </div>
+  `).join('');
+}
+
+function renderVendors() {
+  const clusters = DATA.alias_clusters;
+  if (!clusters.length) {
+    document.getElementById('vendorList').innerHTML = '<div class="empty-state">No vendor appeared under more than one name in this run.</div>';
+    return;
+  }
+  document.getElementById('vendorList').innerHTML = clusters.map(c => `
+    <div class="vendor-card">
+      <div class="vendor-card-head">
+        <span class="vendor-canon">${c.canonical_name}</span>
+        <span class="alias-badge">${c.aliases.length} aliases merged</span>
+      </div>
+      <div class="alias-list">
+        ${c.aliases.map((a, i) => `${i > 0 ? '<span class="alias-arrow">＋</span>' : ''}<span class="alias-chip">${a}</span>`).join('')}
+      </div>
+    </div>
+  `).join('') + `<div class="merge-note">Matched by whole-token prefix, not raw similarity — precise enough to merge "Staples" with "Staples Business Advantage" without merging unrelated vendors that happen to share a leading word.</div>`;
+}
+
+function renderMaverick() {
+  const rows = DATA.rows.filter(r => r.bypassed).sort((a, b) => b.amount - a.amount);
+  document.getElementById('maverickNote').textContent = `${rows.length} transaction(s), ${fmtMoney(rows.reduce((s, r) => s + r.amount, 0))} total`;
+  const tbody = document.querySelector('#maverickTable tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No maverick spend detected in this run.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td class="vendor-cell"><span class="canon">${r.canonical_vendor}</span></td>
+      <td>${r.category}</td>
+      <td>${r.preferred_supplier || '—'}</td>
+      <td class="num amount">${fmtMoney(r.amount)}</td>
+    </tr>
+  `).join('');
+}
+
+// ---------- register (search / filter / sort) ----------
+let activeCategory = null;
+let maverickOnly = false;
+let sortKey = 'row_id';
+let sortDir = 1;
+
+function renderCategoryChips() {
+  const names = Object.keys(DATA.categories).sort();
+  const el = document.getElementById('categoryChips');
+  el.innerHTML = ['All', ...names].map(name => {
+    const isAll = name === 'All';
+    const pressed = isAll ? activeCategory === null : activeCategory === name;
+    return `<button class="chip" data-cat="${isAll ? '' : name}" aria-pressed="${pressed}">${name}</button>`;
+  }).join('');
+  el.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeCategory = btn.dataset.cat || null;
+      renderCategoryChips();
+      renderRegister();
+    });
+  });
+}
+
+function currentRows() {
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  let rows = DATA.rows.filter(r => {
+    if (activeCategory && r.category !== activeCategory) return false;
+    if (maverickOnly && !r.bypassed) return false;
+    if (q && !(r.vendor_raw.toLowerCase().includes(q) || r.canonical_vendor.toLowerCase().includes(q) || r.description.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  rows = rows.slice().sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if (av < bv) return -1 * sortDir;
+    if (av > bv) return 1 * sortDir;
+    return 0;
+  });
+  return rows;
+}
+
+function renderRegister() {
+  const rows = currentRows();
+  document.getElementById('resultsCount').textContent = `Showing ${rows.length} of ${DATA.rows.length} transactions`;
+  const tbody = document.querySelector('#registerTable tbody');
+  const empty = document.getElementById('emptyState');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="num mono">${r.row_id}</td>
+      <td>${r.date}</td>
+      <td class="vendor-cell">
+        <span class="canon">${r.canonical_vendor}</span>
+        ${r.vendor_raw !== r.canonical_vendor ? `<span class="raw">${r.vendor_raw}</span>` : ''}
+      </td>
+      <td>${r.category}${r.llm_assisted ? ' <span class="alias-badge">LLM</span>' : ''}</td>
+      <td class="num amount">${fmtMoney(r.amount)}</td>
+      <td>${r.bypassed
+        ? `<span class="pill pill-flag"><span class="dot"></span>Bypassed</span>`
+        : `<span class="pill pill-ok"><span class="dot"></span>OK</span>`}</td>
+    </tr>
+  `).join('');
+}
+
+function initControls() {
+  document.getElementById('searchBox').addEventListener('input', renderRegister);
+  const toggle = document.getElementById('maverickToggle');
+  toggle.addEventListener('click', () => {
+    maverickOnly = !maverickOnly;
+    toggle.setAttribute('aria-pressed', String(maverickOnly));
+    renderRegister();
+  });
+  document.querySelectorAll('#registerTable thead th[data-key] button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.closest('th').dataset.key;
+      if (sortKey === key) { sortDir *= -1; } else { sortKey = key; sortDir = 1; }
+      document.querySelectorAll('#registerTable thead button').forEach(b => {
+        b.dataset.active = 'false';
+        b.querySelector('.arrow').textContent = '▾';
+      });
+      btn.dataset.active = 'true';
+      btn.querySelector('.arrow').textContent = sortDir === 1 ? '▾' : '▴';
+      renderRegister();
+    });
+  });
+}
+
+renderStats();
+renderCategories();
+renderVendors();
+renderMaverick();
+renderCategoryChips();
+initControls();
+renderRegister();
+</script>

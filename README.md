@@ -73,6 +73,26 @@ it did instead of just trusting it.
 - **`spend_agent/pipeline.py`** / **`spend_agent/report.py`** — orchestrate
   the above and render the reports.
 
+## Dashboard (demo)
+
+`dashboard/spend_ledger_dashboard.html` is a self-contained interactive
+dashboard (no server, no external requests — fonts and data are inlined) for
+demoing a pipeline run: category breakdown, the vendor-alias merges shown
+explicitly (e.g. all 4 Staples aliases collapsing into one card), a
+maverick-spend table, and a searchable/filterable/sortable transaction
+register. Open it directly in a browser.
+
+Regenerate it for a different transaction file with:
+
+```bash
+python3 dashboard/generate_dashboard.py data/sample_transactions.csv \
+  --out dashboard/spend_ledger_dashboard.html
+```
+
+`dashboard/template.html` is the static shell; `generate_dashboard.py` runs
+the real pipeline and substitutes the results in — the numbers on the page
+are always a live run, never hand-edited.
+
 ## Config
 
 - `config/taxonomy.json` — category name → keyword list.
