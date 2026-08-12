@@ -82,6 +82,27 @@ policy to check against would misrepresent the output as a compliance
 finding. The maverick-spend flag stays available for anyone who supplies a
 real policy to check against.
 
+### Risk-indicator scoring (heuristic, not a fraud determination)
+
+`spend_agent/ppp_risk_score.py` scores raw PPP loan records against five
+documented public-oversight red flags (round-dollar amounts, missing NAICS
+codes, near-$150K-threshold amounts, same-lender/amount/date batches, and
+large loans with zero jobs reported). Every indicator is a published
+GAO/SBA-OIG screening pattern, not proof of wrongdoing — a loan can trip
+several and still be entirely legitimate (the $20,833 amount, for example,
+is simply the standard PPP maximum for a self-employed applicant with no
+employees, not a red flag on its own). Loans under $150K carry no borrower
+name in the public data, so this never identifies or accuses a specific
+business — only lender/date/amount/NAICS-level patterns.
+
+Run it against the *full* raw per-state file, not the 500-row sample above —
+the near-threshold indicator is only meaningful against the full amount
+distribution:
+
+```bash
+python3 ppp/run_ppp_risk_score.py path/to/foia_up_to_150k_WY.csv --outdir ppp/out
+```
+
 ## Tests
 
 ```bash
