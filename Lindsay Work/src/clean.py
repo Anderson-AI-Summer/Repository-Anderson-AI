@@ -79,9 +79,14 @@ def clean_transaction(raw_txn: dict, award_detail: dict | None) -> tuple[CleanTr
     if recipient_name == "UNKNOWN RECIPIENT":
         flags.append("missing_recipient_name")
 
-    transaction_id = _clean_str(raw_txn.get("internal_id")) or (
-        f"{award_id}|{raw_txn.get('Mod')}|{raw_txn.get('Action Date')}|{amount}"
-    )
+    # NOTE: USAspending's "internal_id" on spending_by_transaction rows is
+    # NOT a unique transaction identifier -- it is shared across multiple
+    # distinct modifications of the same award (confirmed against real
+    # data: identical internal_id, different Mod/Action Date/Amount).
+    # Trusting it alone as the dedup key silently discards real
+    # transactions. The natural key is (award, modification number, date,
+    # amount); internal_id is appended only as an extra disambiguator.
+    transaction_id = f"{award_id}|{raw_txn.get('Mod')}|{raw_txn.get('Action Date')}|{amount}|{raw_txn.get('internal_id') or ''}"
 
     ad = award_detail or {}
     parent_award = (ad.get("parent_award") or {}) if ad else {}

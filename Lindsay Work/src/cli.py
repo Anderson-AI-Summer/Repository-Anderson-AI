@@ -60,6 +60,7 @@ def cmd_refresh(args) -> int:
         end_date=args.end,
         max_records=args.limit,
         max_workers=args.max_workers,
+        fetch_award_details=not args.skip_award_details,
     )
     _report(result)
     return 0 if result["status"] == "ok" else 1
@@ -101,6 +102,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument("--end", default=None, help="default today")
     p_refresh.add_argument("--limit", type=int, default=None, help="optional cap; full refresh is uncapped by default")
     p_refresh.add_argument("--max-workers", type=int, default=8)
+    p_refresh.add_argument("--skip-award-details", action="store_true",
+                            help="exhaustive transaction listing without per-award enrichment (fast); "
+                                 "re-run later without this flag to backfill enrichment from cache")
     p_refresh.set_defaults(func=cmd_refresh)
 
     sub.add_parser("build", help="Rebuild dashboard HTML from cached processed data (no network)").set_defaults(func=cmd_build)

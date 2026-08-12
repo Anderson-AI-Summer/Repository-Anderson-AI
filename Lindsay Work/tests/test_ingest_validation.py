@@ -37,6 +37,28 @@ def test_clean_transaction_malformed_amount_defaults_to_zero_and_flags():
     assert "missing_transaction_amount" in flags
 
 
+def test_clean_transaction_id_not_solely_from_internal_id():
+    # USAspending's "internal_id" on spending_by_transaction rows is shared
+    # across distinct modifications of the same award (confirmed against
+    # real data). Two rows with the same internal_id but different Mod,
+    # Action Date, and Amount must produce DIFFERENT transaction_ids, or
+    # deduplicate() silently discards real transactions.
+    raw_a = {
+        "Award ID": "80NSSC24PC354", "Mod": "0", "Action Date": "2024-09-11",
+        "Transaction Amount": 165532.0, "Recipient Name": "ACME", "internal_id": 291848173,
+    }
+    raw_b = {
+        "Award ID": "80NSSC24PC354", "Mod": "P00001", "Action Date": "2024-09-30",
+        "Transaction Amount": 0.0, "Recipient Name": "ACME", "internal_id": 291848173,
+    }
+    clean_a, _ = clean_transaction(raw_a, None)
+    clean_b, _ = clean_transaction(raw_b, None)
+    assert clean_a.transaction_id != clean_b.transaction_id
+    out, duplicates = deduplicate([clean_a, clean_b])
+    assert len(out) == 2
+    assert duplicates == 0
+
+
 def test_deduplicate_removes_exact_duplicate_transaction_ids(make_txn):
     a = make_txn(transaction_id="dup")
     b = make_txn(transaction_id="dup")
