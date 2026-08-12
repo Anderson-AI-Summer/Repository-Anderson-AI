@@ -1,0 +1,675 @@
+<title>Spend Ledger</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f2;
+    --surface: #ffffff;
+    --surface-2: #fcfcfb;
+    --ink: #14171a;
+    --ink-secondary: #52514e;
+    --ink-muted: #898781;
+    --accent: #2a78d6;
+    --accent-ink: #ffffff;
+    --accent-soft: #dfeafb;
+    --accent-soft-ink: #184f95;
+    --critical: #d03b3b;
+    --critical-soft: #f8e3e2;
+    --critical-soft-ink: #8a2222;
+    --good: #0ca30c;
+    --good-soft: #dff3df;
+    --good-soft-ink: #0a5c0a;
+    --border: rgba(11, 11, 11, 0.10);
+    --border-strong: rgba(11, 11, 11, 0.18);
+    --grid: #e1e0d9;
+    --shadow: 0 1px 2px rgba(20, 23, 26, 0.04), 0 8px 24px rgba(20, 23, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #101214;
+      --surface: #17191c;
+      --surface-2: #1a1a19;
+      --ink: #f5f6f4;
+      --ink-secondary: #c3c2b7;
+      --ink-muted: #8f8d86;
+      --accent: #3987e5;
+      --accent-ink: #ffffff;
+      --accent-soft: rgba(57, 135, 229, 0.16);
+      --accent-soft-ink: #9cc4f2;
+      --critical: #e66767;
+      --critical-soft: rgba(230, 103, 103, 0.16);
+      --critical-soft-ink: #f2acac;
+      --good: #29c229;
+      --good-soft: rgba(41, 194, 41, 0.14);
+      --good-soft-ink: #86e086;
+      --border: rgba(255, 255, 255, 0.10);
+      --border-strong: rgba(255, 255, 255, 0.18);
+      --grid: #2c2c2a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101214;
+    --surface: #17191c;
+    --surface-2: #1a1a19;
+    --ink: #f5f6f4;
+    --ink-secondary: #c3c2b7;
+    --ink-muted: #8f8d86;
+    --accent: #3987e5;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(57, 135, 229, 0.16);
+    --accent-soft-ink: #9cc4f2;
+    --critical: #e66767;
+    --critical-soft: rgba(230, 103, 103, 0.16);
+    --critical-soft-ink: #f2acac;
+    --good: #29c229;
+    --good-soft: rgba(41, 194, 41, 0.14);
+    --good-soft-ink: #86e086;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --grid: #2c2c2a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .viz-root { max-width: 1080px; margin: 0 auto; padding: 0 24px 64px; }
+
+  /* ---- Masthead ---- */
+  .masthead {
+    border-bottom: 1px solid var(--border-strong);
+    padding: 40px 0 24px;
+    margin-bottom: 20px;
+  }
+  .eyebrow {
+    font: 700 11px/1 system-ui, sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  h1.title {
+    font-family: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .dek {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-secondary);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  /* ---- Control row ---- */
+  .control-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    margin-bottom: 8px;
+  }
+  .dataset-switch {
+    display: inline-flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .dataset-switch button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--ink-secondary);
+    font: 600 13px/1 system-ui, sans-serif;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .dataset-switch button:hover { color: var(--ink); }
+  .dataset-switch button[aria-selected="true"] {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .dataset-switch button:focus-visible,
+  .table-scroll table :is(button, [tabindex]):focus-visible,
+  svg [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .provenance {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .provenance .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ink-muted);
+    flex: none;
+  }
+  .provenance.is-synthetic { color: var(--critical-soft-ink); }
+  .provenance.is-synthetic .dot { background: var(--critical); }
+  .provenance code {
+    font: 12px ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--ink-secondary);
+  }
+
+  /* ---- KPI row ---- */
+  .kpi-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .kpi-tile {
+    background: var(--surface);
+    padding: 18px 18px 16px;
+    flex: 1 1 160px;
+    min-width: 160px;
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 0 0 8px;
+  }
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin: 0;
+  }
+  .kpi-value.critical { color: var(--critical); }
+  .kpi-value.good { color: var(--good); }
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin: 6px 0 0;
+  }
+
+  /* ---- Cards / sections ---- */
+  .chart-grid, .ledger-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 780px) {
+    .chart-grid, .ledger-grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px 16px;
+  }
+  .card h2 {
+    font-size: 14px;
+    font-weight: 650;
+    margin: 0 0 2px;
+  }
+  .card .card-sub {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin: 0 0 14px;
+  }
+  .card-empty {
+    font-size: 13px;
+    color: var(--good-soft-ink);
+    background: var(--good-soft);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  /* ---- Bar chart ---- */
+  svg.barchart { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.barchart text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink-secondary); }
+  svg.barchart .cat-label { font-size: 12px; fill: var(--ink); text-anchor: end; }
+  svg.barchart .val-label { font-size: 12px; font-variant-numeric: tabular-nums; fill: var(--ink-secondary); }
+  svg.barchart .axis-line { stroke: var(--border-strong); stroke-width: 1; }
+  svg.barchart .hit-row { fill: transparent; cursor: pointer; }
+  svg.barchart .hit-row:hover ~ .bar-shadow,
+  svg.barchart .bar-shadow.is-hover { opacity: 1; }
+
+  /* ---- Tooltip ---- */
+  #tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 50;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    transform: translate(-9999px, -9999px);
+    max-width: 240px;
+  }
+  #tooltip.visible { opacity: 1; }
+  #tooltip .tt-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #tooltip .tt-label { opacity: 0.75; }
+
+  /* ---- Alias ledger ---- */
+  .alias-list-wrap { position: relative; }
+  .alias-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 2px; }
+  .scroll-fade {
+    position: absolute; left: 0; right: 2px; bottom: 0; height: 32px;
+    background: linear-gradient(to bottom, transparent, var(--surface));
+    pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
+    border-radius: 0 0 8px 8px;
+  }
+  .alias-list-wrap.is-scrollable .scroll-fade { opacity: 1; }
+  .alias-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .alias-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .alias-canonical { font-size: 13px; font-weight: 650; }
+  .alias-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-soft-ink);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+  .alias-raw {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+  .alias-raw .arrow { color: var(--ink-muted); margin: 0 3px; }
+
+  /* ---- Table ---- */
+  .table-scroll { overflow-x: auto; }
+  table.ledger-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.ledger-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    padding: 0 10px 8px 0;
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+  table.ledger-table td {
+    padding: 8px 10px 8px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  table.ledger-table td.amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.ledger-table td.wrap { white-space: normal; }
+  .pill-critical {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--critical-soft-ink);
+    background: var(--critical-soft);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  footer.note {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+  footer.note strong { color: var(--ink-secondary); }
+</style>
+
+<div class="viz-root">
+  <header class="masthead">
+    <p class="eyebrow">Procurement Audit</p>
+    <h1 class="title">Spend Ledger</h1>
+    <p class="dek">Vendor identity resolution, spend classification, and preferred-supplier
+      compliance — computed by <code style="font-family: ui-monospace, monospace; font-size: 0.92em;">spend_agent</code>'s
+      rule-based pipeline across three transaction sets.</p>
+  </header>
+
+  <div class="control-row">
+    <div class="dataset-switch" role="tablist" aria-label="Dataset">
+      <button type="button" role="tab" data-set="corporate" aria-selected="true">Corporate Sample</button>
+      <button type="button" role="tab" data-set="nasa" aria-selected="false">NASA</button>
+      <button type="button" role="tab" data-set="hud" aria-selected="false">HUD</button>
+    </div>
+    <div class="provenance" id="provenance"></div>
+  </div>
+
+  <main>
+    <section class="kpi-row" id="kpiRow"></section>
+
+    <section class="chart-grid">
+      <div class="card">
+        <h2>Spend by category</h2>
+        <p class="card-sub">Total obligations per classified category</p>
+        <svg class="barchart" id="categoryChart" role="img" aria-label="Spend by category"></svg>
+      </div>
+      <div class="card">
+        <h2>Flagged (maverick) spend</h2>
+        <p class="card-sub">Routed away from the category's preferred supplier</p>
+        <svg class="barchart" id="maverickChart" role="img" aria-label="Flagged spend by category"></svg>
+        <div class="card-empty" id="maverickEmpty" hidden>No flagged purchases in this dataset — every award in a category with a policy went to its preferred supplier.</div>
+      </div>
+    </section>
+
+    <section class="ledger-grid">
+      <div class="card">
+        <h2>Vendor identity resolution</h2>
+        <p class="card-sub">Raw names collapsed to one canonical vendor</p>
+        <div class="alias-list-wrap" id="aliasListWrap">
+          <div class="alias-list" id="aliasList"></div>
+          <div class="scroll-fade" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Flagged transactions</h2>
+        <p class="card-sub">Every purchase that bypassed its preferred supplier</p>
+        <div class="table-scroll">
+          <table class="ledger-table">
+            <thead>
+              <tr><th>Date</th><th>Vendor</th><th>Category</th><th>Preferred</th><th>Amount</th></tr>
+            </thead>
+            <tbody id="maverickTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="note" id="footerNote"></footer>
+</div>
+
+<div id="tooltip" role="tooltip"></div>
+
+<script id="viz-data" type="application/json">{"corporate": {"label": "Corporate Expense Sample", "source": "data/sample_transactions.csv", "note": "Illustrative synthetic transaction export (23 rows).", "summary": {"total_transactions": 23, "total_amount": 8906.05, "vendor_identities": 19, "multi_alias_vendors": 2, "maverick_count": 7, "maverick_amount": 2615.04, "uncategorized_count": 0}, "category_totals": [{"category": "IT Hardware", "amount": 2528.44, "count": 3}, {"category": "Professional Services", "amount": 2100.0, "count": 1}, {"category": "Cloud & Software", "amount": 1490.09, "count": 5}, {"category": "Travel", "amount": 975.15, "count": 3}, {"category": "Office Supplies", "amount": 965.42, "count": 4}, {"category": "Shipping & Logistics", "amount": 463.9, "count": 4}, {"category": "Facilities", "amount": 300.0, "count": 1}, {"category": "Meals & Entertainment", "amount": 83.05, "count": 2}], "maverick_by_category": [{"category": "IT Hardware", "amount": 2218.44, "count": 2}, {"category": "Shipping & Logistics", "amount": 203.2, "count": 2}, {"category": "Cloud & Software", "amount": 193.4, "count": 3}], "maverick_rows": [{"vendor": "Dell Technologies", "category": "IT Hardware", "preferred_supplier": "CDW", "amount": 1899.99, "date": "1/12/2026"}, {"vendor": "Lenovo", "category": "IT Hardware", "preferred_supplier": "CDW", "amount": 318.45, "date": "1/22/2026"}, {"vendor": "DHL Express", "category": "Shipping & Logistics", "preferred_supplier": "FedEx", "amount": 145.0, "date": "1/16/2026"}, {"vendor": "Slack Technologies", "category": "Cloud & Software", "preferred_supplier": "Amazon Web Services", "amount": 96.0, "date": "1/18/2026"}, {"vendor": "Digital Ocean LLC", "category": "Cloud & Software", "preferred_supplier": "Amazon Web Services", "amount": 76.4, "date": "1/11/2026"}, {"vendor": "UPS", "category": "Shipping & Logistics", "preferred_supplier": "FedEx", "amount": 58.2, "date": "1/6/2026"}, {"vendor": "GitHub Inc", "category": "Cloud & Software", "preferred_supplier": "Amazon Web Services", "amount": 21.0, "date": "1/23/2026"}], "alias_clusters": [{"canonical_name": "Staples Inc", "aliases": ["STAPLES #04521", "STAPLES.COM", "Staples Business Advantage", "Staples Inc"]}, {"canonical_name": "Amazon Web Services", "aliases": ["AWS", "Amazon Web Services"]}]}, "nasa": {"label": "NASA", "source": "usaspending/data/sample_nasa_contracts.csv", "note": "Synthetic demo, not a live USASpending.gov pull \u2014 network access to usaspending.gov is blocked in this environment. Fictional contractor names.", "summary": {"total_transactions": 26, "total_amount": 25498200.0, "vendor_identities": 14, "multi_alias_vendors": 9, "maverick_count": 3, "maverick_amount": 390200.0, "uncategorized_count": 0}, "category_totals": [{"category": "Research & Development", "amount": 8144150.0, "count": 3}, {"category": "Construction & Facilities", "amount": 5430000.0, "count": 2}, {"category": "Engineering & Technical Services", "amount": 5020000.0, "count": 3}, {"category": "Information Technology", "amount": 2088600.0, "count": 5}, {"category": "Transportation & Logistics", "amount": 1984200.0, "count": 3}, {"category": "Medical & Health Services", "amount": 1153100.0, "count": 2}, {"category": "Security & Protective Services", "amount": 808700.0, "count": 2}, {"category": "Professional & Management Services", "amount": 555500.0, "count": 2}, {"category": "Training & Education Services", "amount": 243800.0, "count": 2}, {"category": "Office & Administrative Supplies", "amount": 70150.0, "count": 2}], "maverick_by_category": [{"category": "Transportation & Logistics", "amount": 218900.0, "count": 1}, {"category": "Information Technology", "amount": 171300.0, "count": 2}], "maverick_rows": [{"vendor": "Cobalt Line Freight LLC", "category": "Transportation & Logistics", "preferred_supplier": "Atlas Freight Systems", "amount": 218900.0, "date": "2025-07-01"}, {"vendor": "BrightPath Technologies Inc", "category": "Information Technology", "preferred_supplier": "Northgate IT Solutions", "amount": 112400.0, "date": "2025-07-14"}, {"vendor": "QuickTech Reseller LLC", "category": "Information Technology", "preferred_supplier": "Northgate IT Solutions", "amount": 58900.0, "date": "2025-02-27"}], "alias_clusters": [{"canonical_name": "Meridian Defense Systems Corp", "aliases": ["MERIDIAN DEFENSE SYSTEMS #4471", "MERIDIAN DEFENSE SYSTEMS INC", "Meridian Defense Systems Corp", "Meridian Defense Systems, LLC"]}, {"canonical_name": "Northgate IT Solutions", "aliases": ["NORTHGATE IT SOLUTIONS INC", "Northgate IT Solutions", "Northgate IT Solutions LLC"]}, {"canonical_name": "Atlas Freight Systems", "aliases": ["Atlas Freight Systems", "Atlas Freight Systems LLC"]}, {"canonical_name": "Beacon Professional Services", "aliases": ["Beacon Professional Services", "Beacon Professional Services Inc"]}, {"canonical_name": "Cascade Training Academy", "aliases": ["Cascade Training Academy", "Cascade Training Academy LLC"]}, {"canonical_name": "Falcon Security Partners", "aliases": ["Falcon Security Partners", "Falcon Security Partners LLC"]}, {"canonical_name": "Harborview Construction Group", "aliases": ["Harborview Construction Group", "Harborview Construction Group LLC"]}, {"canonical_name": "Redwood Office Supply", "aliases": ["Redwood Office Supply", "Redwood Office Supply Co"]}, {"canonical_name": "Summit Medical Logistics", "aliases": ["Summit Medical Logistics", "Summit Medical Logistics Inc"]}]}, "hud": {"label": "HUD", "source": "usaspending/data/sample_hud_contracts.csv", "note": "Synthetic demo, not a live USASpending.gov pull \u2014 network access to usaspending.gov is blocked in this environment. Fictional contractor names.", "summary": {"total_transactions": 26, "total_amount": 16171700.0, "vendor_identities": 14, "multi_alias_vendors": 9, "maverick_count": 3, "maverick_amount": 281200.0, "uncategorized_count": 0}, "category_totals": [{"category": "Construction & Facilities", "amount": 7155700.0, "count": 4}, {"category": "Professional & Management Services", "amount": 2282700.0, "count": 4}, {"category": "Research & Development", "amount": 1560000.0, "count": 1}, {"category": "Information Technology", "amount": 1341000.0, "count": 5}, {"category": "Transportation & Logistics", "amount": 1201000.0, "count": 3}, {"category": "Engineering & Technical Services", "amount": 1120000.0, "count": 1}, {"category": "Medical & Health Services", "amount": 641800.0, "count": 2}, {"category": "Security & Protective Services", "amount": 585500.0, "count": 2}, {"category": "Training & Education Services", "amount": 221300.0, "count": 2}, {"category": "Office & Administrative Supplies", "amount": 62700.0, "count": 2}], "maverick_by_category": [{"category": "Transportation & Logistics", "amount": 143700.0, "count": 1}, {"category": "Information Technology", "amount": 137500.0, "count": 2}], "maverick_rows": [{"vendor": "Speedvine Courier Solutions LLC", "category": "Transportation & Logistics", "preferred_supplier": "Keystone Logistics Partners", "amount": 143700.0, "date": "2025-07-02"}, {"vendor": "Coastline Data Systems Inc", "category": "Information Technology", "preferred_supplier": "Meadowbrook IT Solutions", "amount": 87600.0, "date": "2025-07-09"}, {"vendor": "ValueTech Resellers LLC", "category": "Information Technology", "preferred_supplier": "Meadowbrook IT Solutions", "amount": 49900.0, "date": "2025-02-20"}], "alias_clusters": [{"canonical_name": "Crestpoint Property Services Corp", "aliases": ["CRESTPOINT PROPERTY SERVICES #2290", "CRESTPOINT PROPERTY SERVICES INC", "Crestpoint Property Services Corp", "Crestpoint Property Services, LLC"]}, {"canonical_name": "Meadowbrook IT Solutions", "aliases": ["MEADOWBROOK IT SOLUTIONS INC", "Meadowbrook IT Solutions", "Meadowbrook IT Solutions LLC"]}, {"canonical_name": "Ashford Policy Advisors", "aliases": ["Ashford Policy Advisors", "Ashford Policy Advisors Inc"]}, {"canonical_name": "Brightline Training Group", "aliases": ["Brightline Training Group", "Brightline Training Group LLC"]}, {"canonical_name": "Fernwood Office Supply", "aliases": ["Fernwood Office Supply", "Fernwood Office Supply Co"]}, {"canonical_name": "Ironwood Facilities Group", "aliases": ["Ironwood Facilities Group", "Ironwood Facilities Group LLC"]}, {"canonical_name": "Keystone Logistics Partners", "aliases": ["Keystone Logistics Partners", "Keystone Logistics Partners LLC"]}, {"canonical_name": "Lumen Healthy Homes Partners", "aliases": ["Lumen Healthy Homes Partners", "Lumen Healthy Homes Partners Inc"]}, {"canonical_name": "Wardline Protective Services", "aliases": ["Wardline Protective Services", "Wardline Protective Services LLC"]}]}}</script>
+<script>
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("viz-data").textContent);
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var tooltip = document.getElementById("tooltip");
+  var currentSet = "corporate";
+
+  function fmtCompact(n) {
+    var sign = n < 0 ? "-" : "";
+    n = Math.abs(n);
+    if (n >= 1000000) return sign + "$" + (n / 1000000).toFixed(n >= 10000000 ? 0 : 1) + "M";
+    if (n >= 1000) return sign + "$" + (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "K";
+    return sign + "$" + n.toFixed(2);
+  }
+  function fmtFull(n) {
+    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function el(tag, attrs, text) {
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function html(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function roundedRightPath(x0, y0, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    var x1 = x0 + w, y1 = y0 + h;
+    if (w <= 0) return "M" + x0 + " " + y0 + "h0v" + h + "h0Z";
+    return [
+      "M", x0, y0,
+      "L", (x1 - r), y0,
+      "A", r, r, 0, 0, 1, x1, (y0 + r),
+      "L", x1, (y1 - r),
+      "A", r, r, 0, 0, 1, (x1 - r), y1,
+      "L", x0, y1,
+      "Z"
+    ].join(" ");
+  }
+
+  function showTooltip(x, y, title, value) {
+    tooltip.innerHTML = "";
+    var vEl = html("div", "tt-value", value);
+    var lEl = html("div", "tt-label", title);
+    tooltip.appendChild(vEl);
+    tooltip.appendChild(lEl);
+    tooltip.classList.add("visible");
+    var vw = window.innerWidth;
+    var tw = 220;
+    var left = Math.min(x + 14, vw - tw - 12);
+    tooltip.style.transform = "translate(" + left + "px," + (y + 14) + "px)";
+  }
+  function hideTooltip() {
+    tooltip.classList.remove("visible");
+    tooltip.style.transform = "translate(-9999px,-9999px)";
+  }
+
+  function renderBarChart(svg, rows, colorVar, softVar) {
+    svg.innerHTML = "";
+    var labelW = 168, gapAfterLabel = 10, rightPad = 84, rowH = 30, barH = 16, topPad = 6, bottomPad = 6;
+    var width = 560;
+    var barAreaW = width - labelW - gapAfterLabel - rightPad;
+    var height = rows.length * rowH + topPad + bottomPad;
+    svg.setAttribute("viewBox", "0 0 " + width + " " + Math.max(height, 40));
+    var max = 0;
+    rows.forEach(function (r) { if (r.amount > max) max = r.amount; });
+    if (max <= 0) max = 1;
+
+    var axisX = labelW + gapAfterLabel;
+    svg.appendChild(el("line", { class: "axis-line", x1: axisX, y1: topPad, x2: axisX, y2: height - bottomPad }));
+
+    rows.forEach(function (r, i) {
+      var rowY = topPad + i * rowH;
+      var barY = rowY + (rowH - barH) / 2;
+      var w = (r.amount / max) * barAreaW;
+      var barX = axisX;
+
+      var hit = el("rect", {
+        class: "hit-row", x: 0, y: rowY, width: width, height: rowH,
+        tabindex: "0", role: "img",
+        "aria-label": r.category + ": " + fmtFull(r.amount) + " across " + r.count + " transaction" + (r.count === 1 ? "" : "s")
+      });
+
+      var label = el("text", { class: "cat-label", x: labelW, y: barY + barH / 2 + 4 }, r.category);
+
+      var bar = el("path", {
+        d: roundedRightPath(barX, barY, Math.max(w, 2), barH, 4),
+        fill: "var(" + colorVar + ")"
+      });
+
+      var valLabel = el("text", { class: "val-label", x: barX + Math.max(w, 2) + 8, y: barY + barH / 2 + 4 }, fmtCompact(r.amount));
+
+      var g = el("g", {});
+      g.appendChild(label);
+      g.appendChild(bar);
+      g.appendChild(valLabel);
+      g.appendChild(hit);
+      svg.appendChild(g);
+
+      function onEnter(clientX, clientY) {
+        bar.setAttribute("opacity", "0.82");
+        showTooltip(clientX, clientY, r.category, fmtFull(r.amount) + " · " + r.count + " txn" + (r.count === 1 ? "" : "s"));
+      }
+      function onLeave() {
+        bar.setAttribute("opacity", "1");
+        hideTooltip();
+      }
+      hit.addEventListener("pointermove", function (ev) { onEnter(ev.clientX, ev.clientY); });
+      hit.addEventListener("pointerleave", onLeave);
+      hit.addEventListener("focus", function () {
+        var rect = hit.getBoundingClientRect();
+        onEnter(rect.left + rect.width * 0.6, rect.top);
+      });
+      hit.addEventListener("blur", onLeave);
+    });
+  }
+
+  function renderKpis(d) {
+    var row = document.getElementById("kpiRow");
+    row.innerHTML = "";
+    var tiles = [
+      { label: "Total obligations", value: fmtCompact(d.summary.total_amount) },
+      { label: "Transactions processed", value: d.summary.total_transactions.toLocaleString() },
+      { label: "Vendor identities resolved", value: d.summary.vendor_identities.toLocaleString(),
+        sub: d.summary.multi_alias_vendors + " resolved from multiple raw names" },
+      { label: "Flagged maverick spend", value: fmtCompact(d.summary.maverick_amount), cls: d.summary.maverick_count ? "critical" : "good",
+        sub: d.summary.maverick_count + " transaction" + (d.summary.maverick_count === 1 ? "" : "s") + " flagged" },
+      { label: "Uncategorized", value: d.summary.uncategorized_count.toLocaleString(), cls: d.summary.uncategorized_count ? "critical" : "good",
+        sub: d.summary.uncategorized_count ? "needs manual review" : "every row matched a category" }
+    ];
+    tiles.forEach(function (t) {
+      var tile = html("div", "kpi-tile");
+      tile.appendChild(html("p", "kpi-label", t.label));
+      tile.appendChild(html("p", "kpi-value" + (t.cls ? " " + t.cls : ""), t.value));
+      if (t.sub) tile.appendChild(html("p", "kpi-sub", t.sub));
+      row.appendChild(tile);
+    });
+  }
+
+  function renderAliasList(d) {
+    var list = document.getElementById("aliasList");
+    list.innerHTML = "";
+    if (!d.alias_clusters.length) {
+      list.appendChild(html("p", "card-sub", "No vendor in this set appeared under more than one raw name."));
+      document.getElementById("aliasListWrap").classList.remove("is-scrollable");
+      return;
+    }
+    d.alias_clusters.forEach(function (c) {
+      var item = html("div", "alias-item");
+      var head = html("div", "alias-head");
+      head.appendChild(html("span", "alias-canonical", c.canonical_name));
+      head.appendChild(html("span", "alias-count", c.aliases.length + " names → 1 vendor"));
+      item.appendChild(head);
+      var raw = html("p", "alias-raw", c.aliases.join("  •  "));
+      item.appendChild(raw);
+      list.appendChild(item);
+    });
+    var wrap = document.getElementById("aliasListWrap");
+    wrap.classList.toggle("is-scrollable", list.scrollHeight > list.clientHeight + 2);
+  }
+
+  function renderMaverickTable(d) {
+    var body = document.getElementById("maverickTableBody");
+    body.innerHTML = "";
+    d.maverick_rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      var tdDate = document.createElement("td"); tdDate.textContent = r.date; tr.appendChild(tdDate);
+      var tdVendor = document.createElement("td"); tdVendor.className = "wrap"; tdVendor.textContent = r.vendor; tr.appendChild(tdVendor);
+      var tdCat = document.createElement("td"); tdCat.className = "wrap"; tdCat.textContent = r.category; tr.appendChild(tdCat);
+      var tdPref = document.createElement("td"); tdPref.className = "wrap";
+      var pill = document.createElement("span"); pill.className = "pill-critical"; pill.textContent = "bypassed → " + r.preferred_supplier;
+      tdPref.appendChild(pill); tr.appendChild(tdPref);
+      var tdAmt = document.createElement("td"); tdAmt.className = "amount"; tdAmt.textContent = fmtFull(r.amount); tr.appendChild(tdAmt);
+      body.appendChild(tr);
+    });
+  }
+
+  function renderProvenance(d) {
+    var p = document.getElementById("provenance");
+    var synthetic = /synthetic/i.test(d.note);
+    p.className = "provenance" + (synthetic ? " is-synthetic" : "");
+    p.innerHTML = "";
+    p.appendChild(html("span", "dot"));
+    var text = document.createElement("span");
+    text.textContent = (synthetic ? "Synthetic demo data — " : "") + d.note.replace(/^Synthetic demo, /, "");
+    p.appendChild(text);
+  }
+
+  function renderFooter(d) {
+    var f = document.getElementById("footerNote");
+    f.innerHTML = "";
+    var p = document.createElement("p");
+    p.style.margin = "0";
+    var strong = document.createElement("strong");
+    strong.textContent = "Source: ";
+    p.appendChild(strong);
+    var code = document.createElement("code");
+    code.style.font = "12px ui-monospace, monospace";
+    code.textContent = d.source;
+    p.appendChild(code);
+    p.appendChild(document.createTextNode(" — classification is rule-based (keyword taxonomy), vendor matching requires a validated leading-token prefix, and categories without a configured preferred supplier are never flagged."));
+    f.appendChild(p);
+  }
+
+  function render(setKey) {
+    currentSet = setKey;
+    var d = DATA[setKey];
+    document.querySelectorAll(".dataset-switch button").forEach(function (b) {
+      b.setAttribute("aria-selected", String(b.getAttribute("data-set") === setKey));
+    });
+    renderKpis(d);
+    renderBarChart(document.getElementById("categoryChart"), d.category_totals, "--accent", "--accent-soft");
+    var maverickChart = document.getElementById("maverickChart");
+    var maverickEmpty = document.getElementById("maverickEmpty");
+    if (d.maverick_by_category.length) {
+      maverickChart.hidden = false; maverickEmpty.hidden = true;
+      renderBarChart(maverickChart, d.maverick_by_category, "--critical", "--critical-soft");
+    } else {
+      maverickChart.hidden = true; maverickEmpty.hidden = false;
+    }
+    renderAliasList(d);
+    renderMaverickTable(d);
+    renderProvenance(d);
+    renderFooter(d);
+    hideTooltip();
+  }
+
+  document.querySelectorAll(".dataset-switch button").forEach(function (b) {
+    b.addEventListener("click", function () { render(b.getAttribute("data-set")); });
+  });
+
+  render(currentSet);
+  window.addEventListener("resize", function () { render(currentSet); });
+})();
+</script>

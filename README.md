@@ -98,6 +98,30 @@ python3 dashboard/generate_dashboard.py data/sample_transactions.csv \
 the real pipeline and substitutes the results in — the numbers on the page
 are always a live run, never hand-edited.
 
+### Visualizer (charts across all three datasets)
+
+`dashboard/spend_visualizer.html` is a second, chart-focused view: a dataset
+switcher (Corporate Sample / NASA / HUD) over KPI tiles, a spend-by-category
+bar chart, a flagged-maverick-spend bar chart, a vendor-alias resolution
+ledger (raw names → canonical vendor), and a table of every flagged
+transaction — all in one self-contained page, same no-server/no-external-request
+constraint as the table dashboard above. Each dataset's synthetic/live status
+is shown directly in the control row, not just in this README.
+
+Regenerate it (always a live run of all three pipelines, never hand-edited)
+with:
+
+```bash
+python3 dashboard/generate_visualizer.py --out dashboard/spend_visualizer.html
+```
+
+`dashboard/visualizer_template.html` is the static shell (one `__VIZ_DATA__`
+marker); `generate_visualizer.py` runs `spend_agent.pipeline.run_pipeline`
+against `data/sample_transactions.csv`,
+`usaspending/data/sample_nasa_contracts.csv`, and
+`usaspending/data/sample_hud_contracts.csv` and substitutes the aggregated
+results in.
+
 ## Config
 
 - `config/taxonomy.json` — category name → keyword list.
