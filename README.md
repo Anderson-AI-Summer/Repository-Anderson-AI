@@ -100,6 +100,9 @@ are always a live run, never hand-edited.
   name. Categories with no entry are never flagged.
 - `config/vendor_aliases.json` — known abbreviation → full vendor name,
   consulted before fuzzy matching.
+- `config/ppp_taxonomy.json`, `config/ppp_preferred_lenders.json`,
+  `config/usaspending_taxonomy.json`, `config/usaspending_preferred_suppliers.json`
+  — same shapes as above, for the PPP and USASpending.gov adapters.
 
 ## Sample data
 
@@ -107,6 +110,56 @@ are always a live run, never hand-edited.
 date formats, currency symbols/commas, a blank line, and one vendor (Staples)
 appearing under four different raw names. Running the CLI against it
 produces the reports checked into behavior by `tests/test_pipeline.py`.
+
+## USASpending.gov (federal contract award data)
+
+`usaspending/` adapts the same pipeline to federal contract award data from
+[usaspending.gov](https://www.usaspending.gov/), the official public source
+of U.S. government spending: the **recipient** (contractor) is treated as
+the "vendor" for alias resolution, and the award's **NAICS description**
+and **Product/Service Code (PSC) description** drive classification into
+procurement categories via `config/usaspending_taxonomy.json`, since federal
+contracts are categorized by PSC/NAICS rather than a free-text memo line.
+
+```bash
+python3 usaspending/run_usaspending_agent.py usaspending/data/sample_contracts.csv \
+  --suppliers usaspending/data/sample_preferred_suppliers.json \
+  --outdir usaspending/out
+```
+
+`spend_agent/usaspending_adapter.py` accepts either shape USASpending.gov
+data actually comes in: a **Custom Award Data** bulk CSV download (from
+[the download center](https://www.usaspending.gov/download_center/custom-award-data)),
+whose columns are snake_case (`recipient_name`, `federal_action_obligation`,
+`naics_description`, `product_or_service_code_description`), or a CSV export
+of the **Award Search API**'s `spending_by_award` results, whose columns are
+Title Case (`Recipient Name`, `Award Amount`, `NAICS Description`). Header
+matching is tolerant across both, the same approach `ingest.py` uses for
+messy transaction exports.
+
+### Sample data is synthetic, not a live pull
+
+This environment's egress policy blocks outbound requests to
+`api.usaspending.gov`, so `usaspending/data/sample_contracts.csv` was **not**
+fetched from the live API — it's a hand-built, clearly-labeled illustrative
+sample using fictional contractor names (e.g. "Meridian Defense Systems",
+"Northgate IT Solutions") built to exercise every feature of the pipeline:
+one recipient under 4 raw name variants, ten spend categories, and two
+awards routed away from a documented (equally fictional) preferred-supplier
+policy. None of it should be read as, or confused with, a real award record
+— consistent with this repo's stance elsewhere (see the PPP section below)
+of never attaching a real-data-shaped claim to an entity without real data
+behind it. `spend_agent/usaspending_adapter.py` itself is written against
+USASpending.gov's real, documented column schema, so it works unmodified
+against an actual bulk download or API export — only the bundled demo file
+is synthetic.
+
+As with `ppp/`, no preferred-supplier policy is asserted by default
+(`config/usaspending_preferred_suppliers.json` is empty) — asserting one
+against real award data without an actual agency policy behind it would
+misrepresent the output as a compliance finding.
+`usaspending/data/sample_preferred_suppliers.json` is the fictional policy
+used only for the sample run above; don't point it at real data.
 
 ## PPP loan data (real-world example)
 

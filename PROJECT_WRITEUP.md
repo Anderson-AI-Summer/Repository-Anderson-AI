@@ -142,6 +142,36 @@ away — a national-level effect need not replicate in one state's
 under-$150K loan tier, and it's a genuine discussion point about sample
 size and external validity.
 
+## Federal contract data: USASpending.gov (`usaspending/`)
+
+A second real-schema adapter targets [usaspending.gov](https://www.usaspending.gov/),
+the official public source of U.S. government contract spending. The
+**recipient** (contractor) stands in for "vendor," and the award's **NAICS
+description** and **Product/Service Code description** — federal contracts
+are categorized by PSC/NAICS, not a free-text memo — drive classification
+via `config/usaspending_taxonomy.json`. `spend_agent/usaspending_adapter.py`
+tolerantly matches both real column shapes USASpending.gov data comes in:
+the snake_case "Custom Award Data" bulk CSV download, and the Title Case
+columns returned by the Award Search API's `spending_by_award` endpoint.
+
+This adapter was built without a live pull: the execution environment's
+egress policy blocks outbound requests to `api.usaspending.gov` (confirmed
+via a direct test — the request was rejected by the policy, not by
+USASpending.gov itself). Rather than fabricate something that could be
+mistaken for a real award record, `usaspending/data/sample_contracts.csv`
+is an explicitly synthetic demo file with fictional contractor names,
+built to exercise every feature end to end (one recipient under 4 name
+variants, ten spend categories, two awards flagged against a fictional
+preferred-supplier policy) without attaching invented dollar figures to any
+real, named company — the same "no unearned claims against real entities"
+principle the PPP section above follows. As with the PPP adapter, no real
+preferred-supplier policy is asserted by default
+(`config/usaspending_preferred_suppliers.json` is empty); the demo's policy
+lives separately in `usaspending/data/sample_preferred_suppliers.json` and
+is documented as fictional. The adapter code itself targets USASpending's
+real documented schema, so it is expected to work unmodified against an
+actual bulk download or API export — only the bundled sample is synthetic.
+
 ## Limitations
 
 - The keyword taxonomy is only as good as its keyword list; category
@@ -155,6 +185,10 @@ size and external validity.
   not a claim that any individual Wyoming loan is fraudulent.
 - Vendor/lender resolution is name-based; it cannot detect shell-company
   relationships or common ownership that don't share a name prefix.
+- The USASpending.gov adapter has not been run against real award data in
+  this environment (network access to the API is blocked here); it has
+  only been validated against the documented schema and the synthetic
+  sample.
 
 ## Tests
 
@@ -162,5 +196,5 @@ size and external validity.
 python3 -m unittest discover -s tests -v
 ```
 
-42 tests, all offline/deterministic (the LLM fallback tests mock the
+54 tests, all offline/deterministic (the LLM fallback tests mock the
 Anthropic client; nothing in the suite makes a network call).
