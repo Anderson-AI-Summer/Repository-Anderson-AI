@@ -63,6 +63,25 @@ date formats, currency symbols/commas, a blank line, and one vendor (Staples)
 appearing under four different raw names. Running the CLI against it
 produces the reports checked into behavior by `tests/test_pipeline.py`.
 
+## PPP loan data (real-world example)
+
+`ppp/` adapts the same pipeline to public SBA PPP loan data as a real-data
+example: the **lender** is treated as the "vendor" (so lender name variants
+get resolved the same way), and the **NAICS code** drives classification
+into industry sectors via `config/ppp_taxonomy.json`.
+
+```bash
+python3 ppp/run_ppp_agent.py ppp/data/wyoming_ppp_sample.csv --outdir ppp/out
+```
+
+`ppp/data/wyoming_ppp_sample.csv` is a 500-row sample of real Wyoming PPP
+loans (April–June 2020) from the SBA's public FOIA release. No
+preferred-lender policy is configured (`config/ppp_preferred_lenders.json`
+is empty) — asserting one against real named businesses without an actual
+policy to check against would misrepresent the output as a compliance
+finding. The maverick-spend flag stays available for anyone who supplies a
+real policy to check against.
+
 ## Tests
 
 ```bash

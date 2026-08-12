@@ -9,7 +9,6 @@ supplier checks operate on one canonical identity instead of N aliases.
 
 import json
 from collections import defaultdict
-from difflib import SequenceMatcher
 from typing import Dict, Iterable, List, NamedTuple, Optional
 
 _LEGAL_SUFFIXES = {
@@ -17,8 +16,6 @@ _LEGAL_SUFFIXES = {
     "ltd", "limited", "company", "com",
 }
 
-# Minor typo tolerance on the leading token only (e.g. "Staples" vs "Stpales").
-_LEADING_TOKEN_TYPO_THRESHOLD = 0.9
 _MIN_LEADING_TOKEN_LEN = 3
 
 
@@ -69,13 +66,14 @@ def normalize_vendor(raw_name: str, aliases: Optional[Dict[str, str]] = None) ->
 def is_same_vendor(a: str, b: str) -> bool:
     """Decide whether two *normalized* vendor strings name the same vendor.
 
-    Matching requires the leading token to agree (exactly, or a near-typo of
-    it). Full-string character-overlap ratios are deliberately not used as a
-    standalone signal: two unrelated companies that both end in a generic
-    word like "Technologies" or "Group" can score a high overlap ratio while
-    naming completely different vendors. The leading token is the most
-    distinctive part of a vendor name in practice (e.g. "STAPLES" in both
-    "STAPLES" and "STAPLES BUSINESS ADVANTAGE").
+    Matching requires the shorter name to be a whole-token prefix of the
+    longer one (e.g. "STAPLES" is a prefix of "STAPLES BUSINESS ADVANTAGE").
+    Matching on the leading token alone is not enough: entire industries
+    reuse the same first word across unrelated companies (many banks start
+    with "First" or "Bank of"; many tech vendors end in "Technologies").
+    Requiring every token of the shorter name to match, in order, from the
+    start avoids merging e.g. "First Interstate Bank" with "First Republic
+    Bank" while still merging "Staples" with "Staples Business Advantage".
     """
     if a == b:
         return True
@@ -86,14 +84,11 @@ def is_same_vendor(a: str, b: str) -> bool:
     if not tokens_a or not tokens_b:
         return False
 
-    first_a, first_b = tokens_a[0], tokens_b[0]
-    if len(first_a) < _MIN_LEADING_TOKEN_LEN or len(first_b) < _MIN_LEADING_TOKEN_LEN:
+    shorter, longer = (tokens_a, tokens_b) if len(tokens_a) <= len(tokens_b) else (tokens_b, tokens_a)
+    if len(shorter[0]) < _MIN_LEADING_TOKEN_LEN:
         return False
 
-    if first_a == first_b:
-        return True
-
-    return SequenceMatcher(None, first_a, first_b).ratio() >= _LEADING_TOKEN_TYPO_THRESHOLD
+    return longer[: len(shorter)] == shorter
 
 
 class _UnionFind:

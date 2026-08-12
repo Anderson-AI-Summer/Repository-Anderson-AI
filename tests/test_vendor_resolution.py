@@ -42,6 +42,29 @@ class TestVendorResolution(unittest.TestCase):
         self.assertFalse(is_same_vendor("DELL TECHNOLOGIES", "SLACK TECHNOLOGIES"))
         self.assertFalse(is_same_vendor("", "STAPLES"))
 
+    def test_does_not_merge_unrelated_banks_sharing_a_leading_word(self):
+        # Regression: matching on the leading token alone previously merged
+        # unrelated banks that both start with "First" or "Bank of".
+        raw_to_cluster_id, _ = build_vendor_registry(
+            [
+                "First Interstate Bank",
+                "First Republic Bank",
+                "Bank of Jackson Hole",
+                "Bank of America, National Association",
+            ]
+        )
+        self.assertNotEqual(
+            raw_to_cluster_id["First Interstate Bank"], raw_to_cluster_id["First Republic Bank"]
+        )
+        self.assertNotEqual(
+            raw_to_cluster_id["Bank of Jackson Hole"],
+            raw_to_cluster_id["Bank of America, National Association"],
+        )
+
+    def test_merges_a_branch_name_that_is_a_true_prefix(self):
+        raw_to_cluster_id, _ = build_vendor_registry(["Pinnacle Bank", "Pinnacle Bank-Wyoming"])
+        self.assertEqual(raw_to_cluster_id["Pinnacle Bank"], raw_to_cluster_id["Pinnacle Bank-Wyoming"])
+
 
 if __name__ == "__main__":
     unittest.main()
