@@ -50,20 +50,16 @@ def cmd_sample(args) -> int:
 
 
 def cmd_refresh(args) -> int:
-    from pathlib import Path
-
     from src.pipeline import run_pipeline
 
     if args.limit is None:
         logger.info("No --limit given: this is an unbounded full refresh and may take a long time.")
-    extra_csv_paths = [Path(p) for p in (args.extra_csv or [])]
     result = run_pipeline(
         mode="refresh",
         start_date=args.start,
         end_date=args.end,
         max_records=args.limit,
         max_workers=args.max_workers,
-        extra_csv_paths=extra_csv_paths,
     )
     _report(result)
     return 0 if result["status"] == "ok" else 1
@@ -105,8 +101,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_refresh.add_argument("--end", default=None, help="default today")
     p_refresh.add_argument("--limit", type=int, default=None, help="optional cap; full refresh is uncapped by default")
     p_refresh.add_argument("--max-workers", type=int, default=8)
-    p_refresh.add_argument("--extra-csv", action="append", default=None,
-                            help="additional pre-existing NASA CSV(s) to merge in and dedupe (repeatable)")
     p_refresh.set_defaults(func=cmd_refresh)
 
     sub.add_parser("build", help="Rebuild dashboard HTML from cached processed data (no network)").set_defaults(func=cmd_build)

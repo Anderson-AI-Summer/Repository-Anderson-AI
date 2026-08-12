@@ -176,11 +176,7 @@
       yaxis2: { title: "Top-5 Share %", overlaying: "y", side: "right" }, legend: { orientation: "h", y: -0.3 },
     }, { displayModeBar: false, responsive: true });
 
-    const topCats = Object.keys(A.category_breakdown.reduce((a, r) => { a[r.category] = (a[r.category] || 0) + r.net_obligations; return a; }, {}))
-      .sort((x, y) => 0);
-    const catByYear = {};
-    A.category_breakdown.forEach(() => {});
-    // Build category-by-year net obligations from explorer-independent source: category_breakdown lacks per-year; use categories_detail annual arrays.
+    // category_breakdown has no per-year breakdown; categories_detail does.
     const catNames = Object.keys(DATA.categories_detail);
     const traces = catNames.slice(0, 8).map((cat, i) => {
       const rows = DATA.categories_detail[cat].annual;

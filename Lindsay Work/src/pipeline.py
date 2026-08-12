@@ -26,6 +26,7 @@ from src.dashboard.generate import render_dashboard
 from src.dashboard.validate import validate_dashboard_html
 from src.clean import deduplicate as _dedupe_clean
 from src.enrich import enrich_transactions
+from src.fiscal import federal_fiscal_year, fiscal_year_bounds
 from src.ingest import fetch_from_api, load_offline_sample
 from src.schema import CleanTransaction, EnrichedTransaction, RefreshManifest
 
@@ -71,6 +72,58 @@ def _load_processed_enriched() -> list[EnrichedTransaction]:
     return rows
 
 
+def _fetch_spread_across_fiscal_years(
+    start_date: str, end_date: str, max_records: int | None, max_workers: int
+) -> tuple[list[CleanTransaction], dict]:
+    """Pulls from the official USAspending API only. When max_records is
+    set, the cap is spread evenly across each fiscal year in [start_date,
+    end_date] (one fetch_from_api call per FY) so a time-bounded refresh
+    still yields genuine FY2020-present coverage -- sorting by most-recent
+    action date with a single flat cap would otherwise only capture the
+    last few months. Uncapped (max_records=None) runs make one call across
+    the full range, since there is no cap to spread.
+    """
+    if max_records is None:
+        return fetch_from_api(start_date, end_date, None, max_workers=max_workers)
+
+    start = dt.date.fromisoformat(start_date)
+    end = dt.date.fromisoformat(end_date)
+    fiscal_years = list(range(federal_fiscal_year(start), federal_fiscal_year(end) + 1))
+    per_year_cap = max(1, max_records // len(fiscal_years))
+
+    clean: list[CleanTransaction] = []
+    row_counts: dict = {}
+    assistance_errors: list[str] = []
+    for fy in fiscal_years:
+        fy_start, fy_end = fiscal_year_bounds(fy)
+        window_start = max(fy_start, start).isoformat()
+        window_end = min(fy_end, end).isoformat()
+        if window_start > window_end:
+            continue
+        fy_clean, fy_manifest = fetch_from_api(window_start, window_end, per_year_cap, max_workers=max_workers)
+        clean.extend(fy_clean)
+        for k, v in fy_manifest["row_counts"].items():
+            row_counts[k] = row_counts.get(k, 0) + v
+        assistance_errors.extend(fy_manifest["validation_results"]["assistance_award_leak_errors"])
+
+    clean, cross_year_dupes = _dedupe_clean(clean)
+    row_counts["duplicate_rows_removed_cross_fiscal_year"] = cross_year_dupes
+    manifest = {
+        "source": "usaspending_api",
+        "query_parameters": {
+            "awarding_agency": NASA_AGENCY_NAME,
+            "start_date": start_date,
+            "end_date": end_date,
+            "max_records_total": max_records,
+            "per_fiscal_year_cap": per_year_cap,
+            "fiscal_years_covered": fiscal_years,
+        },
+        "row_counts": row_counts,
+        "validation_results": {"assistance_award_leak_errors": assistance_errors, "passed": len(assistance_errors) == 0},
+    }
+    return clean, manifest
+
+
 def run_pipeline(
     mode: str,
     start_date: str | None = None,
@@ -78,14 +131,15 @@ def run_pipeline(
     max_records: int | None = None,
     offline: bool = False,
     max_workers: int = 8,
-    extra_csv_paths: list[Path] | None = None,
 ) -> dict:
     """mode: 'sample' | 'refresh' | 'rebuild'. Returns a result summary dict.
 
-    extra_csv_paths: additional pre-existing NASA CSVs (e.g. a teammate's
-    repo-committed extract) to merge in and deduplicate against the live
-    API pull -- used to build the largest reliable combined refresh without
-    depending entirely on live API throughput.
+    The only ingestion source for 'sample' and 'refresh' is the official
+    USAspending API. Any NASA CSV already present in the repository (see
+    src.ingest.fetch_from_repo_csv, data/samples/nasa_sample_transactions_clean.csv)
+    is supported only as an optional sample/fallback input -- e.g. when the
+    live API is unreachable -- and is never blended into or used to replace
+    the required API-sourced refresh.
     """
     run_id = uuid.uuid4().hex[:12]
     today = dt.date.today()
@@ -104,29 +158,16 @@ def run_pipeline(
         end_date = end_date or today.isoformat()
         stats = AgentRunStats()
         try:
-            clean, manifest = fetch_from_api(start_date, end_date, max_records, max_workers=max_workers)
+            if mode == "refresh":
+                clean, manifest = _fetch_spread_across_fiscal_years(start_date, end_date, max_records, max_workers)
+            else:
+                clean, manifest = fetch_from_api(start_date, end_date, max_records, max_workers=max_workers)
             if not clean:
                 warnings.append("API returned zero usable transactions for the requested window")
         except Exception as exc:  # noqa: BLE001
             logger.warning("Live API ingestion failed (%s); falling back to offline sample", exc)
             errors.append(f"live_ingest_failed: {exc}")
             clean, manifest = load_offline_sample()
-
-        if extra_csv_paths:
-            from src.ingest import fetch_from_repo_csv
-
-            combined_sources = [manifest.get("source", "usaspending_api")]
-            combined_row_counts = dict(manifest.get("row_counts", {}))
-            for csv_path in extra_csv_paths:
-                extra_clean, extra_manifest = fetch_from_repo_csv(csv_path)
-                clean = clean + extra_clean
-                combined_sources.append(extra_manifest["source"])
-                for k, v in extra_manifest["row_counts"].items():
-                    combined_row_counts[k] = combined_row_counts.get(k, 0) + v
-                warnings.extend(extra_manifest["validation_results"].get("assistance_award_leak_errors", []))
-            clean, extra_duplicates = _dedupe_clean(clean)
-            combined_row_counts["duplicate_rows_removed_across_sources"] = extra_duplicates
-            manifest = {**manifest, "source": " + ".join(combined_sources), "row_counts": combined_row_counts}
 
         enriched = enrich_transactions(clean, stats)
         _save_processed(clean, enriched)

@@ -158,14 +158,37 @@ See `PROJECT_SUMMARY.md` for full rationale.
    `src/analytics.py`; never performs its own arithmetic, never claims
    fraud/policy violations/guaranteed savings/preferred-supplier status.
 
-### Offline sample
+### Offline sample / fallback CSVs
 
-`data/samples/nasa_sample_transactions_clean.csv` is a small (187-row), real
-(not fabricated) extract: the first ~200 NASA prime-contract transactions
-returned by a live API pull for October-December 2019 (FY2020 Q1),
-deduplicated. It is loaded automatically if a live API pull fails, and can
-be forced for offline development. This satisfies the "usable for a live
-demo with no internet" requirement without any synthetic/fictional data.
+**The official USAspending API is the only source used to build the primary
+refresh** (`python -m src.cli refresh`, which produces
+`outputs/nasa_procurement_dashboard.html`). Any NASA CSV is supported only
+as an optional sample or fallback input -- never blended into or used to
+replace the required API-sourced refresh:
+
+- `data/samples/nasa_sample_transactions_clean.csv` is a small (187-row),
+  real (not fabricated) extract: the first ~200 NASA prime-contract
+  transactions returned by a live API pull for October-December 2019
+  (FY2020 Q1), deduplicated. It is loaded automatically (`load_offline_sample`
+  in `src/ingest.py`) only if a live API pull fails, and can be forced for
+  offline development.
+- `src/ingest.fetch_from_repo_csv()` can parse any other pre-existing NASA
+  CSV committed elsewhere in the repository (e.g. a teammate's
+  `data/nasa_fy2025_contract_transactions.csv`) for standalone sample/demo
+  use. It is a separate, explicitly-invoked utility -- `refresh` never calls
+  it automatically, and its output is never merged into the API-sourced
+  dataset.
+
+### Full-refresh coverage across fiscal years
+
+`refresh` always queries the official API for the full requested date range
+(`--start`/`--end`, default `2019-10-01` through today). If `--limit` is
+given, the cap is spread evenly across each fiscal year in that range (one
+API call per FY, see `_fetch_spread_across_fiscal_years` in
+`src/pipeline.py`) so a time-bounded run still yields genuine multi-year
+coverage, rather than only the most recent months (which is what a single
+flat cap on a most-recent-first sort would otherwise produce). Omitting
+`--limit` runs a fully uncapped refresh across the entire range.
 
 ## Environment / secrets
 
