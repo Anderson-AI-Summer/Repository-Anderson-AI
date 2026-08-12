@@ -16,6 +16,15 @@ older versions stay intact and comparable instead of being overwritten.
   real-data example, optional LLM fallback classifier, and the demo
   dashboard. See `v1/README.md` for usage and `v1/PROJECT_WRITEUP.md` for
   the design write-up.
+- **`v2/`** — second version. Consolidates everyone's work from the second
+  day into one place: the general engine gained a second USASpending.gov
+  demo scoped to HUD and a multi-dataset comparison dashboard, plus a new
+  flagship implementation at `v2/nasa_procurement/` — a live USASpending.gov
+  API pipeline with UEI/DUNS supplier resolution, a three-agent workflow,
+  and obligation-aware analytics, built independently by Lindsay. See
+  `v2/README.md` for the two-tier layout and a real NASA FY2020–2026 dataset
+  ($1.44B, 2,770 transactions) already rendered in
+  `v2/nasa_procurement/outputs/`.
 
 ### Starting the next version
 

@@ -1,0 +1,501 @@
+LoanAmount,City,State,Zip,NAICSCode,BusinessType,RaceEthnicity,Gender,Veteran,NonProfit,JobsRetained,DateApproved,Lender,CD
+149800,JACKSON,WY,83001,811122,Corporation,Unanswered,Unanswered,Unanswered,,10,04/16/2020,Bank of Jackson Hole,WY - 00
+149600,JACKSON,WY,83001,722513,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,26,04/06/2020,Bank of Jackson Hole,WY - 00
+149447.5,POWELL,WY,82435,999990,Corporation,Unanswered,Unanswered,Unanswered,,21,04/05/2020,Glacier Bank,WY - 00
+149395.3,CHEYENNE,WY,82001,541310,Corporation,Unanswered,Unanswered,Unanswered,,9,04/08/2020,Wyoming Bank & Trust,WY - 00
+149300,JACKSON,WY,83001,236210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/13/2020,Bank of Jackson Hole,WY - 00
+149250,WILSON,WY,83014,541710,Corporation,Unanswered,Unanswered,Unanswered,,9,04/28/2020,"U.S. Bank, National Association",WY - 00
+149165,TORRINGTON,WY,82240,926130,Corporation,Unanswered,Unanswered,Unanswered,,17,06/30/2020,Glacier Bank,WY - 00
+149100,CASPER,WY,82604,523910,Subchapter S Corporation,Unanswered,Female Owned,Unanswered,,11,04/05/2020,Hilltop National Bank,WY - 00
+149100,EVANSVILLE,WY,82636,541940,Corporation,Unanswered,Male Owned,Unanswered,,15,04/06/2020,Hilltop National Bank,WY - 00
+149000,JACKSON,WY,83001,541211,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/04/2020,Bank of Jackson Hole,WY - 00
+149000,TEN SLEEP,WY,82442,484121,Limited  Liability Company(LLC),White,Female Owned,Unanswered,,14,04/07/2020,Security State Bank,WY - 00
+148948,JACKSON,WY,83001,236117,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/15/2020,First Interstate Bank,WY - 00
+148800,CHEYENNE,WY,82001,446191,Corporation,Unanswered,Unanswered,Unanswered,,15,04/10/2020,Frost Bank,WY - 00
+148800,THERMOPOLIS,WY,82443,445110,Corporation,Unanswered,Unanswered,Unanswered,,25,04/08/2020,"Bank of Bridger, National Association",WY - 00
+148772,MOORCROFT,WY,82721,236115,Limited Liability Partnership,Unanswered,Male Owned,Non-Veteran,,13,04/07/2020,First National Bank of Gillette,WY - 00
+148665.82,LARAMIE,WY,82072,236115,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,15,04/27/2020,First Interstate Bank,WY - 00
+148600,CASPER,WY,82601,323113,Corporation,Unanswered,Unanswered,Unanswered,,21,04/04/2020,Hilltop National Bank,WY - 00
+148300,CASPER,WY,82604,488510,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,7,04/13/2020,Hilltop National Bank,WY - 00
+148200,JACKSON,WY,83001,236117,Partnership,Unanswered,Unanswered,Unanswered,,10,04/13/2020,First Interstate Bank,WY - 00
+148200,WILSON,WY,83014,721110,Corporation,White,Male Owned,Unanswered,,16,04/13/2020,KeyBank National Association,WY - 00
+148000,RIVERTON,WY,82501,721110,Corporation,Unanswered,Unanswered,Non-Veteran,,43,04/04/2020,Wyoming Community Bank,WY - 00
+148000,RAWLINS,WY,82301,213112,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/08/2020,Security State Bank,WY - 00
+147800,CASPER,WY,82609,722511,Corporation,White,Male Owned,Unanswered,,33,04/03/2020,Platte Valley Bank,WY - 00
+147600,POWELL,WY,82435,213111,Corporation,Unanswered,Male Owned,Non-Veteran,,17,04/10/2020,"Bank of Bridger, National Association",WY - 00
+147600,SHERIDAN,WY,82801,541940,Subchapter S Corporation,White,Female Owned,Non-Veteran,,18,04/03/2020,Security State Bank,WY - 00
+147500,GILLETTE,WY,82718,561720,Subchapter S Corporation,Unanswered,Female Owned,Unanswered,,35,04/27/2020,Pinnacle Bank-Wyoming,WY - 00
+147400,JACKSON,WY,83001,722511,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,30,04/15/2020,Bank of Jackson Hole,WY - 00
+147236.1,CHEYENNE,WY,82009,621210,Corporation,Unanswered,Male Owned,Unanswered,,12,04/05/2020,Cache Valley Bank,WY - 00
+147000,SHERIDAN,WY,82801,236115,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,20,04/03/2020,Security State Bank,WY - 00
+147000,CASPER,WY,82604,484110,Corporation,White,Male Owned,Non-Veteran,,12,04/06/2020,Jonah Bank of Wyoming,WY - 00
+146845,CHEYENNE,WY,82007,813410,Non-Profit Organization,Unanswered,Female Owned,Unanswered,Y,24,04/08/2020,Wyoming Bank & Trust,WY - 00
+146400,DUBOIS,WY,82513,721191,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,14,04/10/2020,Bank of Jackson Hole,WY - 00
+146300,CHEYENNE,WY,82007,484220,Corporation,Unanswered,Unanswered,Unanswered,,16,04/10/2020,Platte Valley Bank,WY - 00
+146100,JACKSON,WY,83002,999990,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,15,04/05/2020,Bank of Jackson Hole,WY - 00
+146030,CHEYENNE,WY,82001,517110,Corporation,Unanswered,Unanswered,Unanswered,,4,04/30/2020,BMO Harris Bank National Association,WY - 00
+146000,WORLAND,WY,82401,624190,Limited  Liability Company(LLC),Unanswered,Female Owned,Unanswered,,20,04/15/2020,Jonah Bank of Wyoming,WY - 00
+145952,SHERIDAN,WY,82801,237120,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/30/2020,"U.S. Bank, National Association",WY - 00
+145800,GREEN RIVER,WY,82935,441310,Corporation,Unanswered,Unanswered,Unanswered,,13,04/10/2020,Farmers State Bank,WY - 00
+145762,WILSON,WY,83014,561312,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,0,05/21/2020,"Wells Fargo Bank, National Association",WY - 00
+145730,EVANSTON,WY,82930,812990,Professional Association,Unanswered,Unanswered,Unanswered,,17,05/03/2020,"U.S. Bank, National Association",WY - 01
+145700,PINEDALE,WY,82941,447110,Partnership,Unanswered,Unanswered,Unanswered,,,04/08/2020,Rocky Mountain Bank,WY - 00
+145602.75,LANDER,WY,82520,332323,Corporation,White,Male Owned,Non-Veteran,,28,04/08/2020,First Interstate Bank,WY - 00
+145600,RIVERTON,WY,82501,541211,Subchapter S Corporation,White,Male Owned,Unanswered,,10,04/06/2020,Wyoming Community Bank,WY - 00
+145400,CHEYENNE,WY,82009,238310,Corporation,White,Male Owned,Non-Veteran,,14,04/03/2020,Platte Valley Bank,WY - 00
+145400,CODY,WY,82414,611691,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,14,04/05/2020,Security State Bank,WY - 00
+145382,CHEYENNE,WY,82001,621210,Subchapter S Corporation,White,Female Owned,Unanswered,,16,04/09/2020,Western States Bank,WY - 00
+145358,JACKSON,WY,83001,238220,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,11,04/15/2020,"U.S. Bank, National Association",WY - 00
+145335,CHEYENNE,WY,82001,532411,Corporation,Unanswered,Unanswered,Unanswered,,9,04/11/2020,"Sunflower Bank, National Association",WY - 00
+145316,CODY,WY,82414,621111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,9,04/04/2020,Glacier Bank,WY - 00
+145270,CHEYENNE,WY,82001,713940,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,42,04/04/2020,First State Bank,WY - 00
+145180,ROCK SPRINGS,WY,82901,441210,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,17,04/08/2020,RSNB Bank,WY - 00
+145100,CODY,WY,82414,621340,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/04/2020,Pinnacle Bank-Wyoming,WY - 00
+145100,JACKSON,WY,83001,236115,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,117,04/05/2020,Bank of Jackson Hole,WY - 00
+145054,GILLETTE,WY,82716,621210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,13,04/07/2020,First National Bank of Gillette,WY - 00
+144887,SHERIDAN,WY,82801,999990,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,16,05/03/2020,"Bank of America, National Association",WY - 00
+144832,LARAMIE,WY,82070,621493,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,21,04/13/2020,First Interstate Bank,WY - 02
+144622,CASPER,WY,82604,722511,Limited  Liability Company(LLC),Hispanic,Male Owned,Non-Veteran,,43,04/30/2020,First Interstate Bank,WY - 00
+144459.33,MOOSE,WY,83012,721214,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,46,04/15/2020,First Interstate Bank,WY - 00
+144196,BIG PINEY,WY,83113,237120,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,18,05/06/2020,Bank of the West,WY - 00
+144187,ROCK SPRINGS,WY,82901,621610,Corporation,Hispanic,Male Owned,Non-Veteran,,20,04/09/2020,RSNB Bank,WY - 00
+144021.85,LARAMIE,WY,82070,236220,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,04/08/2020,Wyoming Bank & Trust,WY - 02
+144000,GLENROCK,WY,82637,562212,Corporation,White,Male Owned,Unanswered,,7,04/04/2020,Jonah Bank of Wyoming,WY - 00
+143815,CASPER,WY,82604,541620,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/13/2020,First Interstate Bank,WY - 00
+143684.38,CHEYENNE,WY,82007,721110,Limited  Liability Company(LLC),White,Male Owned,Veteran,,31,04/16/2020,First Interstate Bank,WY - 00
+143565,ROCK SPRINGS,WY,82901,213112,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,4,04/07/2020,Rocky Mountain Bank,WY - 00
+143300,SHERIDAN,WY,82801,236210,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,14,04/03/2020,Security State Bank,WY - 00
+143286.65,CASPER,WY,82601,333132,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,7,04/16/2020,First Interstate Bank,WY - 00
+143250,SHERIDAN,WY,82801,722410,Corporation,White,Male Owned,Non-Veteran,,13,04/14/2020,First Interstate Bank,WY - 00
+143236,CHEYENNE,WY,82001,561320,Corporation,Unanswered,Unanswered,Unanswered,,4,04/10/2020,Sandy Spring Bank,WY - 00
+143235,LARAMIE,WY,82070,115310,Subchapter S Corporation,White,Female Owned,Non-Veteran,,11,04/10/2020,First Interstate Bank,WY - 02
+143200,LANDER,WY,82520,444130,Limited  Liability Company(LLC),White,Female Owned,Unanswered,,34,04/10/2020,Wyoming Community Bank,WY - 00
+143000,WORLAND,WY,82401,444130,Corporation,White,Female Owned,Non-Veteran,,25,04/04/2020,Pinnacle Bank-Wyoming,WY - 00
+142910,ROCK SPRINGS,WY,82901,541211,Corporation,White,Female Owned,Non-Veteran,,11,04/07/2020,RSNB Bank,WY - 00
+142862,LYMAN,WY,82937,213112,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,15,04/08/2020,Glacier Bank,WY - 00
+142800,JACKSON,WY,83001,722511,Corporation,Unanswered,Male Owned,Unanswered,,23,04/15/2020,"Zions Bank, A Division of",WY - 00
+142700,CHEYENNE,WY,82007,238220,Corporation,Unanswered,Male Owned,Unanswered,,15,04/08/2020,Jonah Bank of Wyoming,WY - 00
+142700,CHEYENNE,WY,82007,238910,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,11,04/08/2020,Jonah Bank of Wyoming,WY - 00
+142595,CHEYENNE,WY,82001,813110,Corporation,Unanswered,Unanswered,Unanswered,,14,04/10/2020,First Interstate Bank,WY - 00
+142381.41,JACKSON,WY,83001,711310,Professional Association,Unanswered,Unanswered,Unanswered,,37,04/13/2020,First Interstate Bank,WY - 00
+142070,GILLETTE,WY,82716,722511,Corporation,Unanswered,Unanswered,Unanswered,,31,04/06/2020,First Northern Bank of Wyoming,WY - 00
+141830,CHEYENNE,WY,82009,621210,Subchapter S Corporation,White,Female Owned,Unanswered,,9,04/15/2020,Western States Bank,WY - 00
+141800,CHEYENNE,WY,82009,624410,Non-Profit Childcare Center,Unanswered,Unanswered,Non-Veteran,Y,36,04/03/2020,Jonah Bank of Wyoming,WY - 00
+141700,JACKSON,WY,83001,811121,Sole Proprietorship,Unanswered,Unanswered,Unanswered,,9,04/10/2020,Bank of Jackson Hole,WY - 00
+141700,DOUGLAS,WY,82633,446110,Corporation,White,Male Owned,Non-Veteran,,18,04/05/2020,The Converse County Bank,WY - 00
+141610,CASPER,WY,82601,722511,Corporation,White,Male Owned,Non-Veteran,,55,04/27/2020,"Harvest Small Business Finance, LLC",WY - 00
+141500,GILLETTE,WY,82716,236210,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,13,04/04/2020,First National Bank of Gillette,WY - 00
+141500,GILLETTE,WY,82716,541211,Limited Liability Partnership,Unanswered,Male Owned,Unanswered,,11,04/04/2020,First National Bank of Gillette,WY - 00
+141340,CASPER,WY,82604,541350,Corporation,Unanswered,Unanswered,Unanswered,,14,04/28/2020,First Interstate Bank,WY - 00
+141240,GILLETTE,WY,82718,621340,Corporation,Unanswered,Unanswered,Unanswered,,9,04/06/2020,First Interstate Bank,WY - 00
+141200,RAWLINS,WY,82301,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,28,04/13/2020,First Interstate Bank,WY - 00
+141200,CHEYENNE,WY,82001,713990,Limited  Liability Company(LLC),White,Female Owned,Non-Veteran,,92,04/07/2020,Midwest Regional Bank,WY - 00
+141100,ALPINE,WY,83128,722511,Corporation,White,Female Owned,Non-Veteran,,35,04/15/2020,Bank of Jackson Hole,WY - 00
+141000,CASPER,WY,82604,332710,Corporation,White,Male Owned,Unanswered,,11,04/05/2020,Jonah Bank of Wyoming,WY - 00
+140900,RAWLINS,WY,82301,722511,Limited  Liability Company(LLC),Unanswered,Male Owned,Unanswered,,29,04/04/2020,Bank of Commerce,WY - 00
+140711,JACKSON,WY,83001,444190,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/13/2020,First Interstate Bank,WY - 00
+140620,PINE HAVEN,WY,82721,238210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,2,04/05/2020,First National Bank of Gillette,WY - 00
+140600,CODY,WY,82414,236220,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,9,04/06/2020,Pinnacle Bank-Wyoming,WY - 00
+140600,CHEYENNE,WY,82001,541110,Partnership,Unanswered,Unanswered,Unanswered,,13,04/07/2020,Jonah Bank of Wyoming,WY - 00
+140585,SHERIDAN,WY,82801,541940,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,04/10/2020,First Interstate Bank,WY - 00
+140500,JACKSON,WY,83001,722511,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,,04/06/2020,Rocky Mountain Bank,WY - 00
+140494,CASPER,WY,82601,722511,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,29,04/06/2020,First Interstate Bank,WY - 00
+140232,SHERIDAN,WY,82801,611110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,38,04/28/2020,First Interstate Bank,WY - 00
+140047,ROCK SPRINGS,WY,82901,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,19,04/07/2020,Rocky Mountain Bank,WY - 00
+140000,AFTON,WY,83110,213111,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,16,04/04/2020,Bank of Star Valley,WY - 00
+140000,JACKSON,WY,83001,238210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,11,04/27/2020,Bank of Jackson Hole,WY - 00
+139993.9,SADDLESTRING,WY,82840,721214,Subchapter S Corporation,Unanswered,Female Owned,Unanswered,,7,04/08/2020,First Northern Bank of Wyoming,WY - 00
+139700,ALPINE,WY,83128,238110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,15,04/10/2020,Bank of Jackson Hole,WY - 00
+139600,CHEYENNE,WY,82007,441228,Subchapter S Corporation,White,Male Owned,Non-Veteran,,12,04/08/2020,Jonah Bank of Wyoming,WY - 00
+139167.58,CHEYENNE,WY,82001,722513,Corporation,Unanswered,Unanswered,Unanswered,,36,04/27/2020,First Interstate Bank,WY - 00
+139100,ROCK SPRINGS,WY,82901,541511,Corporation,Unanswered,Female Owned,Unanswered,,14,04/06/2020,NebraskaLand National Bank,WY - 00
+138900,CODY,WY,82414,332322,Corporation,Unanswered,Male Owned,Non-Veteran,,13,04/13/2020,Pinnacle Bank-Wyoming,WY - 00
+138700,GREYBULL,WY,82426,111991,Corporation,White,Male Owned,Non-Veteran,,11,04/15/2020,Pinnacle Bank-Wyoming,WY - 00
+138600,JACKSON,WY,83001,424910,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,04/05/2020,Bank of Jackson Hole,WY - 00
+138600,JACKSON,WY,83001,722511,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,26,04/07/2020,Bank of Jackson Hole,WY - 00
+138500,RIVERTON,WY,82501,484121,Subchapter S Corporation,White,Male Owned,Unanswered,,11,04/04/2020,Wyoming Community Bank,WY - 00
+138488.92,GILLETTE,WY,82718,441228,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,18,04/06/2020,First Northern Bank of Wyoming,WY - 00
+138400,JACKSON,WY,83001,445110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,17,04/05/2020,Bank of Jackson Hole,WY - 00
+138100,GILLETTE,WY,82718,236117,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,9,04/07/2020,First National Bank of Gillette,WY - 00
+138000,CASPER,WY,82601,442110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,21,04/06/2020,First Interstate Bank,WY - 00
+138000,CASPER,WY,82601,812199,Corporation,Unanswered,Female Owned,Unanswered,,34,04/06/2020,Platte Valley Bank,WY - 00
+137947,MOUNTAIN VIEW,WY,82939,237990,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/06/2020,Glacier Bank,WY - 00
+137907.5,POWELL,WY,82435,111991,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,11,04/15/2020,Glacier Bank,WY - 00
+137836.8,JACKSON,WY,83002,722511,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,21,04/15/2020,First Interstate Bank,WY - 00
+137750,EVANSTON,WY,82930,621493,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,11,04/13/2020,Legacy Bank & Trust Company,WY - 01
+137700,DOUGLAS,WY,82633,213112,Subchapter S Corporation,White,Male Owned,Unanswered,,12,04/05/2020,The Converse County Bank,WY - 00
+137700,LANDER,WY,82520,541940,Subchapter S Corporation,White,Female Owned,Unanswered,,13,04/07/2020,Wyoming Community Bank,WY - 00
+137700,LANDER,WY,82520,238910,Corporation,White,Male Owned,Non-Veteran,,12,04/08/2020,Wyoming Community Bank,WY - 00
+137600,RIVERTON,WY,82501,621320,Corporation,Unanswered,Male Owned,Unanswered,,12,04/06/2020,Central Bank & Trust,WY - 00
+137465,JACKSON,WY,83001,531210,Corporation,Unanswered,Unanswered,Unanswered,,9,05/03/2020,"U.S. Bank, National Association",WY - 00
+137300,JACKSON,WY,83001,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,9,04/09/2020,Bank of Jackson Hole,WY - 00
+137047,JACKSON,WY,83002,541690,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/29/2020,Bank of the West,WY - 00
+136960,CASPER,WY,82601,236118,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,05/13/2020,Hilltop National Bank,WY - 00
+136900,CODY,WY,82414,561730,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,20,04/10/2020,Jonah Bank of Wyoming,WY - 00
+136863,CHEYENNE,WY,82009,621610,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,25,04/11/2020,First Interstate Bank,WY - 00
+136857,JACKSON,WY,83001,541620,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,7,04/14/2020,"U.S. Bank, National Association",WY - 00
+136712.5,POWELL,WY,82435,213112,Limited  Liability Company(LLC),Unanswered,Male Owned,Unanswered,,13,04/06/2020,Glacier Bank,WY - 00
+136700,JACKSON,WY,83001,713990,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,108,04/14/2020,Bank of Jackson Hole,WY - 00
+136663,CHEYENNE,WY,82001,541110,Partnership,White,Male Owned,Non-Veteran,,12,04/09/2020,Western States Bank,WY - 00
+136561.87,CHEYENNE,WY,82007,332321,Subchapter S Corporation,White,Male Owned,Unanswered,,18,04/08/2020,Western States Bank,WY - 00
+136300,WORLAND,WY,82401,238220,Subchapter S Corporation,White,Male Owned,Non-Veteran,,11,04/03/2020,Security State Bank,WY - 00
+135982,CODY,WY,82414,112120,Partnership,Unanswered,Unanswered,Unanswered,,15,04/07/2020,Glacier Bank,WY - 00
+135900,LARAMIE,WY,82072,238910,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,9,04/12/2020,First Interstate Bank,WY - 00
+135900,CASPER,WY,82601,531120,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,79,04/06/2020,Glacier Bank,WY - 00
+135800,SHERIDAN,WY,82801,541110,Limited Liability Partnership,Unanswered,Unanswered,Unanswered,,17,04/04/2020,First Federal Bank & Trust,WY - 00
+135800,ROCK SPRINGS,WY,82901,621210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/04/2020,NebraskaLand National Bank,WY - 00
+135700,CHEYENNE,WY,82001,532310,Subchapter S Corporation,White,Female Owned,Non-Veteran,,17,04/08/2020,Pinnacle Bank-Wyoming,WY - 00
+135600,JACKSON,WY,83001,541310,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,8,04/09/2020,Bank of Jackson Hole,WY - 00
+135100,EVANSVILLE,WY,82636,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,20,04/04/2020,First State Bank,WY - 00
+135100,PINEDALE,WY,82941,811192,Limited  Liability Company(LLC),White,Male Owned,Unanswered,,30,04/06/2020,Glacier Bank,WY - 00
+135000,JACKSON,WY,83001,712120,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,,04/07/2020,Rocky Mountain Bank,WY - 00
+134900,GLENROCK,WY,82637,924110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,9,04/05/2020,Hilltop National Bank,WY - 00
+134800,GILLETTE,WY,82718,722513,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,24,04/03/2020,Security State Bank,WY - 00
+134758,CASPER,WY,82601,,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,,05/03/2020,"Wells Fargo Bank, National Association",WY - 00
+134600,JACKSON,WY,83001,238330,Subchapter S Corporation,Unanswered,Female Owned,Unanswered,,12,04/05/2020,Security State Bank,WY - 00
+134500,WORLAND,WY,82401,441320,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,10,04/04/2020,Security State Bank,WY - 00
+134417,UPTON,WY,82730,237110,Corporation,Unanswered,Unanswered,Unanswered,,15,04/06/2020,First State Bank of Newcastle,WY - 00
+134300,JACKSON,WY,83001,812320,Subchapter S Corporation,Unanswered,Male Owned,Non-Veteran,,17,04/07/2020,Bank of Jackson Hole,WY - 00
+134300,JACKSON,WY,83001,453998,Sole Proprietorship,Unanswered,Female Owned,Non-Veteran,,8,04/14/2020,"Readycap Lending, LLC",WY - 00
+134230,CASPER,WY,82601,621111,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,11,04/16/2020,First Interstate Bank,WY - 00
+134212,CASPER,WY,82605,423910,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,7,04/07/2020,First Interstate Bank,WY - 00
+133900,JACKSON,WY,83001,621111,Sole Proprietorship,Unanswered,Unanswered,Unanswered,,,04/06/2020,Rocky Mountain Bank,WY - 00
+133842,EVANSTON,WY,82930,541330,Corporation,Unanswered,Unanswered,Unanswered,,9,04/15/2020,Glacier Bank,WY - 01
+133800,GILLETTE,WY,82718,238210,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,13,04/06/2020,First National Bank of Gillette,WY - 00
+133794,CHEYENNE,WY,82001,531210,Subchapter S Corporation,Unanswered,Female Owned,Unanswered,,6,04/14/2020,Western States Bank,WY - 00
+133600,TORRINGTON,WY,82240,811121,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,15,04/04/2020,Glacier Bank,WY - 00
+133300,JACKSON,WY,83001,541890,Corporation,Unanswered,Unanswered,Unanswered,,6,06/04/2020,"Citibank, N.A.",WY - 00
+133200,DOUGLAS,WY,82633,236115,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,10,04/04/2020,The Converse County Bank,WY - 00
+133200,CASPER,WY,82601,213111,Limited  Liability Company(LLC),White,Male Owned,Unanswered,,9,04/05/2020,Hilltop National Bank,WY - 00
+133200,GILLETTE,WY,82718,238210,Limited  Liability Company(LLC),White,Female Owned,Non-Veteran,,5,04/06/2020,Security State Bank,WY - 00
+133112.75,JACKSON,WY,83001,236118,Corporation,White,Male Owned,Non-Veteran,,14,04/09/2020,First Interstate Bank,WY - 00
+133100,JACKSON,WY,83001,541690,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/09/2020,Bank of Jackson Hole,WY - 00
+132912.5,PINEDALE,WY,82941,722511,Corporation,Unanswered,Unanswered,Unanswered,,25,04/29/2020,Glacier Bank,WY - 00
+132800,GILLETTE,WY,82718,722511,Subchapter S Corporation,Unanswered,Male Owned,Non-Veteran,,42,04/06/2020,First National Bank of Gillette,WY - 00
+132700,LARAMIE,WY,82070,238220,Corporation,Unanswered,Unanswered,Unanswered,,15,04/06/2020,ANB Bank,WY - 02
+132600,LANDER,WY,82520,722511,Corporation,White,Male Owned,Non-Veteran,,32,04/03/2020,Central Bank & Trust,WY - 00
+132407,SHERIDAN,WY,82801,238210,Corporation,White,Male Owned,Non-Veteran,,12,04/07/2020,First Northern Bank of Wyoming,WY - 00
+132241,MILLS,WY,82644,484121,Corporation,White,Male Owned,Non-Veteran,,8,05/01/2020,First Iowa State Bank,WY - 00
+132000,ROCKSPRINGS,WY,82901,213112,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,6,05/04/2020,Grand County CU d/b/a Desert Rivers CU,WY - 00
+132000,LARAMIE,WY,82072,424820,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/27/2020,ANB Bank,WY - 00
+131910,JACKSON,WY,83001,713990,Corporation,Unanswered,Unanswered,Unanswered,,0,04/29/2020,"Wells Fargo Bank, National Association",WY - 00
+131800,ETNA,WY,83118,238210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,19,04/08/2020,Glacier Bank,WY - 00
+131600,CHEYENNE,WY,82001,327320,Corporation,Unanswered,Unanswered,Unanswered,,11,04/28/2020,ANB Bank,WY - 00
+131500,JACKSON,WY,83001,236118,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,11,04/12/2020,First Interstate Bank,WY - 00
+131500,BIG PINEY,WY,83113,213112,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,11,04/04/2020,Bank of Star Valley,WY - 00
+131500,CASPER,WY,82601,323111,Corporation,Unanswered,Unanswered,Unanswered,,13,04/04/2020,Glacier Bank,WY - 00
+131500,HUDSON,WY,82515,484220,Limited  Liability Company(LLC),White,Female Owned,Unanswered,,9,04/27/2020,Central Bank & Trust,WY - 00
+131467,MOUNTAIN VIEW,WY,82939,441310,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,18,04/08/2020,Glacier Bank,WY - 00
+131300,LANDER,WY,82520,621210,Corporation,White,Male Owned,Non-Veteran,,16,04/03/2020,Central Bank & Trust,WY - 00
+131300,CHEYENNE,WY,82001,238910,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,04/27/2020,Western Vista FCU,WY - 00
+131300,JACKSON,WY,83001,621111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,,04/06/2020,Rocky Mountain Bank,WY - 00
+131128,CHEYENNE,WY,82009,621210,Subchapter S Corporation,White,Male Owned,Unanswered,,10,04/15/2020,Western States Bank,WY - 00
+131100,LOVELL,WY,82431,447110,Limited  Liability Company(LLC),Unanswered,Male Owned,Unanswered,,23,04/14/2020,Jonah Bank of Wyoming,WY - 00
+131092,GLENROCK,WY,82637,213112,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,7,04/27/2020,Hilltop National Bank,WY - 00
+131030,CHEYENNE,WY,82001,813110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,19,04/06/2020,Banner Capital Bank,WY - 00
+130900,CASPER,WY,82609,531110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,11,04/08/2020,Hilltop National Bank,WY - 00
+130732,CASPER,WY,82601,621210,Corporation,Unanswered,Unanswered,Unanswered,,13,04/11/2020,First Interstate Bank,WY - 00
+130715,EVANSTON,WY,82930,624110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,14,04/29/2020,Glacier Bank,WY - 01
+130700,LARAMIE,WY,82072,621210,Limited Liability Partnership,Unanswered,Unanswered,Unanswered,,10,04/06/2020,ANB Bank,WY - 00
+130662.5,ROCK SPRINGS,WY,82902,339999,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,18,04/15/2020,Cache Valley Bank,WY - 00
+130600,GILLETTE,WY,82716,238210,Limited  Liability Company(LLC),Unanswered,Male Owned,Unanswered,,7,04/07/2020,Security State Bank,WY - 00
+130600,GILLETTE,WY,82718,213112,Subchapter S Corporation,White,Unanswered,Unanswered,,8,04/08/2020,First National Bank of Gillette,WY - 00
+130467,ALPINE,WY,83128,238110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,25,04/15/2020,"U.S. Bank, National Association",WY - 00
+130462,CASPER,WY,82601,541110,Partnership,Unanswered,Unanswered,Unanswered,,15,04/28/2020,First Interstate Bank,WY - 00
+130400,ROCK SPRINGS,WY,82901,532310,Corporation,Unanswered,Female Owned,Unanswered,,10,04/15/2020,NebraskaLand National Bank,WY - 00
+130400,LARAMIE,WY,82070,624410,Corporation,Unanswered,Unanswered,Unanswered,,27,04/05/2020,ANB Bank,WY - 02
+130397.5,EVANSTON,WY,82930,541990,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,14,04/14/2020,Uinta Bank,WY - 01
+130200,CHEYENNE,WY,82001,332323,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,18,04/03/2020,Pinnacle Bank-Wyoming,WY - 00
+130115,CASPER,WY,82601,531210,Corporation,Unanswered,Unanswered,Unanswered,,12,04/10/2020,First Interstate Bank,WY - 00
+130100,CODY,WY,82414,621340,Corporation,Unanswered,Unanswered,Unanswered,,11,04/08/2020,Pinnacle Bank-Wyoming,WY - 00
+129900,THERMOPOLIS,WY,82443,532412,Corporation,Unanswered,Unanswered,Unanswered,,5,04/10/2020,"Bank of Bridger, National Association",WY - 00
+129732,GILLETTE,WY,82718,722513,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,24,04/08/2020,First Interstate Bank,WY - 00
+129500,CASPER,WY,82609,721110,Corporation,White,Male Owned,Unanswered,,17,04/04/2020,American Bank & Trust,WY - 00
+129500,WHEATLAND,WY,82201,441310,Corporation,Unanswered,Male Owned,Unanswered,,15,04/07/2020,Platte Valley Bank,WY - 00
+129500,FORT WASHAKIE,WY,82514,445110,Corporation,White,Male Owned,Unanswered,,30,04/08/2020,Central Bank & Trust,WY - 00
+129455,CHEYENNE,WY,82009,624190,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,18,04/10/2020,Wyoming Bank & Trust,WY - 00
+129452,JACKSON,WY,83002,238220,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,21,04/28/2020,First Interstate Bank,WY - 00
+129400,CHEYENNE,WY,82001,511210,Corporation,Unanswered,Unanswered,Non-Veteran,,5,04/14/2020,First Republic Bank,WY - 00
+129400,SHERIDAN,WY,82801,332313,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,05/01/2020,First Federal Bank & Trust,WY - 00
+129355,CHEYENNE,WY,82001,541191,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,17,04/15/2020,First Interstate Bank,WY - 00
+128900,MILLS,WY,82644,238110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,8,04/09/2020,Platte Valley Bank,WY - 00
+128800,ROCK SPRINGS,WY,82901,722511,Subchapter S Corporation,Asian,Male Owned,Unanswered,,33,04/27/2020,Trona Valley Community FCU,WY - 00
+128700,JACKSON,WY,83001,621210,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,12,04/14/2020,"Zions Bank, A Division of",WY - 00
+128694,JACKSON,WY,83001,813990,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,,04/10/2020,Rocky Mountain Bank,WY - 00
+128532,JACKSON,WY,83001,562111,Corporation,Unanswered,Unanswered,Unanswered,,11,04/13/2020,First Interstate Bank,WY - 00
+128400,CHEYENNE,WY,82001,444220,Corporation,Unanswered,Unanswered,Unanswered,,14,04/09/2020,Central Bank & Trust,WY - 00
+128300,CHEYENNE,WY,82001,813110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,17,04/08/2020,ANB Bank,WY - 00
+128264,JACKSON,WY,83001,541618,Corporation,Unanswered,Unanswered,Unanswered,,,05/03/2020,"Wells Fargo Bank, National Association",WY - 00
+128200,CHEYENNE,WY,82001,621420,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,15,04/15/2020,ANB Bank,WY - 00
+128200,CHEYENNE,WY,82003,562910,Subchapter S Corporation,White,Male Owned,Non-Veteran,,13,04/10/2020,Pinnacle Bank-Wyoming,WY - 00
+128155,ROCK SPRINGS,WY,82901,722511,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,25,04/28/2020,RSNB Bank,WY - 00
+128115.92,SHERIDAN,WY,82801,621310,Corporation,Unanswered,Unanswered,Unanswered,,13,04/07/2020,First Interstate Bank,WY - 00
+128100,GILLETTE,WY,82717,238210,Corporation,Unanswered,Unanswered,Unanswered,,9,04/05/2020,Pioneer Bank & Trust,WY - 00
+128005,JACKSON,WY,83001,713990,Corporation,Unanswered,Unanswered,Unanswered,,3,04/14/2020,"U.S. Bank, National Association",WY - 00
+128000,GILLETTE,WY,82718,213112,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,7,04/14/2020,ANB Bank,WY - 00
+127961,JACKSON,WY,83001,541618,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,25,06/18/2020,Small Business Bank,WY - 00
+127900,GILLETTE,WY,82716,333992,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,8,04/12/2020,First Interstate Bank,WY - 00
+127900,WILSON,WY,83014,541310,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,8,04/28/2020,Bank of Jackson Hole,WY - 00
+127810.77,ROCK SPRINGS,WY,82901,424410,Corporation,White,Male Owned,Non-Veteran,,13,04/09/2020,RSNB Bank,WY - 00
+127800,DOUGLAS,WY,82633,721110,Corporation,White,Male Owned,Veteran,,30,04/07/2020,The Converse County Bank,WY - 00
+127791.75,GILLETTE,WY,82718,813110,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,18,04/11/2020,First Interstate Bank,WY - 00
+127787,CASPER,WY,82601,332710,Corporation,Unanswered,Unanswered,Unanswered,,11,04/06/2020,Hilltop National Bank,WY - 00
+127670,SHERIDAN,WY,82801,238220,Corporation,Unanswered,Unanswered,Unanswered,,15,04/07/2020,First Interstate Bank,WY - 00
+127600,GILLETTE,WY,82718,442299,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,13,04/04/2020,First National Bank of Gillette,WY - 00
+127500,GILLETTE,WY,82716,621111,Subchapter S Corporation,White,Male Owned,Veteran,,8,04/03/2020,First National Bank of Gillette,WY - 00
+127500,WAMSUTTER,WY,82336,811118,Corporation,Unanswered,Male Owned,Non-Veteran,,14,04/04/2020,Pinnacle Bank-Wyoming,WY - 00
+127500,CASPER,WY,82601,621320,Corporation,White,Male Owned,Non-Veteran,,9,04/07/2020,Hilltop National Bank,WY - 00
+127500,CASPER,WY,82609,238290,Corporation,Unanswered,Unanswered,Unanswered,,14,04/07/2020,First Interstate Bank,WY - 00
+127475,CHEYENNE,WY,82001,423840,Subchapter S Corporation,White,Male Owned,Non-Veteran,,11,04/09/2020,Western States Bank,WY - 00
+127420,LARAMIE,WY,82070,722511,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,29,04/30/2020,Bank of the West,WY - 02
+127329.65,JACKSON,WY,83001,561720,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,11,04/13/2020,First Interstate Bank,WY - 00
+127200,GILLETTE,WY,82716,488119,Corporation,White,Male Owned,Non-Veteran,,7,04/06/2020,The Converse County Bank,WY - 00
+127125,LYMAN,WY,82937,237120,Corporation,Unanswered,Unanswered,Unanswered,,,04/12/2020,Uinta Bank,WY - 00
+127122,JACKSON,WY,83001,722511,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,,04/28/2020,Rocky Mountain Bank,WY - 00
+127100,GILLETTE,WY,82718,621210,Corporation,White,Male Owned,Non-Veteran,,9,04/06/2020,First National Bank of Gillette,WY - 00
+127000,JACKSON,WY,83002,721110,Subchapter S Corporation,White,Male Owned,Non-Veteran,,64,04/06/2020,Bank of Jackson Hole,WY - 00
+127000,CHEYENNE,WY,82001,811111,Subchapter S Corporation,White,Male Owned,Non-Veteran,,16,04/07/2020,Jonah Bank of Wyoming,WY - 00
+127000,WORLAND,WY,82401,221310,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,13,04/09/2020,Jonah Bank of Wyoming,WY - 00
+126900,SARATOGA,WY,82331,722511,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,21,04/04/2020,RNB State Bank,WY - 00
+126700.83,JACKSON,WY,83001,541611,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,11,04/27/2020,First Interstate Bank,WY - 00
+126700,LANDER,WY,82520,721110,Corporation,White,Male Owned,Unanswered,,38,04/07/2020,Central Bank & Trust,WY - 00
+126577,BUFFALO,WY,82834,812210,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,30,05/06/2020,First Northern Bank of Wyoming,WY - 00
+126515,JACKSON,WY,83001,621210,Limited  Liability Company(LLC),Unanswered,Female Owned,Non-Veteran,,8,04/14/2020,Rocky Mountain Bank,WY - 00
+126400,CHEYENNE,WY,82009,441320,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,04/27/2020,Jonah Bank of Wyoming,WY - 00
+126400,CHEYENNE,WY,82009,722511,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,27,04/27/2020,Jonah Bank of Wyoming,WY - 00
+126400,EVANSVILLE,WY,82636,238310,Subchapter S Corporation,Unanswered,Male Owned,Non-Veteran,,11,04/07/2020,Platte Valley Bank,WY - 00
+126315,LARAMIE,WY,82070,721110,Limited Liability Partnership,Unanswered,Male Owned,Non-Veteran,,18,04/11/2020,First Interstate Bank,WY - 02
+126300,JACKSON,WY,83002,441320,Corporation,White,Male Owned,Unanswered,,12,04/15/2020,Bank of Jackson Hole,WY - 00
+126247.7,DUBOIS,WY,82513,327991,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,10,06/17/2020,Central Bank & Trust,WY - 00
+126227,BUFFALO,WY,82834,722513,Corporation,White,Female Owned,Non-Veteran,,11,04/14/2020,First Northern Bank of Wyoming,WY - 00
+126200,CHEYENNE,WY,82007,721110,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,30,04/10/2020,Pinnacle Bank-Wyoming,WY - 00
+126181.82,BUFFALO,WY,82834,541330,Corporation,White,Male Owned,Non-Veteran,,11,04/08/2020,First Northern Bank of Wyoming,WY - 00
+126100,SHERIDAN,WY,82801,531210,Corporation,Unanswered,Female Owned,Unanswered,,10,04/03/2020,First Federal Bank & Trust,WY - 00
+126100,PINEDALE,WY,82941,811111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/07/2020,Bank of Jackson Hole,WY - 00
+126078,WILSON,WY,83014,541990,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,14,04/11/2020,First Interstate Bank,WY - 00
+126068.75,CODY,WY,82414,722511,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,65,04/07/2020,Glacier Bank,WY - 00
+126018,JACKSON,WY,83001,999990,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,04/30/2020,Bank of the West,WY - 00
+126000,CASPER,WY,82601,238210,Subchapter S Corporation,White,Male Owned,Non-Veteran,,11,04/03/2020,Platte Valley Bank,WY - 00
+125900,SHERIDAN,WY,82801,236115,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,20,04/04/2020,First Federal Bank & Trust,WY - 00
+125900,GILLETTE,WY,82716,621498,Corporation,White,Male Owned,Non-Veteran,,19,04/09/2020,Platte Valley Bank,WY - 00
+125800,ROCK SPRINGS,WY,82901,621111,Corporation,Unanswered,Unanswered,Unanswered,,12,04/09/2020,NebraskaLand National Bank,WY - 00
+125700,POWELL,WY,82435,213112,Corporation,Unanswered,Unanswered,Unanswered,,15,04/27/2020,Glacier Bank,WY - 00
+125607,CHEYENNE,WY,82009,713950,Limited  Liability Company(LLC),Unanswered,Male Owned,Veteran,,40,04/30/2020,Cross River Bank,WY - 00
+125594,DOUGLAS,WY,82633,112111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,11,04/09/2020,First National Bank of Gillette,WY - 00
+125500,NEWCASTLE,WY,82701,611699,Non-Profit Childcare Center,Unanswered,Unanswered,Unanswered,Y,34,04/03/2020,Pinnacle Bank-Wyoming,WY - 00
+125449,GILLETTE,WY,82718,623990,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,15,04/09/2020,First Interstate Bank,WY - 00
+125200,LANDER,WY,82520,238220,Subchapter S Corporation,White,Male Owned,Non-Veteran,,10,04/03/2020,Wyoming Community Bank,WY - 00
+125200,POWELL,WY,82435,238210,Corporation,White,Male Owned,Non-Veteran,,10,04/05/2020,Pinnacle Bank-Wyoming,WY - 00
+125102,PINEDALE,WY,82941,721110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,27,04/10/2020,Security First Bank,WY - 00
+125100,CHEYENNE,WY,82001,621210,Subchapter S Corporation,White,Male Owned,Non-Veteran,,12,04/03/2020,Jonah Bank of Wyoming,WY - 00
+125000,JACKSON,WY,83001,339999,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,05/04/2020,Cross River Bank,WY - 00
+125000,SHERIDAN,WY,82801,339112,Corporation,Unanswered,Unanswered,Unanswered,,7,04/10/2020,"JPMorgan Chase Bank, National Association",WY - 00
+125000,CHEYENNE,WY,82007,811111,Corporation,Unanswered,Unanswered,Unanswered,,10,04/11/2020,First Interstate Bank,WY - 00
+125000,CODY,WY,82414,722511,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,23,04/27/2020,Pinnacle Bank-Wyoming,WY - 00
+125000,CASPER,WY,82601,711190,Corporation,Unanswered,Unanswered,Unanswered,,5,06/27/2020,Cross River Bank,WY - 00
+124880,JACKSON,WY,83001,721110,Subchapter S Corporation,Unanswered,Female Owned,Non-Veteran,,18,04/14/2020,Bankers' Bank of the West,WY - 00
+124700,SHERIDAN,WY,82801,238210,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,9,04/03/2020,First Federal Bank & Trust,WY - 00
+124665,EVANSTON,WY,82930,561110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,21,04/10/2020,Glacier Bank,WY - 01
+124600,CHEYENNE,WY,82009,561730,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,17,04/27/2020,Jonah Bank of Wyoming,WY - 00
+124600,EDGERTON,WY,82635,213112,Corporation,Unanswered,Male Owned,Unanswered,,10,04/07/2020,Hilltop National Bank,WY - 00
+124560,CODY,WY,82414,532490,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,7,04/07/2020,Glacier Bank,WY - 00
+124300,TORRINGTON,WY,82240,621210,Corporation,White,Male Owned,Non-Veteran,,10,04/03/2020,Platte Valley Bank,WY - 00
+124217.5,POWELL,WY,82435,541110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,6,04/07/2020,Glacier Bank,WY - 00
+124200,CASPER,WY,82604,713910,Limited  Liability Company(LLC),Unanswered,Male Owned,Unanswered,,62,04/07/2020,Hilltop National Bank,WY - 00
+124200,SHERIDAN,WY,82801,551112,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,14,04/08/2020,City National Bank of Florida,WY - 00
+123675,ALTA,WY,83414,531312,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,1,06/10/2020,Bank of the West,WY - 00
+123600,WILSON,WY,83014,722511,Corporation,Unanswered,Unanswered,Unanswered,,20,05/11/2020,Bank of Jackson Hole,WY - 00
+123595,GREEN RIVER,WY,82935,238990,Corporation,Unanswered,Unanswered,Unanswered,,9,05/03/2020,"U.S. Bank, National Association",WY - 00
+123567,ETNA,WY,83118,441228,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,04/07/2020,Glacier Bank,WY - 00
+123500,NEWCASTLE,WY,82701,333132,Limited  Liability Company(LLC),White,Male Owned,Unanswered,,13,04/03/2020,Pinnacle Bank-Wyoming,WY - 00
+123493.65,CASPER,WY,82601,531320,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,19,04/15/2020,First Interstate Bank,WY - 00
+123440,CASPER,WY,82604,423390,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,5,04/15/2020,Hilltop National Bank,WY - 00
+123415.15,WHEATLAND,WY,82201,484121,Corporation,Unanswered,Unanswered,Unanswered,,11,04/27/2020,Glacier Bank,WY - 00
+123400,ROCK RIVER,WY,82083,238990,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,15,04/13/2020,First Interstate Bank,WY - 00
+123400,POWELL,WY,82435,811310,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,15,04/27/2020,Jonah Bank of Wyoming,WY - 00
+123400,WORLAND,WY,82401,721110,Corporation,Unanswered,Male Owned,Non-Veteran,,31,04/06/2020,ANB Bank,WY - 00
+123347,CASPER,WY,82609,611620,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,6,04/07/2020,Hilltop National Bank,WY - 00
+123265,CASPER,WY,82601,515120,Corporation,Unanswered,Unanswered,Unanswered,,27,04/09/2020,Hilltop National Bank,WY - 00
+123185,FARSON,WY,82932,213112,Corporation,Unanswered,Male Owned,Non-Veteran,,6,04/28/2020,RSNB Bank,WY - 00
+123127,JACKSON,WY,83001,487210,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,,06/17/2020,"FC Marketplace, LLC (dba Funding Circle)",WY - 00
+123100,CASPER,WY,82601,238220,Subchapter S Corporation,White,Male Owned,Non-Veteran,,17,04/12/2020,First Interstate Bank,WY - 00
+123000,ALPINE,WY,83128,541611,Corporation,Unanswered,Unanswered,Unanswered,,2,04/11/2020,Bell Bank,WY - 00
+123000,GILLETTE,WY,82718,621210,Subchapter S Corporation,White,Female Owned,Unanswered,,10,04/07/2020,First National Bank of Gillette,WY - 00
+123000,GILLETTE,WY,82718,236220,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,17,04/08/2020,Platte Valley Bank,WY - 00
+122985,WHEATLAND,WY,82201,112111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,5,04/07/2020,Banner Capital Bank,WY - 00
+122900,JACKSON,WY,83001,721110,Limited Liability Partnership,Unanswered,Unanswered,Unanswered,,19,04/13/2020,Bank of Jackson Hole,WY - 00
+122807,JACKSON,WY,83001,448310,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,10,04/08/2020,Glacier Bank,WY - 00
+122800,JACKSON,WY,83001,453998,Corporation,Unanswered,Unanswered,Unanswered,,33,04/27/2020,Bank of Jackson Hole,WY - 00
+122800,CASPER,WY,82601,238910,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,8,04/14/2020,ANB Bank,WY - 00
+122749.25,PINE BLUFFS,WY,82082,112111,Corporation,Unanswered,Unanswered,Unanswered,,12,04/27/2020,Farmers State Bank,WY - 03
+122700,CASPER,WY,82601,722511,Subchapter S Corporation,White,Male Owned,Non-Veteran,,35,04/10/2020,Jonah Bank of Wyoming,WY - 00
+122627,BUFFALO,WY,82834,446110,Subchapter S Corporation,White,Male Owned,Unanswered,,12,04/07/2020,First Northern Bank of Wyoming,WY - 00
+122505,ROCK SPRINGS,WY,82901,213112,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,6,04/10/2020,RSNB Bank,WY - 00
+122500,CASPER,WY,82609,621340,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,10,04/27/2020,Jonah Bank of Wyoming,WY - 00
+122500,CASPER,WY,82601,811111,Corporation,Unanswered,Unanswered,Unanswered,,8,04/15/2020,Montana Community Development Corp.,WY - 00
+122334,JACKSON,WY,83001,561730,Subchapter S Corporation,White,Male Owned,Non-Veteran,,,04/14/2020,Rocky Mountain Bank,WY - 00
+122300,SHERIDAN,WY,82801,238220,Corporation,White,Unanswered,Unanswered,,9,04/03/2020,First Federal Bank & Trust,WY - 00
+122226.75,LARAMIE,WY,82070,236220,Subchapter S Corporation,White,Male Owned,Unanswered,,14,04/10/2020,Western States Bank,WY - 02
+122148.77,GILLETTE,WY,82717,238210,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,04/07/2020,First Interstate Bank,WY - 00
+122100,SHERIDAN,WY,82801,531390,Corporation,Unanswered,Unanswered,Unanswered,,10,04/06/2020,First Federal Bank & Trust,WY - 00
+122082.5,SHERIDAN,WY,82801,238220,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,9,04/28/2020,First Interstate Bank,WY - 00
+122000,JACKSON,WY,83001,446110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,18,04/05/2020,Bank of Jackson Hole,WY - 00
+121800,LARAMIE,WY,82072,624410,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,28,04/05/2020,ANB Bank,WY - 00
+121710,BUFFALO,WY,82834,444130,Corporation,Unanswered,Male Owned,Unanswered,,18,04/09/2020,First Northern Bank of Wyoming,WY - 00
+121700,DOUGLAS,WY,82633,721110,Corporation,Asian,Male Owned,Non-Veteran,,30,04/08/2020,Metro City Bank,WY - 00
+121511,CHEYENNE,WY,82001,423820,Corporation,White,Female Owned,Non-Veteran,,10,04/15/2020,Western States Bank,WY - 00
+121426.5,SHERIDAN,WY,82801,531120,Corporation,Unanswered,Unanswered,Unanswered,,24,04/10/2020,First Interstate Bank,WY - 00
+121400,WHEATLAND,WY,82201,423330,Limited  Liability Company(LLC),White,Male Owned,Unanswered,,16,04/03/2020,Platte Valley Bank,WY - 00
+121400,CASPER,WY,82601,561431,Subchapter S Corporation,Unanswered,Female Owned,Unanswered,,18,04/06/2020,Hilltop National Bank,WY - 00
+121300,SHERIDAN,WY,82801,238110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/13/2020,First Federal Bank & Trust,WY - 00
+121257.5,CASPER,WY,82601,541110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/15/2020,First Interstate Bank,WY - 00
+121200,PINEDALE,WY,82941,238220,Corporation,Unanswered,Unanswered,Unanswered,,11,04/09/2020,Glacier Bank,WY - 00
+121140,EVANSTON,WY,82930,722511,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,35,04/08/2020,Glacier Bank,WY - 01
+120900,LARAMIE,WY,82072,238140,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,04/13/2020,First Interstate Bank,WY - 00
+120672.79,GILLETTE,WY,82718,236117,Corporation,White,Male Owned,Non-Veteran,,12,04/07/2020,First Interstate Bank,WY - 00
+120635,JACKSON,WY,83001,541712,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,5,05/03/2020,"U.S. Bank, National Association",WY - 00
+120606,JACKSON,WY,83002,811412,Corporation,Unanswered,Unanswered,Unanswered,,,05/03/2020,"Wells Fargo Bank, National Association",WY - 00
+120386.4,CASPER,WY,82601,621111,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,7,04/16/2020,First Interstate Bank,WY - 00
+120288,CASPER,WY,82601,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,22,04/14/2020,First Interstate Bank,WY - 00
+120207.5,CODY,WY,82414,423820,Corporation,Unanswered,Unanswered,Unanswered,,11,04/05/2020,Glacier Bank,WY - 00
+120200,JACKSON,WY,83001,236118,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/12/2020,First Interstate Bank,WY - 00
+120200,LANDER,WY,82520,722511,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,32,04/03/2020,Central Bank & Trust,WY - 00
+120200,GILLETTE,WY,82718,541330,Subchapter S Corporation,White,Male Owned,Unanswered,,6,04/28/2020,Security State Bank,WY - 00
+120200,JACKSON,WY,83001,561730,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,8,04/28/2020,Bank of Jackson Hole,WY - 00
+120100,WILSON,WY,83014,237990,Corporation,Unanswered,Unanswered,Unanswered,,10,04/08/2020,Bank of Jackson Hole,WY - 00
+120000,BURNS,WY,82053,484210,Corporation,Unanswered,Unanswered,Unanswered,,7,05/03/2020,Celtic Bank Corporation,WY - 00
+120000,CHEYENNE,WY,82007,811310,Corporation,White,Male Owned,Unanswered,,10,04/27/2020,Jonah Bank of Wyoming,WY - 00
+120000,LARAMIE,WY,82070,541110,Professional Association,Unanswered,Unanswered,Unanswered,,11,04/13/2020,First Interstate Bank,WY - 02
+120000,BIG PINEY,WY,83113,213112,Corporation,Unanswered,Unanswered,Unanswered,,8,04/14/2020,Glacier Bank,WY - 00
+120000,CHEYENNE,WY,82001,453998,Sole Proprietorship,Unanswered,Male Owned,Non-Veteran,,7,04/14/2020,"Readycap Lending, LLC",WY - 00
+119890.7,GILLETTE,WY,82718,213112,Corporation,Unanswered,Unanswered,Unanswered,,15,04/29/2020,First Northern Bank of Wyoming,WY - 00
+119853,SARATOGA,WY,82331,236220,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,19,05/01/2020,Bank of the West,WY - 00
+119750,CHEYENNE,WY,82009,237990,Corporation,Unanswered,Unanswered,Unanswered,,16,05/12/2020,Meridian Trust FCU,WY - 00
+119600,JACKSON,WY,83001,621210,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,8,04/06/2020,Bank of Jackson Hole,WY - 00
+119500,GILLETTE,WY,82718,722511,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,35,04/13/2020,First Interstate Bank,WY - 00
+119500,CASPER,WY,82604,713910,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,18,04/07/2020,Hilltop National Bank,WY - 00
+119257,GILLETTE,WY,82716,621112,Corporation,White,Male Owned,Non-Veteran,,10,04/09/2020,First National Bank of Gillette,WY - 00
+119211,LARAMIE,WY,82070,446110,Subchapter S Corporation,White,Unanswered,Unanswered,,16,04/15/2020,Western States Bank,WY - 02
+119200,GILLETTE,WY,82718,722511,Corporation,Unanswered,Unanswered,Unanswered,,26,04/13/2020,Dacotah Bank,WY - 00
+119152,EVANSTON,WY,82930,926150,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,9,04/08/2020,Glacier Bank,WY - 01
+119100,SUNDANCE,WY,82729,238910,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,11,04/03/2020,Sundance State Bank,WY - 00
+119100,CASPER,WY,82604,541940,Corporation,White,Male Owned,Unanswered,,16,04/08/2020,Hilltop National Bank,WY - 00
+119088.4,GILLETTE,WY,82716,238990,Corporation,White,Male Owned,Non-Veteran,,15,04/07/2020,First Northern Bank of Wyoming,WY - 00
+118948,LARAMIE,WY,82070,,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,,05/03/2020,"Wells Fargo Bank, National Association",WY - 02
+118882,BIG PINEY,WY,83113,327320,Corporation,White,Male Owned,Non-Veteran,,9,04/07/2020,RSNB Bank,WY - 00
+118757,CHEYENNE,WY,82009,621210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,9,04/27/2020,Wyoming Bank & Trust,WY - 00
+118502,CHEYENNE,WY,82001,,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,2,05/01/2020,"JPMorgan Chase Bank, National Association",WY - 00
+118495,CHEYENNE,WY,82001,811111,Self-Employed Individuals,Unanswered,Unanswered,Unanswered,,1,04/30/2020,Bank of the West,WY - 00
+118457.5,CHEYENNE,WY,82001,561110,Corporation,Unanswered,Male Owned,Unanswered,,8,04/13/2020,Pinnacle Bank,WY - 00
+118437,CODY,WY,82414,213111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/07/2020,First National Bank Baird d/b/a First Bank Texas,WY - 00
+118400,LARAMIE,WY,82070,541330,Corporation,Unanswered,Unanswered,Unanswered,,8,04/04/2020,ANB Bank,WY - 02
+118400,GILLETTE,WY,82718,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,33,04/04/2020,VISIONBank,WY - 00
+118382.5,JACKSON,WY,83001,238210,Corporation,Unanswered,Unanswered,Unanswered,,9,04/09/2020,Glacier Bank,WY - 00
+118300,RIVERTON,WY,82501,484110,Corporation,White,Male Owned,Unanswered,,9,04/03/2020,Central Bank & Trust,WY - 00
+118300,GREEN RIVER,WY,82935,621210,Subchapter S Corporation,Unanswered,Male Owned,Non-Veteran,,0,04/07/2020,Live Oak Banking Company,WY - 00
+118277.5,RIVERTON,WY,82501,722513,Corporation,Unanswered,Unanswered,Unanswered,,35,04/08/2020,First Interstate Bank,WY - 00
+118200,THERMOPOLIS,WY,82443,541211,Corporation,Unanswered,Male Owned,Non-Veteran,,14,04/27/2020,Pinnacle Bank-Wyoming,WY - 00
+118162,RIVERTON,WY,82501,621210,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,04/07/2020,First Interstate Bank,WY - 00
+118087.5,HILLSDALE,WY,82060,484110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,8,04/07/2020,First Interstate Bank,WY - 00
+118000,MILLS,WY,82644,339950,Corporation,White,Female Owned,Unanswered,,12,04/10/2020,Jonah Bank of Wyoming,WY - 00
+118000,BAR NUNN,WY,82601,722511,Corporation,White,Male Owned,Unanswered,,30,04/04/2020,Platte Valley Bank,WY - 00
+118000,WORLAND,WY,82401,484220,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,9,04/06/2020,ANB Bank,WY - 00
+117936,JACKSON,WY,83001,722511,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,,04/27/2020,Rocky Mountain Bank,WY - 00
+117882,MORAN,WY,83013,721214,Limited  Liability Company(LLC),Unanswered,Female Owned,Unanswered,,17,04/09/2020,First Western Trust Bank,WY - 00
+117800,CHEYENNE,WY,82009,722513,Corporation,White,Male Owned,Non-Veteran,,40,04/06/2020,Jonah Bank of Wyoming,WY - 00
+117782,ROCK SPRINGS,WY,82901,621320,Corporation,White,Male Owned,Non-Veteran,,10,04/07/2020,RSNB Bank,WY - 00
+117707.5,DOUGLAS,WY,82633,511110,Partnership,Unanswered,Unanswered,Unanswered,,41,04/28/2020,Glacier Bank,WY - 00
+117700,SHERIDAN,WY,82801,811121,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,8,04/06/2020,First Federal Bank & Trust,WY - 00
+117700,JACKSON,WY,83001,541519,Corporation,Unanswered,Unanswered,Unanswered,,6,04/07/2020,Bank of Jackson Hole,WY - 00
+117622,CHEYENNE,WY,82009,238220,Corporation,Unanswered,Unanswered,Unanswered,,6,05/01/2020,"JPMorgan Chase Bank, National Association",WY - 00
+117620,CODY,WY,82414,236115,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,11,04/05/2020,Glacier Bank,WY - 00
+117528,CASPER,WY,82601,541330,Corporation,Unanswered,Unanswered,Unanswered,,8,04/14/2020,First Interstate Bank,WY - 00
+117500,CHEYENNE,WY,82001,624310,Corporation,Hispanic,Female Owned,Non-Veteran,,9,04/29/2020,Arizona FCU,WY - 00
+117500,SHERIDAN,WY,82801,441310,Corporation,Unanswered,Unanswered,Unanswered,,14,04/04/2020,First Federal Bank & Trust,WY - 00
+117430,JACKSON,WY,83001,531311,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,,04/11/2020,Rocky Mountain Bank,WY - 00
+117382,DANIEL,WY,83115,722511,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,44,04/14/2020,Rocky Mountain Bank,WY - 00
+117337,CODY,WY,82414,238220,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,04/04/2020,Glacier Bank,WY - 00
+117336,POWELL,WY,82435,511110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,25,04/05/2020,Glacier Bank,WY - 00
+117300,CASPER,WY,82604,238390,Subchapter S Corporation,Unanswered,Male Owned,Non-Veteran,,10,04/15/2020,ANB Bank,WY - 00
+117300,SHERIDAN,WY,82801,541512,Corporation,Unanswered,Male Owned,Unanswered,,9,04/04/2020,First Federal Bank & Trust,WY - 00
+117200,PINEDALE,WY,82941,624120,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,23,04/27/2020,Bank of Jackson Hole,WY - 00
+117200,JACKSON,WY,83001,312120,Limited  Liability Company(LLC),White,Male Owned,Unanswered,,24,04/06/2020,Bank of Jackson Hole,WY - 00
+117100,WORLAND,WY,82401,423840,Corporation,Unanswered,Female Owned,Unanswered,,10,04/04/2020,Security State Bank,WY - 00
+117100,CHEYENNE,WY,82001,236220,Corporation,Unanswered,Unanswered,Unanswered,,8,04/28/2020,ANB Bank,WY - 00
+117095,CHEYENNE,WY,82001,722410,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,25,04/11/2020,First Interstate Bank,WY - 00
+117000,CHEYENNE,WY,82001,443142,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,13,04/15/2020,ANB Bank,WY - 00
+116882,SHERIDAN,WY,82801,453920,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/11/2020,"TD Bank, National Association",WY - 00
+116863.4,JACKSON,WY,83001,541410,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,9,04/15/2020,First Interstate Bank,WY - 00
+116800,ALPINE,WY,83128,541320,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/15/2020,Bank of Jackson Hole,WY - 00
+116800,LANDER,WY,82520,621210,Corporation,White,Male Owned,Non-Veteran,,9,04/03/2020,Central Bank & Trust,WY - 00
+116673,BUFFALO,WY,82834,811121,Corporation,Unanswered,Unanswered,Unanswered,,11,04/10/2020,First Interstate Bank,WY - 00
+116652,CODY,WY,82414,811121,Subchapter S Corporation,White,Unanswered,Unanswered,,9,04/09/2020,Glacier Bank,WY - 00
+116600,CASPER,WY,82601,561710,Subchapter S Corporation,Unanswered,Male Owned,Unanswered,,17,04/08/2020,Hilltop National Bank,WY - 00
+116421.62,PINE BLUFFS,WY,82082,111140,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,18,04/07/2020,Farmers State Bank,WY - 03
+116330,CASPER,WY,82601,721110,Corporation,Asian,Male Owned,Unanswered,,30,04/10/2020,Metro City Bank,WY - 00
+116330,CASPER,WY,82601,238210,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,4,04/28/2020,Hilltop National Bank,WY - 00
+116323,CHEYENNE,WY,82001,442110,Subchapter S Corporation,White,Male Owned,Unanswered,,13,04/13/2020,Western States Bank,WY - 00
+116276,GILLETTE,WY,82718,441320,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/15/2020,First Interstate Bank,WY - 00
+116250,CHEYENNE,WY,82009,621112,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,13,04/13/2020,First Interstate Bank,WY - 00
+116100,JACKSON,WY,83001,721110,Corporation,Unanswered,Unanswered,Unanswered,,7,05/06/2020,Bank of Jackson Hole,WY - 00
+116100,LYMAN,WY,82937,551112,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,19,04/15/2020,"Zions Bank, A Division of",WY - 00
+116085,CASPER,WY,82609,486110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,5,04/13/2020,First Interstate Bank,WY - 00
+115986,ROCK SPRINGS,WY,82901,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,21,04/08/2020,Rocky Mountain Bank,WY - 00
+115900,PINEDALE,WY,82941,213111,Corporation,Unanswered,Unanswered,Unanswered,,8,04/14/2020,Bank of Jackson Hole,WY - 00
+115839,JACKSON,WY,83001,488410,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,13,04/11/2020,First Interstate Bank,WY - 00
+115824.25,CHEYENNE,WY,82009,561730,Corporation,White,Male Owned,Unanswered,,37,04/08/2020,Wyoming Bank & Trust,WY - 00
+115812,SHERIDAN,WY,82801,424920,Subchapter S Corporation,White,Male Owned,Non-Veteran,,17,04/06/2020,First Northern Bank of Wyoming,WY - 00
+115750,BUFFALO,WY,82834,532412,Corporation,Unanswered,Male Owned,Unanswered,,8,04/05/2020,First Northern Bank of Wyoming,WY - 00
+115600,MANDERSON,WY,82432,112111,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,17,04/28/2020,ANB Bank,WY - 00
+115410,CODY,WY,82414,441320,Corporation,Unanswered,Unanswered,Unanswered,,19,04/08/2020,Glacier Bank,WY - 00
+115400,JACKSON,WY,83001,621111,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,7,04/12/2020,First Interstate Bank,WY - 00
+115400,JACKSON,WY,83001,484210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/13/2020,First Interstate Bank,WY - 00
+115100,JACKSON,WY,83001,445110,Subchapter S Corporation,White,Unanswered,Unanswered,,13,04/28/2020,Bank of Jackson Hole,WY - 00
+115100,JACKSON,WY,83002,541940,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/08/2020,Bank of Jackson Hole,WY - 00
+115000,GILLETTE,WY,82716,811111,Subchapter S Corporation,White,Female Owned,Non-Veteran,,8,04/03/2020,Security State Bank,WY - 00
+115000,TORRINGTON,WY,82240,238110,Corporation,Unanswered,Unanswered,Unanswered,,13,04/04/2020,Pinnacle Bank-Wyoming,WY - 00
+115000,LARAMIE,WY,82070,621310,Corporation,White,Male Owned,Unanswered,,16,04/04/2020,ANB Bank,WY - 02
+115000,CASPER,WY,82601,722410,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,26,04/05/2020,Hilltop National Bank,WY - 00
+115000,CASPER,WY,82601,541940,Limited  Liability Company(LLC),White,Male Owned,Non-Veteran,,6,04/07/2020,Hilltop National Bank,WY - 00
+115000,CHEYENNE,WY,82009,621111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,10,04/15/2020,First Interstate Bank,WY - 00
+114926.82,GILLETTE,WY,82718,446110,Corporation,White,Female Owned,Non-Veteran,,12,04/07/2020,First Interstate Bank,WY - 00
+114844.95,CHEYENNE,WY,82001,621111,Subchapter S Corporation,White,Male Owned,Unanswered,,13,04/09/2020,Western States Bank,WY - 00
+114805,LANDER,WY,82520,621111,Corporation,Unanswered,Unanswered,Unanswered,,9,04/08/2020,First Interstate Bank,WY - 00
+114700,TORRINGTON,WY,82240,445110,Corporation,White,Female Owned,Unanswered,,34,04/04/2020,Platte Valley Bank,WY - 00
+114600,BUFFALO,WY,82834,721110,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,9,04/03/2020,Security State Bank,WY - 00
+114600,DIXON,WY,82323,236115,Limited  Liability Company(LLC),White,Female Owned,Unanswered,,0,04/05/2020,Yampa Valley Bank,WY - 00
+114600,WRIGHT,WY,82732,541990,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,4,04/08/2020,ANB Bank,WY - 00
+114500,CHEYENNE,WY,82009,453220,Sole Proprietorship,Unanswered,Unanswered,Unanswered,,12,06/27/2020,Radius Bank,WY - 00
+114365,ROCK SPRINGS,WY,82901,811191,Corporation,White,Male Owned,Non-Veteran,,11,04/08/2020,RSNB Bank,WY - 00
+114285,CHEYENNE,WY,82001,722511,Subchapter S Corporation,White,Male Owned,Unanswered,,64,04/09/2020,Western States Bank,WY - 00
+114232,EVANSTON,WY,82930,532420,Corporation,Unanswered,Male Owned,Non-Veteran,,12,04/07/2020,Uinta Bank,WY - 01
+114223,SHERIDAN,WY,82801,722511,Limited  Liability Company(LLC),Unanswered,Male Owned,Unanswered,,20,04/27/2020,Cowboy State Bank,WY - 00
+114190,CASPER,WY,82609,237990,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,6,04/11/2020,First Interstate Bank,WY - 00
+114090,WILSON,WY,83014,453998,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,,04/13/2020,Rocky Mountain Bank,WY - 00
+114062,RIVERTON,WY,82501,424810,Partnership,Unanswered,Unanswered,Unanswered,,15,04/10/2020,First Interstate Bank,WY - 00
+113958,JACKSON,WY,83001,238320,Corporation,Unanswered,Unanswered,Unanswered,,12,04/13/2020,First Interstate Bank,WY - 00
+113900,CODY,WY,82414,441310,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,9,04/03/2020,Pinnacle Bank-Wyoming,WY - 00
+113634,DOUGLAS,WY,82633,562910,Sole Proprietorship,Unanswered,Female Owned,Unanswered,,3,04/28/2020,Hilltop National Bank,WY - 00
+113561,CHEYENNE,WY,82001,621112,Subchapter S Corporation,White,Female Owned,Unanswered,,8,04/14/2020,Western States Bank,WY - 00
+113500,EVANSVILLE,WY,82636,722511,Corporation,White,Male Owned,Non-Veteran,,16,04/03/2020,Jonah Bank of Wyoming,WY - 00
+113400,CHEYENNE,WY,82009,446110,Subchapter S Corporation,White,Female Owned,Unanswered,,14,04/04/2020,Jonah Bank of Wyoming,WY - 00
+113377,JACKSON,WY,83001,,Corporation,Unanswered,Male Owned,Non-Veteran,,7,05/03/2020,"U.S. Bank, National Association",WY - 00
+113315,CASPER,WY,82604,331210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,11,04/30/2020,First Interstate Bank,WY - 00
+113260,CASPER,WY,82601,531120,Subchapter S Corporation,White,Male Owned,Non-Veteran,,10,04/28/2020,First Interstate Bank,WY - 00
+113240,PINEDALE,WY,82941,213112,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,,04/07/2020,Rocky Mountain Bank,WY - 00
+113212,EVANSVILLE,WY,82636,484110,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,6,04/30/2020,Bank of the West,WY - 00
+113200,LARAMIE,WY,82070,721199,Corporation,White,Female Owned,Non-Veteran,,24,04/03/2020,Pinnacle Bank-Wyoming,WY - 02
+113110,CHEYENNE,WY,82001,722511,Limited  Liability Company(LLC),Unanswered,Male Owned,Non-Veteran,,33,04/13/2020,First Interstate Bank,WY - 00
+113110,CHEYENNE,WY,82001,812210,Limited  Liability Company(LLC),Hispanic,Male Owned,Non-Veteran,,14,04/07/2020,Wyoming Bank & Trust,WY - 00
+113100,LARAMIE,WY,82072,621111,Partnership,Unanswered,Unanswered,Unanswered,,20,04/06/2020,ANB Bank,WY - 00
+113000,GILLETTE,WY,82718,621210,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,12,04/27/2020,First Federal Bank & Trust,WY - 00
+112832,JACKSON,WY,83001,722513,Subchapter S Corporation,Unanswered,Male Owned,Non-Veteran,,10,04/07/2020,First Interstate Bank,WY - 00
+112800,AFTON,WY,83110,562111,Subchapter S Corporation,Unanswered,Unanswered,Unanswered,,12,05/01/2020,Bank of Star Valley,WY - 00
+112794,BUFFALO,WY,82834,624190,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,46,04/13/2020,First Interstate Bank,WY - 00
+112700,CASPER,WY,82601,624120,Non-Profit Organization,Unanswered,Unanswered,Unanswered,Y,28,04/10/2020,Hilltop National Bank,WY - 00
+112600,CASPER,WY,82601,621210,Corporation,White,Male Owned,Non-Veteran,,13,04/04/2020,Hilltop National Bank,WY - 00
+112600,GILLETTE,WY,82716,238210,Subchapter S Corporation,White,Male Owned,Non-Veteran,,9,04/04/2020,Security State Bank,WY - 00
+112560,JACKSON,WY,83001,621111,Limited  Liability Company(LLC),Unanswered,Unanswered,Unanswered,,,05/03/2020,"Wells Fargo Bank, National Association",WY - 00
+112547.5,AFTON,WY,83110,541360,Corporation,Unanswered,Unanswered,Unanswered,,18,04/28/2020,Glacier Bank,WY - 00
+112500,CASPER,WY,82601,238210,Corporation,White,Male Owned,Non-Veteran,,8,04/03/2020,Jonah Bank of Wyoming,WY - 00
+112500,MOORCROFT,WY,82721,238210,Corporation,White,Male Owned,Unanswered,,8,04/03/2020,Sundance State Bank,WY - 00
