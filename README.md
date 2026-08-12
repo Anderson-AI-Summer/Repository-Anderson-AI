@@ -12,6 +12,11 @@ routed to a different vendor ("maverick spend").
 python3 -m spend_agent.cli data/sample_transactions.csv --outdir out
 ```
 
+This CLI is one way to run the pipeline directly. For wiring it into a
+conversational, tool-calling LLM agent instead — a system prompt plus a
+tool interface mapped to the functions below — see
+[`spend_agent/AGENT_SYSTEM_PROMPT.md`](spend_agent/AGENT_SYSTEM_PROMPT.md).
+
 Optional flags let you point at different config:
 
 ```bash
