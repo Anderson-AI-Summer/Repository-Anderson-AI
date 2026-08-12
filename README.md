@@ -103,6 +103,46 @@ distribution:
 python3 ppp/run_ppp_risk_score.py path/to/foia_up_to_150k_WY.csv --outdir ppp/out
 ```
 
+### Statistical anomaly analysis (peer-reviewed methodology, replicated at small scale)
+
+`ppp/run_ppp_anomaly_analysis.py` is a more rigorous alternative to the
+heuristic score above: it replicates, at small scale, the peer-group
+comparison method of Griffin, Kruger & Mahajan (2023, *Journal of Finance*),
+["Did FinTech Lenders Facilitate PPP Fraud?"](https://onlinelibrary.wiley.com/doi/10.1111/jofi.13209),
+comparing loan characteristics between fintech/non-bank lenders
+(`spend_agent/ppp_lender_type.py`) and traditional banks using actual
+statistical tests instead of arbitrary point weights:
+
+- **Amount z-score** — how many standard deviations a loan's amount is from
+  the mean for its NAICS industry (peer-group benchmark), compared between
+  lender types with Welch's t-test.
+- **Salary-cap-implied rate** — the specific Griffin et al. red flag: a loan
+  amount that, divided by reported jobs retained, implies (almost) every
+  employee earns exactly the PPP $100,000 salary cap — statistically
+  improbable for genuine payroll. Compared with a two-proportion z-test.
+- **Statistical outlier rate** (`|z| > 2`) and **round-dollar rate**, same test.
+
+`spend_agent/ppp_stats.py` implements Welch's t-test and the two-proportion
+z-test in pure Python (no scipy dependency) — the t-distribution p-value
+uses a regularized-incomplete-beta continued fraction, verified against
+`scipy.stats` to better than 1e-12 absolute error during development (see
+`tests/test_ppp_stats.py`).
+
+**On the full Wyoming dataset (11,866 loans, 432 fintech-lender / 11,434
+bank), results are mixed** — not a simple confirmation of the "fintech is
+riskier" headline: fintech loans skewed *smaller* relative to industry peers
+(t = -8.57, p < 0.0001) and had a *lower* statistical-outlier rate (3.2% vs
+6.4%, p = 0.0084), while the salary-cap-implied rate was elevated for
+fintech loans as the cited study found, but only marginally significant at
+this sample size (4.4% vs 2.8%, p = 0.050). That's a legitimate finding in
+its own right — a national-level effect need not replicate in one state's
+under-$150K loan tier — and a good discussion point on sample size and
+external validity for a written report.
+
+```bash
+python3 ppp/run_ppp_anomaly_analysis.py path/to/foia_up_to_150k_WY.csv --outdir ppp/out
+```
+
 ## Tests
 
 ```bash
