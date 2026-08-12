@@ -158,8 +158,9 @@ This adapter was built without a live pull: the execution environment's
 egress policy blocks outbound requests to `api.usaspending.gov` (confirmed
 via a direct test — the request was rejected by the policy, not by
 USASpending.gov itself). Rather than fabricate something that could be
-mistaken for a real award record, `usaspending/data/sample_contracts.csv`
+mistaken for a real award record, `usaspending/data/sample_nasa_contracts.csv`
 is an explicitly synthetic demo file with fictional contractor names,
+scoped to a single awarding agency (NASA) rather than a mixed-agency set,
 built to exercise every feature end to end (one recipient under 4 name
 variants, ten spend categories, two awards flagged against a fictional
 preferred-supplier policy) without attaching invented dollar figures to any

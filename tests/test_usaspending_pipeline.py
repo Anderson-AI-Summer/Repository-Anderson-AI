@@ -10,7 +10,7 @@ class TestUsaspendingPipeline(unittest.TestCase):
     def setUp(self):
         outdir = tempfile.mkdtemp()
         transactions_path = os.path.join(outdir, "converted_transactions.csv")
-        convert_usaspending_csv("usaspending/data/sample_contracts.csv", transactions_path)
+        convert_usaspending_csv("usaspending/data/sample_nasa_contracts.csv", transactions_path)
         self.results, self.clusters = run_pipeline(
             transactions_path,
             "config/usaspending_taxonomy.json",

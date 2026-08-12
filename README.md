@@ -125,9 +125,11 @@ the "vendor" for alias resolution, and the award's **NAICS description**
 and **Product/Service Code (PSC) description** drive classification into
 procurement categories via `config/usaspending_taxonomy.json`, since federal
 contracts are categorized by PSC/NAICS rather than a free-text memo line.
+The bundled sample is scoped to a single awarding agency, NASA, rather than
+a mix of agencies — see below.
 
 ```bash
-python3 usaspending/run_usaspending_agent.py usaspending/data/sample_contracts.csv \
+python3 usaspending/run_usaspending_agent.py usaspending/data/sample_nasa_contracts.csv \
   --suppliers usaspending/data/sample_preferred_suppliers.json \
   --outdir usaspending/out
 ```
@@ -142,22 +144,31 @@ Title Case (`Recipient Name`, `Award Amount`, `NAICS Description`). Header
 matching is tolerant across both, the same approach `ingest.py` uses for
 messy transaction exports.
 
-### Sample data is synthetic, not a live pull
+### Sample data is synthetic, not a live pull, and scoped to NASA
 
 This environment's egress policy blocks outbound requests to
-`api.usaspending.gov`, so `usaspending/data/sample_contracts.csv` was **not**
-fetched from the live API — it's a hand-built, clearly-labeled illustrative
-sample using fictional contractor names (e.g. "Meridian Defense Systems",
-"Northgate IT Solutions") built to exercise every feature of the pipeline:
-one recipient under 4 raw name variants, ten spend categories, and two
-awards routed away from a documented (equally fictional) preferred-supplier
-policy. None of it should be read as, or confused with, a real award record
-— consistent with this repo's stance elsewhere (see the PPP section below)
-of never attaching a real-data-shaped claim to an entity without real data
-behind it. `spend_agent/usaspending_adapter.py` itself is written against
-USASpending.gov's real, documented column schema, so it works unmodified
-against an actual bulk download or API export — only the bundled demo file
-is synthetic.
+`api.usaspending.gov`, so `usaspending/data/sample_nasa_contracts.csv` was
+**not** fetched from the live API — it's a hand-built, clearly-labeled
+illustrative sample using fictional contractor names (e.g. "Meridian
+Defense Systems", "Northgate IT Solutions") built to exercise every feature
+of the pipeline: one recipient under 4 raw name variants, ten spend
+categories, and two awards routed away from a documented (equally
+fictional) preferred-supplier policy. Every row's awarding agency is set to
+NASA and the award descriptions are flavored accordingly (spacecraft
+sensors, launch vehicle ground systems, center facility maintenance, and
+so on) — this is the "just NASA" version of the demo rather than a
+mixed-agency one; NAICS/PSC descriptions (the fields that actually drive
+classification) are unchanged, so results are identical to the prior
+mixed-agency version. None of it should be read as, or confused with, a
+real award record — consistent with this repo's stance elsewhere (see the
+PPP section below) of never attaching a real-data-shaped claim to an entity
+without real data behind it. `spend_agent/usaspending_adapter.py` itself is
+written against USASpending.gov's real, documented column schema — including
+an `awarding_agency_name`/`Awarding Agency` filter a caller can apply
+upstream before conversion — so it works unmodified against an actual bulk
+download or API export (e.g. one already filtered to NASA on
+usaspending.gov's download center); only the bundled demo file is
+synthetic.
 
 As with `ppp/`, no preferred-supplier policy is asserted by default
 (`config/usaspending_preferred_suppliers.json` is empty) — asserting one

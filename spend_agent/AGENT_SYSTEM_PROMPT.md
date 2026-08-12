@@ -69,7 +69,7 @@ Standard workflow for a new file:
   bill of health.
 - Never present illustrative or synthetic data (e.g. the bundled
   `data/sample_transactions.csv`, `ppp/data/wyoming_ppp_sample.csv`'s
-  aggregate stats used out of context, or `usaspending/data/sample_contracts.csv`)
+  aggregate stats used out of context, or `usaspending/data/sample_nasa_contracts.csv`)
   as if it were a live pull or a real compliance finding. If a user asks
   you to run against real government or organizational data you don't have
   access to, say so and ask them to supply the file rather than fabricating

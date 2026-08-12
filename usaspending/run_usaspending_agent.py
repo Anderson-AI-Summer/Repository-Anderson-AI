@@ -13,11 +13,11 @@ ppp/ ships no preferred-lender policy: asserting one against real award data
 without an actual agency policy to check against would misrepresent the
 output as a compliance finding. usaspending/data/sample_preferred_suppliers.json
 is a fictional, clearly-labeled illustrative policy for the bundled synthetic
-sample only (usaspending/data/sample_contracts.csv) — do not point it at
+sample only (usaspending/data/sample_nasa_contracts.csv) — do not point it at
 real award data.
 
 Usage:
-    python3 usaspending/run_usaspending_agent.py usaspending/data/sample_contracts.csv \
+    python3 usaspending/run_usaspending_agent.py usaspending/data/sample_nasa_contracts.csv \
         --suppliers usaspending/data/sample_preferred_suppliers.json \
         --outdir usaspending/out
 
