@@ -1,0 +1,71 @@
+{
+  "categories": [
+    {
+      "name": "Information Technology",
+      "keywords": [
+        "information technology", "it services", "computer", "software",
+        "cloud", "cybersecurity", "network", "data center", "systems development",
+        "telecommunications", "hardware"
+      ]
+    },
+    {
+      "name": "Professional & Management Services",
+      "keywords": [
+        "consulting", "advisory", "management services", "professional services",
+        "audit", "program management", "administrative support", "business services"
+      ]
+    },
+    {
+      "name": "Construction & Facilities",
+      "keywords": [
+        "construction", "facilities", "structures", "renovation", "roofing",
+        "maintenance and repair", "grounds maintenance", "hvac", "real property"
+      ]
+    },
+    {
+      "name": "Research & Development",
+      "keywords": [
+        "research and development", "scientific", "laboratory", "r&d"
+      ]
+    },
+    {
+      "name": "Engineering & Technical Services",
+      "keywords": [
+        "engineering", "technical services", "architect", "design services",
+        "technical assistance"
+      ]
+    },
+    {
+      "name": "Medical & Health Services",
+      "keywords": [
+        "medical", "health care", "hospital", "pharmaceutical", "clinical",
+        "health-general"
+      ]
+    },
+    {
+      "name": "Security & Protective Services",
+      "keywords": [
+        "guard services", "security services", "protective service", "law enforcement"
+      ]
+    },
+    {
+      "name": "Transportation & Logistics",
+      "keywords": [
+        "transportation", "logistics", "freight", "shipping", "motor vehicles",
+        "aircraft"
+      ]
+    },
+    {
+      "name": "Office & Administrative Supplies",
+      "keywords": [
+        "office supplies", "furniture", "printing", "publications", "stationery"
+      ]
+    },
+    {
+      "name": "Training & Education Services",
+      "keywords": [
+        "training", "education services", "instructional", "curriculum"
+      ]
+    }
+  ]
+}
