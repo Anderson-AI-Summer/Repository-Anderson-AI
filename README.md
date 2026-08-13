@@ -25,6 +25,18 @@ older versions stay intact and comparable instead of being overwritten.
   `v2/README.md` for the two-tier layout and a real NASA FY2020–2026 dataset
   ($1.44B, 2,770 transactions) already rendered in
   `v2/nasa_procurement/outputs/`.
+- **`v3/`** — third version. Copies `v2/` forward and adds a second, always-
+  current mode to `v3/nasa_procurement/`: `outputs/nasa_live_dashboard.html`
+  (built independently by Harrison) queries `api.usaspending.gov` directly
+  from the browser for any fiscal year (FY2008–present), no server or stored
+  data required. It's cross-linked with the flagship analysis dashboard
+  ("🛰 Live Lookup" / "← Deep Analysis Dashboard") but deliberately kept as a
+  separate page rather than merged into one: the flagship dashboard's
+  supplier-resolution, classification, and standout/consolidation/duplicate
+  signals are precomputed by the Python pipeline and can't be reproduced
+  live in the browser, so the live page shows raw USAspending figures only
+  and says so. See `v3/nasa_procurement/README.md` for the two-mode
+  architecture.
 
 ### Starting the next version
 
