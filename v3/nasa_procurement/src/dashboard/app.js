@@ -403,6 +403,39 @@
         `⚠ FY${DATA.meta.current_fiscal_year} is still in progress (partial year). Totals for the current fiscal year are not directly comparable to completed fiscal years.`
       ]));
     }
+
+    // Fiscal-year picker -- same pattern as Explorer/YoY. Every KPI, chart,
+    // and table on this tab is built from the embedded payload, which
+    // (today) covers exactly one fiscal year; picking a year outside that
+    // hands off to Live Lookup rather than pretending to re-filter data
+    // that was never computed for it.
+    const overviewFYSel = document.getElementById("overview-fy");
+    const embeddedFYs = A.annual.map(r => r.fiscal_year);
+    embeddedFYs.forEach(fy => overviewFYSel.appendChild(el("option", { value: fy }, ["FY" + fy + " (embedded)"])));
+    const nowDate = new Date();
+    const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
+    const embeddedFYSet = new Set(embeddedFYs.map(String));
+    const liveYears = [];
+    for (let fy = currentLiveFY; fy >= 2008; fy--) if (!embeddedFYSet.has(String(fy))) liveYears.push(fy);
+    if (liveYears.length) {
+      overviewFYSel.appendChild(el("option", { disabled: "disabled" }, ["── other years (live lookup) ──"]));
+      liveYears.forEach(fy => overviewFYSel.appendChild(el("option", { value: "live:" + fy }, ["FY" + fy + " (live →)"])));
+    }
+    overviewFYSel.addEventListener("change", () => {
+      const notice = document.getElementById("overview-live-notice");
+      notice.innerHTML = "";
+      const v = overviewFYSel.value;
+      if (typeof v === "string" && v.startsWith("live:")) {
+        const fyNum = v.slice(5);
+        const box = el("div", { class: "other-callout" }, [
+          `🛰 FY${fyNum} isn't part of this dashboard's precomputed analysis (embedded data covers ${embeddedFYs.map(y => "FY" + y).join(", ")} only). The Executive Overview below still reflects ${embeddedFYs.map(y => "FY" + y).join(", ")}. `,
+          el("strong", {}, [`Open Live Lookup for FY${fyNum}`]), " for that year's raw figures instead →",
+        ]);
+        box.addEventListener("click", () => window.open(`nasa_live_dashboard.html?fy=${fyNum}`, "_blank", "noopener"));
+        notice.appendChild(box);
+      }
+    });
+
     const standoutSupplierCount = (DATA.standout_suppliers || []).length;
     const standoutAwardCount = (DATA.standout_awards || []).length;
     const cta = document.getElementById("overview-jump-cta");
