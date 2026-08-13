@@ -4,6 +4,39 @@
   const A = DATA.analytics;
   const NAVY = "#0f1e33", BLUE = "#0891b2", RED = "#dc2626", GREY = "#64748b", GOLD = "#d97706";
   const CHART_MUTED = "#64748b", CHART_GRID = "rgba(15,30,51,0.08)", CHART_LINE = "rgba(15,30,51,0.2)";
+
+  // ---------------- Live USAspending.gov fetch (Executive Overview only) ----------------
+  // Same API this project's Live Lookup page (nasa_live_dashboard.html) uses,
+  // scoped down to what an Overview-style summary needs: monthly net
+  // obligations, an award-type breakdown, and top recipients. Runs entirely
+  // in the viewer's own browser -- see nasa_procurement/README.md "Live
+  // Lookup mode" for why this can't reproduce the full supplier-resolution /
+  // taxonomy-classification analysis the embedded FY2025 data has.
+  const LIVE_API = "https://api.usaspending.gov/api/v2";
+  const LIVE_AWARD_TYPE_CODES = ["A", "B", "C", "D"];
+  const LIVE_AWARD_TYPE_NAMES = { A: "BPA Call", B: "Purchase Order", C: "Delivery Order", D: "Definitive Contract" };
+  const LIVE_AGENCY_FILTER = { type: "awarding", tier: "toptier", name: "National Aeronautics and Space Administration" };
+
+  async function liveApiPost(path, body) {
+    const res = await fetch(LIVE_API + path, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+    return res.json();
+  }
+  function liveFyDateRange(fy) { return { start_date: `${fy - 1}-10-01`, end_date: `${fy}-09-30` }; }
+  function liveBaseFilters(fy, extra) {
+    const { start_date, end_date } = liveFyDateRange(fy);
+    return Object.assign({ award_type_codes: LIVE_AWARD_TYPE_CODES, agencies: [LIVE_AGENCY_FILTER], time_period: [{ start_date, end_date }] }, extra || {});
+  }
+  // spending_over_time's "month" is a *fiscal* month (1 = October), not calendar month.
+  function liveMonthLabel(fy, fiscalMonth) {
+    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const fm = parseInt(fiscalMonth, 10);
+    const calMonthIdx = ((fm + 8) % 12) + 1;
+    const calYear = fm <= 3 ? parseInt(fy, 10) - 1 : parseInt(fy, 10);
+    return names[calMonthIdx - 1] + " '" + String(calYear).slice(2);
+  }
   // Shared theme base merged into every Plotly layout: transparent canvas
   // (so the panel background shows through) plus muted axis/legend text so
   // charts match the surrounding mission-control theme instead of Plotly's
@@ -13,10 +46,11 @@
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)",
       font: { color: CHART_MUTED, size: 11 },
+      dragmode: false, // no drag-to-zoom rectangle -- these charts are for reading, not exploring
     }, extra);
   }
   function darkAxis(extra) {
-    return Object.assign({ gridcolor: CHART_GRID, zerolinecolor: CHART_LINE, linecolor: CHART_LINE, color: CHART_MUTED }, extra);
+    return Object.assign({ gridcolor: CHART_GRID, zerolinecolor: CHART_LINE, linecolor: CHART_LINE, color: CHART_MUTED, fixedrange: true }, extra);
   }
 
   function fmtMoney(v) {
@@ -404,11 +438,9 @@
       ]));
     }
 
-    // Fiscal-year picker -- same pattern as Explorer/YoY. Every KPI, chart,
-    // and table on this tab is built from the embedded payload, which
-    // (today) covers exactly one fiscal year; picking a year outside that
-    // hands off to Live Lookup rather than pretending to re-filter data
-    // that was never computed for it.
+    // Fiscal-year picker. Embedded years render the normal, fully-analyzed
+    // Overview below (unchanged). Any other year live-fetches a raw summary
+    // from api.usaspending.gov, right here in this tab -- no separate page.
     const overviewFYSel = document.getElementById("overview-fy");
     const embeddedFYs = A.annual.map(r => r.fiscal_year);
     embeddedFYs.forEach(fy => overviewFYSel.appendChild(el("option", { value: fy }, ["FY" + fy + " (embedded)"])));
@@ -418,23 +450,116 @@
     const liveYears = [];
     for (let fy = currentLiveFY; fy >= 2008; fy--) if (!embeddedFYSet.has(String(fy))) liveYears.push(fy);
     if (liveYears.length) {
-      overviewFYSel.appendChild(el("option", { disabled: "disabled" }, ["── other years (live lookup) ──"]));
+      overviewFYSel.appendChild(el("option", { disabled: "disabled" }, ["── other years (live) ──"]));
       liveYears.forEach(fy => overviewFYSel.appendChild(el("option", { value: "live:" + fy }, ["FY" + fy + " (live →)"])));
     }
+    let overviewLiveToken = 0;
     overviewFYSel.addEventListener("change", () => {
       const notice = document.getElementById("overview-live-notice");
+      const liveContent = document.getElementById("overview-live-content");
+      const embeddedContent = document.getElementById("overview-embedded-content");
       notice.innerHTML = "";
       const v = overviewFYSel.value;
       if (typeof v === "string" && v.startsWith("live:")) {
-        const fyNum = v.slice(5);
-        const box = el("div", { class: "other-callout" }, [
-          `🛰 FY${fyNum} isn't part of this dashboard's precomputed analysis (embedded data covers ${embeddedFYs.map(y => "FY" + y).join(", ")} only). The Executive Overview below still reflects ${embeddedFYs.map(y => "FY" + y).join(", ")}. `,
-          el("strong", {}, [`Open Live Lookup for FY${fyNum}`]), " for that year's raw figures instead →",
+        const fyNum = parseInt(v.slice(5), 10);
+        const calloutBox = el("div", { class: "other-callout" }, [
+          `🛰 Showing live raw USAspending.gov figures for FY${fyNum} below -- not run through this project's supplier-resolution or spend-classification pipeline (that only exists for ${embeddedFYs.map(y => "FY" + y).join(", ")}). `,
+          el("strong", {}, ["Open the full Live Lookup page"]), " for a searchable transaction register on this year →",
         ]);
-        box.addEventListener("click", () => window.open(`nasa_live_dashboard.html?fy=${fyNum}`, "_blank", "noopener"));
-        notice.appendChild(box);
+        calloutBox.addEventListener("click", () => window.open(`nasa_live_dashboard.html?fy=${fyNum}`, "_blank", "noopener"));
+        notice.appendChild(calloutBox);
+        embeddedContent.style.display = "none";
+        liveContent.style.display = "";
+        loadLiveOverview(fyNum, ++overviewLiveToken);
+      } else {
+        overviewLiveToken++; // invalidate any in-flight live fetch
+        embeddedContent.style.display = "";
+        liveContent.style.display = "none";
       }
     });
+
+    async function loadLiveOverview(fy, myToken) {
+      const panel = document.getElementById("overview-live-content");
+      panel.innerHTML = "";
+      panel.appendChild(el("div", { class: "small-note" }, [`Loading live USAspending.gov data for FY${fy}…`]));
+      panel.appendChild(el("div", { class: "live-loading-bar" }));
+
+      const filters = liveBaseFilters(fy);
+      const monthPromise = liveApiPost("/search/spending_over_time/", { group: "month", filters });
+      const recipientPromise = liveApiPost("/search/spending_by_category/recipient/", { category: "recipient", filters, limit: 20, page: 1 });
+      const typePromises = LIVE_AWARD_TYPE_CODES.map(code => Promise.all([
+        liveApiPost("/search/spending_over_time/", { group: "fiscal_year", filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
+        liveApiPost("/search/spending_by_transaction_count/", { filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
+      ]).then(([amtRes, countRes]) => ({
+        name: LIVE_AWARD_TYPE_NAMES[code],
+        amount: (amtRes.results || []).reduce((s, r) => s + (r.aggregated_amount || 0), 0),
+        count: countRes.results ? countRes.results.contracts : 0,
+      })));
+
+      const [monthRes, recipientRes, typeRes] = await Promise.allSettled([monthPromise, recipientPromise, Promise.all(typePromises)]);
+      if (myToken !== overviewLiveToken) return; // superseded by a newer selection
+
+      panel.innerHTML = "";
+
+      let totalAmount = 0, totalTxns = 0, months = [];
+      if (monthRes.status === "fulfilled") {
+        months = monthRes.value.results.map(r => ({ label: liveMonthLabel(r.time_period.fiscal_year, r.time_period.month), amount: r.aggregated_amount }));
+        totalAmount = months.reduce((s, m) => s + m.amount, 0);
+      }
+      let types = [];
+      if (typeRes.status === "fulfilled") {
+        types = typeRes.value.filter(t => t.count > 0).sort((a, b) => b.amount - a.amount);
+        totalTxns = typeRes.value.reduce((s, t) => s + t.count, 0);
+      }
+      let topRecipient = "—";
+      if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) topRecipient = recipientRes.value.results[0].name;
+
+      const kpis = el("div", { class: "kpi-row" });
+      kpis.appendChild(kpiTile("Net Obligations (live)", monthRes.status === "fulfilled" ? fmtMoney(totalAmount) : "—"));
+      kpis.appendChild(kpiTile("Transactions (live)", typeRes.status === "fulfilled" ? fmtNum(totalTxns) : "—"));
+      kpis.appendChild(kpiTile("Top Recipient (live)", topRecipient));
+      panel.appendChild(kpis);
+      panel.appendChild(el("div", { class: "live-panel-note" }, [
+        "Gross Positive Obligations, Deobligations, Unique Awards, and Normalized Suppliers aren't shown for live years -- each would require pulling and summing every individual transaction rather than the aggregate totals loaded here. Use the full Live Lookup page's transaction register for that level of detail.",
+      ]));
+
+      const grid = el("div", { class: "grid-2" });
+      const monthPanel = el("div", { class: "panel" }, [el("h2", {}, ["Monthly Net Obligations (live)"]), el("div", { id: "live-chart-month", style: "height:264px;" })]);
+      const typePanel = el("div", { class: "panel" }, [el("h2", {}, ["Spend by Award Type (live)"]), el("div", { id: "live-chart-types", style: "height:264px;" })]);
+      grid.appendChild(monthPanel);
+      grid.appendChild(typePanel);
+      panel.appendChild(grid);
+
+      if (monthRes.status === "fulfilled") {
+        Plotly.newPlot("live-chart-month", [{
+          x: months.map(m => m.label), y: months.map(m => m.amount), type: "bar", marker: { color: BLUE },
+        }], darkLayout({ margin: { t: 10, r: 10, l: 60, b: 40 }, yaxis: darkAxis({ tickformat: "~s" }), xaxis: darkAxis({}) }),
+          { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+      } else {
+        document.getElementById("live-chart-month").innerHTML = `<div class="live-error">Couldn't load monthly trend: ${monthRes.reason}</div>`;
+      }
+      if (typeRes.status === "fulfilled") {
+        Plotly.newPlot("live-chart-types", [{
+          x: types.map(t => t.amount), y: types.map(t => t.name), type: "bar", orientation: "h", marker: { color: BLUE },
+        }], darkLayout({ margin: { t: 10, r: 10, l: 110, b: 40 }, xaxis: darkAxis({ tickformat: "~s" }), yaxis: darkAxis({}) }),
+          { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+      } else {
+        document.getElementById("live-chart-types").innerHTML = `<div class="live-error">Couldn't load award-type breakdown: ${typeRes.reason}</div>`;
+      }
+
+      const recipPanel = el("div", { class: "panel" }, [el("h2", {}, ["Top Recipients (live, raw names)"])]);
+      if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) {
+        const tbl = el("table", { class: "data-table" });
+        tbl.appendChild(el("thead", {}, [el("tr", {}, ["Recipient", "Amount"].map(h => el("th", {}, [h])))]));
+        const tbody = el("tbody");
+        recipientRes.value.results.forEach(r => tbody.appendChild(el("tr", {}, [el("td", {}, [r.name]), el("td", {}, [fmtMoney(r.amount)])])));
+        tbl.appendChild(tbody);
+        recipPanel.appendChild(el("div", { class: "table-wrap", style: "max-height:300px;" }, [tbl]));
+      } else {
+        recipPanel.appendChild(el("div", { class: "live-error" }, [`Couldn't load recipients: ${recipientRes.status === "rejected" ? recipientRes.reason : "no results"}`]));
+      }
+      panel.appendChild(recipPanel);
+    }
 
     const standoutSupplierCount = (DATA.standout_suppliers || []).length;
     const standoutAwardCount = (DATA.standout_awards || []).length;
@@ -535,8 +660,8 @@
       { x: trendX, y: trendSeries.map(r => r.net_obligations), type: "scatter", mode: "lines+markers", name: "Net Obligations", line: { color: NAVY, width: 3 } },
     ], darkLayout({
       barmode: "relative", margin: { t: 10, r: 10, l: 60, b: 40 },
-      yaxis: darkAxis({ title: "USD", tickformat: "~s" }), legend: { orientation: "h", y: -0.2 },
-    }), { displayModeBar: false, responsive: true });
+      xaxis: darkAxis({}), yaxis: darkAxis({ title: "USD", tickformat: "~s" }), legend: { orientation: "h", y: -0.2 },
+    }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
     // "Other or Unclassified" is the classifier's catch-all -- it isn't a
     // peer spend category, and when it's the largest slice it flattens
@@ -556,7 +681,7 @@
       marker: { color: BLUE },
     }], darkLayout({
       margin: { t: 10, r: 10, l: 230, b: 40 }, xaxis: darkAxis({ title: "Net Obligations (USD)", tickformat: "~s" }), yaxis: darkAxis({}),
-    }), { displayModeBar: false, responsive: true });
+    }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
     categoryChart.on("plotly_click", ev => {
       const name = ev.points && ev.points[0] && ev.points[0].y;
       if (name) jumpToCategory(name);
@@ -1054,7 +1179,7 @@
       Plotly.newPlot("chart-yoy-obligations", [
         { x: years, y: annual.map(r => r.net_obligations), type: "bar", name: "Net", marker: { color: NAVY } },
         { x: years, y: annual.map(r => r.gross_positive_obligations), type: "bar", name: "Gross Positive", marker: { color: BLUE } },
-      ], darkLayout({ barmode: "group", margin: { t: 10, r: 10, l: 60, b: 60 }, yaxis: darkAxis({ tickformat: "~s" }), xaxis: darkAxis({}), legend: { orientation: "h", y: -0.3 } }), { displayModeBar: false, responsive: true });
+      ], darkLayout({ barmode: "group", margin: { t: 10, r: 10, l: 60, b: 60 }, yaxis: darkAxis({ tickformat: "~s" }), xaxis: darkAxis({}), legend: { orientation: "h", y: -0.3 } }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       Plotly.newPlot("chart-yoy-deob", [
         { x: years, y: annual.map(r => r.deobligations), type: "bar", marker: { color: RED }, name: "Deobligations" },
@@ -1062,12 +1187,12 @@
       ], darkLayout({
         margin: { t: 10, r: 40, l: 60, b: 60 }, xaxis: darkAxis({}), yaxis: darkAxis({ title: "USD", tickformat: "~s" }),
         yaxis2: darkAxis({ title: "Rate %", overlaying: "y", side: "right" }), legend: { orientation: "h", y: -0.3 },
-      }), { displayModeBar: false, responsive: true });
+      }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       Plotly.newPlot("chart-yoy-counts", [
         { x: years, y: annual.map(r => r.unique_suppliers), type: "bar", name: "Unique Suppliers", marker: { color: BLUE } },
         { x: years, y: annual.map(r => r.unique_awards), type: "bar", name: "Unique Awards", marker: { color: NAVY } },
-      ], darkLayout({ barmode: "group", margin: { t: 10, r: 10, l: 50, b: 60 }, xaxis: darkAxis({}), yaxis: darkAxis({}), legend: { orientation: "h", y: -0.3 } }), { displayModeBar: false, responsive: true });
+      ], darkLayout({ barmode: "group", margin: { t: 10, r: 10, l: 50, b: 60 }, xaxis: darkAxis({}), yaxis: darkAxis({}), legend: { orientation: "h", y: -0.3 } }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       Plotly.newPlot("chart-yoy-concentration", [
         { x: conc.map(r => "FY" + r.fiscal_year), y: conc.map(r => r.hhi), type: "scatter", mode: "lines+markers", name: "HHI", line: { color: RED } },
@@ -1075,7 +1200,7 @@
       ], darkLayout({
         margin: { t: 10, r: 40, l: 50, b: 60 }, xaxis: darkAxis({}), yaxis: darkAxis({ title: "HHI" }),
         yaxis2: darkAxis({ title: "Top-5 Share %", overlaying: "y", side: "right" }), legend: { orientation: "h", y: -0.3 },
-      }), { displayModeBar: false, responsive: true });
+      }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       // category_breakdown has no per-year breakdown; categories_detail does.
       const catNames = Object.keys(DATA.categories_detail);
@@ -1086,7 +1211,7 @@
           type: "scatter", mode: "lines+markers", name: cat.length > 28 ? cat.slice(0, 26) + "…" : cat,
         };
       });
-      Plotly.newPlot("chart-yoy-category", traces, darkLayout({ margin: { t: 10, r: 10, l: 60, b: 60 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }), legend: { orientation: "h", y: -0.25 } }), { displayModeBar: false, responsive: true });
+      Plotly.newPlot("chart-yoy-category", traces, darkLayout({ margin: { t: 10, r: 10, l: 60, b: 60 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }), legend: { orientation: "h", y: -0.25 } }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       const tbl = document.getElementById("table-yoy");
       tbl.innerHTML = "";
@@ -1288,12 +1413,12 @@
 
       Plotly.newPlot("chart-supplier-annual", [{
         x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: BLUE },
-      }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true });
+      }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       Plotly.newPlot("chart-supplier-category", [{
         labels: d.category_mix.map(r => r.category), values: d.category_mix.map(r => Math.max(r.net_obligations, 0)), type: "pie", hole: 0.45,
         marker: { line: { color: "#ffffff", width: 2 } }, textfont: { color: "#0f1e33" },
-      }], darkLayout({ margin: { t: 10, r: 10, l: 10, b: 10 }, showlegend: true, legend: { font: { color: CHART_MUTED } } }), { displayModeBar: false, responsive: true });
+      }], darkLayout({ margin: { t: 10, r: 10, l: 10, b: 10 }, showlegend: true, legend: { font: { color: CHART_MUTED } } }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       const variants = document.getElementById("supplier-variants");
       d.raw_name_variants.forEach(v => variants.appendChild(el("span", { class: "chip" }, [v])));
@@ -1370,7 +1495,7 @@
 
       Plotly.newPlot("chart-category-annual", [{
         x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: BLUE },
-      }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true });
+      }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       const tbl = document.getElementById("table-category-suppliers");
       tbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations"].map(h => el("th", {}, [h])))]));
