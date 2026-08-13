@@ -209,6 +209,8 @@ table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
 }
 .finding-card h4 { margin: 0 0 4px 0; font-size: 13px; color: var(--navy); }
 .finding-card .metrics { color: var(--text-muted); font-size: 11.5px; margin-top: 6px; }
+.finding-card.clickable-card { cursor: pointer; }
+.finding-card.clickable-card:hover, .finding-card.clickable-card:focus-visible { border-left-color: var(--navy); background: rgba(34,211,238,0.1); }
 .small-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 .other-callout {
   margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 4px;
@@ -218,6 +220,12 @@ table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
 .other-callout strong { color: var(--navy); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .chip { background: #f1f5f9; border: 1px solid var(--border); border-radius: 3px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
+.chip-btn {
+  cursor: pointer; border: 1px solid var(--border); background: #f1f5f9; color: var(--navy-2);
+  border-radius: 3px; padding: 4px 12px; font-size: 11.5px; font-family: inherit;
+}
+.chip-btn[aria-pressed="true"] { background: rgba(34,211,238,0.15); color: var(--blue); border-color: var(--blue); font-weight: 700; }
+:root[data-theme="dark"] .chip-btn { background: rgba(255,255,255,0.05); }
 footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 11.5px; }
 
 .standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
@@ -454,7 +462,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       <div class="meta-bar" id="meta-bar"></div>
     </div>
     <div style="display:flex; gap:8px; flex:0 0 auto; align-self:flex-start;">
-      <a class="cmdk-trigger" href="nasa_live_dashboard.html" target="_blank" rel="noopener" title="Raw USAspending.gov figures for any fiscal year, fetched live in your browser -- opens in a new tab" style="text-decoration:none; display:inline-flex; align-items:center;">🛰 Live Lookup (any year)</a>
+      <button class="cmdk-trigger" id="live-lookup-trigger" title="Raw USAspending.gov figures for any fiscal year, fetched live in your browser">🛰 Live Lookup (any year)</button>
       <button class="cmdk-trigger" id="cmdk-trigger" title="Search suppliers, awards, categories, tabs">🔍 Search <kbd style="margin-left:4px;">Ctrl K</kbd></button>
       <button class="theme-toggle" id="theme-toggle-btn"></button>
     </div>
@@ -488,6 +496,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
   <button data-tab="explorer">Transaction Explorer</button>
   <button data-tab="supplier">Supplier Analysis</button>
   <button data-tab="categories">Categories &amp; Opportunities</button>
+  <button data-tab="live">🛰 Live Lookup</button>
 </nav>
 
 <main>
@@ -501,6 +510,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
     <div id="overview-live-notice"></div>
     <div id="overview-live-content" style="display:none;"></div>
     <div id="overview-embedded-content">
+    <div class="small-note" id="overview-kpi-scope-note" style="display:none;"></div>
     <div class="kpi-row" id="overview-kpis"></div>
     <div class="jump-cta" id="overview-jump-cta"></div>
     <div class="grid-2">
@@ -521,7 +531,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
             </select>
           </div>
         </div>
-        <div class="small-note">Click a row to jump to that supplier's full analysis.</div>
+        <div class="small-note">Click a row to jump to that supplier's full analysis. Always all-time across every embedded year, regardless of the Fiscal Year filter above.</div>
         <div class="table-wrap" style="max-height:300px;"><table class="data-table" id="table-top-suppliers"></table></div>
       </div>
       <div class="panel">
@@ -537,7 +547,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
             </select>
           </div>
         </div>
-        <div class="small-note">Ranked from up to the 300 largest-value awards in this dataset. Click a row to jump to it (Standouts tab if flagged there, otherwise the Transaction Explorer).</div>
+        <div class="small-note">Ranked from up to the 300 largest-value awards in this dataset. Click a row to jump to it (Standouts tab if flagged there, otherwise the Transaction Explorer). Always all-time across every embedded year, regardless of the Fiscal Year filter above.</div>
         <div class="table-wrap" style="max-height:300px;"><table class="data-table" id="table-top-contracts"></table></div>
       </div>
     </div>
@@ -689,6 +699,30 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       <div class="kpi-row" id="category-quality-kpis"></div>
       <h2>Low-Confidence Review Queue</h2>
       <div class="table-wrap"><table class="data-table" id="table-review-queue"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 7: LIVE LOOKUP ================= -->
+  <section id="tab-live" class="tab-panel">
+    <div class="small-note" style="margin-bottom:10px;" id="live-tab-intro">
+      Queries <a href="https://api.usaspending.gov" target="_blank" rel="noopener">api.usaspending.gov</a> directly from this page for any fiscal year (FY2008-present) -- no server, no embedded data, needs your browser's own internet connection. Raw figures only -- not run through this project's supplier-resolution or spend-classification pipeline.
+    </div>
+    <div class="controls">
+      <div><label>Fiscal Year</label><select id="live-fy"></select></div>
+      <div style="flex:1 1 240px;"><label>Search</label><input id="live-search" type="text" placeholder="recipient, award ID, description..."></div>
+    </div>
+    <div class="chip-row" id="live-type-chips"></div>
+    <div class="small-note" id="live-status"></div>
+    <div class="kpi-row" id="live-kpis"></div>
+    <div class="grid-2">
+      <div class="panel"><h2>Monthly Net Obligations (live)</h2><div id="livetab-chart-month" style="height:264px;"></div></div>
+      <div class="panel"><h2>Spend by Award Type (live)</h2><div id="livetab-chart-types" style="height:264px;"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Transaction Register (live)</h2>
+      <div class="small-note" id="live-register-count"></div>
+      <div class="table-wrap"><table class="data-table" id="live-register-table"></table></div>
+      <div class="controls" id="live-register-pagination" style="margin-top:10px; margin-bottom:0;"></div>
     </div>
   </section>
 

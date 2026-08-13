@@ -37,6 +37,53 @@
     const calYear = fm <= 3 ? parseInt(fy, 10) - 1 : parseInt(fy, 10);
     return names[calMonthIdx - 1] + " '" + String(calYear).slice(2);
   }
+  // Fetches everything a live year-summary needs (monthly trend, award-type
+  // breakdown, top recipients) in parallel. Shared by Executive Overview's
+  // inline live panel and the dedicated Live Lookup tab so the fetch logic
+  // exists in exactly one place.
+  async function fetchLiveSummary(fy) {
+    const filters = liveBaseFilters(fy);
+    const monthPromise = liveApiPost("/search/spending_over_time/", { group: "month", filters });
+    const recipientPromise = liveApiPost("/search/spending_by_category/recipient/", { category: "recipient", filters, limit: 20, page: 1 });
+    const typePromises = LIVE_AWARD_TYPE_CODES.map(code => Promise.all([
+      liveApiPost("/search/spending_over_time/", { group: "fiscal_year", filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
+      liveApiPost("/search/spending_by_transaction_count/", { filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
+    ]).then(([amtRes, countRes]) => ({
+      name: LIVE_AWARD_TYPE_NAMES[code],
+      amount: (amtRes.results || []).reduce((s, r) => s + (r.aggregated_amount || 0), 0),
+      count: countRes.results ? countRes.results.contracts : 0,
+    })));
+    const [monthRes, recipientRes, typeRes] = await Promise.allSettled([monthPromise, recipientPromise, Promise.all(typePromises)]);
+    return { monthRes, recipientRes, typeRes };
+  }
+  // Renders the monthly trend chart into `containerId` and returns the total
+  // net obligations summed across months (0 on failure, with an inline error).
+  function renderLiveMonthChart(containerId, monthRes) {
+    if (monthRes.status !== "fulfilled") {
+      document.getElementById(containerId).innerHTML = `<div class="live-error">Couldn't load monthly trend: ${monthRes.reason}</div>`;
+      return 0;
+    }
+    const months = monthRes.value.results.map(r => ({ label: liveMonthLabel(r.time_period.fiscal_year, r.time_period.month), amount: r.aggregated_amount }));
+    Plotly.newPlot(containerId, [{
+      x: months.map(m => m.label), y: months.map(m => m.amount), type: "bar", marker: { color: BLUE },
+    }], darkLayout({ margin: { t: 10, r: 10, l: 60, b: 40 }, yaxis: darkAxis({ tickformat: "~s" }), xaxis: darkAxis({}) }),
+      { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+    return months.reduce((s, m) => s + m.amount, 0);
+  }
+  // Renders the award-type breakdown chart into `containerId` and returns the
+  // total transaction count across types (0 on failure, with an inline error).
+  function renderLiveTypeChart(containerId, typeRes) {
+    if (typeRes.status !== "fulfilled") {
+      document.getElementById(containerId).innerHTML = `<div class="live-error">Couldn't load award-type breakdown: ${typeRes.reason}</div>`;
+      return 0;
+    }
+    const types = typeRes.value.filter(t => t.count > 0).sort((a, b) => b.amount - a.amount);
+    Plotly.newPlot(containerId, [{
+      x: types.map(t => t.amount), y: types.map(t => t.name), type: "bar", orientation: "h", marker: { color: BLUE },
+    }], darkLayout({ margin: { t: 10, r: 10, l: 110, b: 40 }, xaxis: darkAxis({ tickformat: "~s" }), yaxis: darkAxis({}) }),
+      { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+    return typeRes.value.reduce((s, t) => s + t.count, 0);
+  }
   // Shared theme base merged into every Plotly layout: transparent canvas
   // (so the panel background shows through) plus muted axis/legend text so
   // charts match the surrounding mission-control theme instead of Plotly's
@@ -410,6 +457,26 @@
     document.getElementById("tab-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // Jumps to the in-dashboard Live Lookup tab, optionally pre-selecting a
+  // fiscal year. Kept as one function so every "open Live Lookup for FYxxxx"
+  // link in the dashboard goes through the same path -- no separate file,
+  // no risk of it going missing if this HTML file gets shared on its own.
+  // Set by renderLiveLookupTab() once the tab is wired up; calling it is how
+  // every jump-in triggers a (re)load for a specific year without relying on
+  // dispatched DOM events to land in the right order.
+  let liveLookupLoadFn = null;
+  // Set inside renderOverview() once drawEmbeddedOverview() exists, so the
+  // Fiscal Year selector's change handler (defined earlier in the same
+  // function, before the draw function itself) can call it.
+  let liveDrawEmbeddedOverviewFn = null;
+  function jumpToLiveLookup(fy) {
+    switchTab("live");
+    const sel = document.getElementById("live-fy");
+    if (fy && sel) sel.value = String(fy);
+    if (liveLookupLoadFn) liveLookupLoadFn();
+    document.getElementById("tab-live").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   // `drilldown` is a zero-arg function returning { title, formula, note,
   // columns, rows } -- called lazily on click/Enter so building the
   // explanation never costs anything unless someone actually opens it.
@@ -438,12 +505,15 @@
       ]));
     }
 
-    // Fiscal-year picker. Embedded years render the normal, fully-analyzed
-    // Overview below (unchanged). Any other year live-fetches a raw summary
-    // from api.usaspending.gov, right here in this tab -- no separate page.
+    // Fiscal-year picker. "All Years" (default) and any individual embedded
+    // year redraw the KPIs/charts below from the embedded payload -- no
+    // network call. Any other year live-fetches a raw summary from
+    // api.usaspending.gov, right here in this tab -- no separate page.
     const overviewFYSel = document.getElementById("overview-fy");
     const embeddedFYs = A.annual.map(r => r.fiscal_year);
+    overviewFYSel.appendChild(el("option", { value: "all" }, [`All Years (${embeddedFYs.map(y => "FY" + y).join(", ")})`]));
     embeddedFYs.forEach(fy => overviewFYSel.appendChild(el("option", { value: fy }, ["FY" + fy + " (embedded)"])));
+    overviewFYSel.value = "all";
     const nowDate = new Date();
     const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
     const embeddedFYSet = new Set(embeddedFYs.map(String));
@@ -464,9 +534,9 @@
         const fyNum = parseInt(v.slice(5), 10);
         const calloutBox = el("div", { class: "other-callout" }, [
           `🛰 Showing live raw USAspending.gov figures for FY${fyNum} below -- not run through this project's supplier-resolution or spend-classification pipeline (that only exists for ${embeddedFYs.map(y => "FY" + y).join(", ")}). `,
-          el("strong", {}, ["Open the full Live Lookup page"]), " for a searchable transaction register on this year →",
+          el("strong", {}, ["Open the full Live Lookup tab"]), " for a searchable transaction register on this year →",
         ]);
-        calloutBox.addEventListener("click", () => window.open(`nasa_live_dashboard.html?fy=${fyNum}`, "_blank", "noopener"));
+        calloutBox.addEventListener("click", () => jumpToLiveLookup(fyNum));
         notice.appendChild(calloutBox);
         embeddedContent.style.display = "none";
         liveContent.style.display = "";
@@ -475,6 +545,7 @@
         overviewLiveToken++; // invalidate any in-flight live fetch
         embeddedContent.style.display = "";
         liveContent.style.display = "none";
+        if (liveDrawEmbeddedOverviewFn) liveDrawEmbeddedOverviewFn(v === "all" ? null : parseInt(v, 10));
       }
     });
 
@@ -484,68 +555,40 @@
       panel.appendChild(el("div", { class: "small-note" }, [`Loading live USAspending.gov data for FY${fy}…`]));
       panel.appendChild(el("div", { class: "live-loading-bar" }));
 
-      const filters = liveBaseFilters(fy);
-      const monthPromise = liveApiPost("/search/spending_over_time/", { group: "month", filters });
-      const recipientPromise = liveApiPost("/search/spending_by_category/recipient/", { category: "recipient", filters, limit: 20, page: 1 });
-      const typePromises = LIVE_AWARD_TYPE_CODES.map(code => Promise.all([
-        liveApiPost("/search/spending_over_time/", { group: "fiscal_year", filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
-        liveApiPost("/search/spending_by_transaction_count/", { filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
-      ]).then(([amtRes, countRes]) => ({
-        name: LIVE_AWARD_TYPE_NAMES[code],
-        amount: (amtRes.results || []).reduce((s, r) => s + (r.aggregated_amount || 0), 0),
-        count: countRes.results ? countRes.results.contracts : 0,
-      })));
-
-      const [monthRes, recipientRes, typeRes] = await Promise.allSettled([monthPromise, recipientPromise, Promise.all(typePromises)]);
+      const { monthRes, recipientRes, typeRes } = await fetchLiveSummary(fy);
       if (myToken !== overviewLiveToken) return; // superseded by a newer selection
 
       panel.innerHTML = "";
 
-      let totalAmount = 0, totalTxns = 0, months = [];
-      if (monthRes.status === "fulfilled") {
-        months = monthRes.value.results.map(r => ({ label: liveMonthLabel(r.time_period.fiscal_year, r.time_period.month), amount: r.aggregated_amount }));
-        totalAmount = months.reduce((s, m) => s + m.amount, 0);
-      }
-      let types = [];
-      if (typeRes.status === "fulfilled") {
-        types = typeRes.value.filter(t => t.count > 0).sort((a, b) => b.amount - a.amount);
-        totalTxns = typeRes.value.reduce((s, t) => s + t.count, 0);
-      }
       let topRecipient = "—";
       if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) topRecipient = recipientRes.value.results[0].name;
 
       const kpis = el("div", { class: "kpi-row" });
-      kpis.appendChild(kpiTile("Net Obligations (live)", monthRes.status === "fulfilled" ? fmtMoney(totalAmount) : "—"));
-      kpis.appendChild(kpiTile("Transactions (live)", typeRes.status === "fulfilled" ? fmtNum(totalTxns) : "—"));
+      const monthPlaceholder = el("div", { id: "live-chart-month", style: "height:264px;" });
+      const typePlaceholder = el("div", { id: "live-chart-types", style: "height:264px;" });
+      const netTile = kpiTile("Net Obligations (live)", "—");
+      const txnTile = kpiTile("Transactions (live)", "—");
+      kpis.appendChild(netTile);
+      kpis.appendChild(txnTile);
       kpis.appendChild(kpiTile("Top Recipient (live)", topRecipient));
       panel.appendChild(kpis);
-      panel.appendChild(el("div", { class: "live-panel-note" }, [
-        "Gross Positive Obligations, Deobligations, Unique Awards, and Normalized Suppliers aren't shown for live years -- each would require pulling and summing every individual transaction rather than the aggregate totals loaded here. Use the full Live Lookup page's transaction register for that level of detail.",
-      ]));
+      const detailLink = el("div", { class: "live-panel-note" }, [
+        "Gross Positive Obligations, Deobligations, Unique Awards, and Normalized Suppliers aren't shown for live years -- each would require pulling and summing every individual transaction rather than the aggregate totals loaded here. ",
+        el("strong", {}, ["Open the full Live Lookup tab"]), " for a searchable transaction register with that level of detail.",
+      ]);
+      detailLink.style.cursor = "pointer";
+      detailLink.addEventListener("click", () => jumpToLiveLookup(fy));
+      panel.appendChild(detailLink);
 
       const grid = el("div", { class: "grid-2" });
-      const monthPanel = el("div", { class: "panel" }, [el("h2", {}, ["Monthly Net Obligations (live)"]), el("div", { id: "live-chart-month", style: "height:264px;" })]);
-      const typePanel = el("div", { class: "panel" }, [el("h2", {}, ["Spend by Award Type (live)"]), el("div", { id: "live-chart-types", style: "height:264px;" })]);
-      grid.appendChild(monthPanel);
-      grid.appendChild(typePanel);
+      grid.appendChild(el("div", { class: "panel" }, [el("h2", {}, ["Monthly Net Obligations (live)"]), monthPlaceholder]));
+      grid.appendChild(el("div", { class: "panel" }, [el("h2", {}, ["Spend by Award Type (live)"]), typePlaceholder]));
       panel.appendChild(grid);
 
-      if (monthRes.status === "fulfilled") {
-        Plotly.newPlot("live-chart-month", [{
-          x: months.map(m => m.label), y: months.map(m => m.amount), type: "bar", marker: { color: BLUE },
-        }], darkLayout({ margin: { t: 10, r: 10, l: 60, b: 40 }, yaxis: darkAxis({ tickformat: "~s" }), xaxis: darkAxis({}) }),
-          { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
-      } else {
-        document.getElementById("live-chart-month").innerHTML = `<div class="live-error">Couldn't load monthly trend: ${monthRes.reason}</div>`;
-      }
-      if (typeRes.status === "fulfilled") {
-        Plotly.newPlot("live-chart-types", [{
-          x: types.map(t => t.amount), y: types.map(t => t.name), type: "bar", orientation: "h", marker: { color: BLUE },
-        }], darkLayout({ margin: { t: 10, r: 10, l: 110, b: 40 }, xaxis: darkAxis({ tickformat: "~s" }), yaxis: darkAxis({}) }),
-          { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
-      } else {
-        document.getElementById("live-chart-types").innerHTML = `<div class="live-error">Couldn't load award-type breakdown: ${typeRes.reason}</div>`;
-      }
+      const totalAmount = renderLiveMonthChart("live-chart-month", monthRes);
+      const totalTxns = renderLiveTypeChart("live-chart-types", typeRes);
+      netTile.querySelector(".value").textContent = monthRes.status === "fulfilled" ? fmtMoney(totalAmount) : "—";
+      txnTile.querySelector(".value").textContent = typeRes.status === "fulfilled" ? fmtNum(totalTxns) : "—";
 
       const recipPanel = el("div", { class: "panel" }, [el("h2", {}, ["Top Recipients (live, raw names)"])]);
       if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) {
@@ -573,132 +616,166 @@
       cta.appendChild(ctaBtn);
     }
 
-    const t = A.totals;
-    const kpis = document.getElementById("overview-kpis");
-    const KD = DATA.kpi_drilldowns || { top_gross_transactions: [], top_deobligation_transactions: [] };
-    const txnRow = r => [r.action_date, r.supplier, r.award_id, fmtMoney(r.amount)];
+    // KPIs and both charts redraw for whichever timespan is selected above
+    // (an embedded fiscal year, or "All Years"); Top Suppliers/Contracts and
+    // Findings stay all-time regardless (noted in their own headers below --
+    // there's no per-year breakdown of those two computed server-side yet).
+    function drawEmbeddedOverview(scopeFY) {
+      const yearRow = scopeFY ? A.annual.find(r => r.fiscal_year === scopeFY) : null;
+      const t = yearRow ? {
+        net_obligations: yearRow.net_obligations, gross_positive_obligations: yearRow.gross_positive_obligations,
+        deobligations: yearRow.deobligations, deobligation_rate: yearRow.deobligation_rate,
+        transaction_count: yearRow.transaction_count, unique_awards: yearRow.unique_awards, unique_suppliers: yearRow.unique_suppliers,
+      } : A.totals;
+      const KD = DATA.kpi_drilldowns || { top_gross_transactions: [], top_deobligation_transactions: [] };
+      const txnRow = r => [r.action_date, r.supplier, r.award_id, fmtMoney(r.amount)];
 
-    kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0, () => ({
-      title: "Net Obligations",
-      formula: `Sum of every transaction's signed obligation amount across all ${fmtNum(t.transaction_count)} transactions: `
-        + `${fmtMoney(t.gross_positive_obligations)} gross positive − ${fmtMoney(t.deobligations)} deobligated = ${fmtMoney(t.net_obligations)} net.`,
-      note: `Showing the ${KD.top_gross_transactions.length} largest positive and ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount -- not an exhaustive list of all ${fmtNum(t.transaction_count)} transactions.`,
-      columns: ["Date", "Supplier", "Award", "Signed Amount"],
-      rows: [...KD.top_gross_transactions, ...KD.top_deobligation_transactions]
-        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-        .map(txnRow),
-    })));
-    kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney, false, () => ({
-      title: "Gross Positive Obligations",
-      formula: `Sum of the signed obligation amount for every transaction with a positive value (new obligations and upward modifications), across ${fmtNum(t.transaction_count)} transactions.`,
-      note: `Showing the ${KD.top_gross_transactions.length} largest positive transactions, ranked by dollar amount.`,
-      columns: ["Date", "Supplier", "Award", "Amount"],
-      rows: KD.top_gross_transactions.map(txnRow),
-    })));
-    kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney, false, () => ({
-      title: "Deobligations",
-      formula: `Sum of the absolute value of every transaction with a negative signed amount (downward contract modifications) -- equal to ${fmtPct(t.deobligation_rate)} of gross positive obligations.`,
-      note: `Showing the ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount.`,
-      columns: ["Date", "Supplier", "Award", "Amount"],
-      rows: KD.top_deobligation_transactions.map(txnRow),
-    })));
-    kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum, false, () => {
-      const posCount = t.transaction_count - t.negative_transaction_count - t.zero_dollar_action_count;
-      return {
-        title: "Transactions",
-        formula: "Count of every transaction row in this dataset, regardless of direction or size.",
-        columns: ["Type", "Count"],
-        rows: [
-          ["Positive obligations (new / increased)", fmtNum(posCount)],
-          ["Deobligations (decreased)", fmtNum(t.negative_transaction_count)],
-          ["Zero-dollar actions", fmtNum(t.zero_dollar_action_count)],
-        ],
-      };
-    }));
-    kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum, false, () => {
-      const top = (DATA.awards_summary || []).slice().sort((a, b) => b.net_obligations - a.net_obligations).slice(0, 10);
-      return {
-        title: "Unique Awards",
-        formula: "Count of distinct Award ID (PIID) values across all transactions -- each award can span many transactions (new obligations, modifications, deobligations) over time.",
-        note: `Showing the top ${top.length} of ${fmtNum(t.unique_awards)} awards by net obligations.`,
-        columns: ["Award", "Supplier", "Net Obligations", "Transactions"],
-        rows: top.map(a => [a.award_id, a.supplier, fmtMoney(a.net_obligations), fmtNum(a.transaction_count)]),
-      };
-    }));
-    kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum, false, () => {
-      const top = Object.entries(DATA.suppliers_detail || {})
-        .sort((a, b) => b[1].total_net_obligations - a[1].total_net_obligations)
-        .slice(0, 10);
-      return {
-        title: "Normalized Suppliers",
-        formula: "Count of distinct suppliers after name-variant resolution -- raw recipient name strings (punctuation, DBA names, store-number suffixes, etc.) that resolve to the same vendor are merged into one normalized_supplier before counting.",
-        note: `Showing the top ${top.length} of ${fmtNum(t.unique_suppliers)} normalized suppliers by net obligations.`,
-        columns: ["Supplier", "Net Obligations", "Transactions"],
-        rows: top.map(([name, d]) => [name, fmtMoney(d.total_net_obligations), fmtNum(d.transaction_count)]),
-      };
-    }));
+      const kpis = document.getElementById("overview-kpis");
+      kpis.innerHTML = "";
+      const scopeNote = document.getElementById("overview-kpi-scope-note");
+      if (scopeNote) {
+        scopeNote.style.display = scopeFY ? "" : "none";
+        scopeNote.textContent = scopeFY
+          ? `Showing FY${scopeFY} only. Click-to-explain "HOW?" breakdowns are computed dataset-wide, so they're only offered in the "All Years" view.`
+          : "";
+      }
 
-    // A single- (or two-) fiscal-year dataset gives the annual trend chart
-    // too few points to show a trend at all, so fall back to monthly
-    // granularity -- same three series, finer time axis.
-    const trendTitle = document.getElementById("trend-chart-title");
-    const trendNote = document.getElementById("trend-chart-note");
-    const useMonthly = A.annual.length < 2 && (A.monthly || []).length > 1;
-    const trendSeries = useMonthly ? A.monthly : A.annual;
-    const trendX = useMonthly ? trendSeries.map(r => r.period) : trendSeries.map(r => "FY" + r.fiscal_year);
-    if (useMonthly) {
-      trendTitle.textContent = "Monthly Obligation Trend";
-      trendNote.textContent = "This dataset spans a single fiscal year, so monthly granularity is shown instead of a flat one-bar annual chart.";
-      trendNote.style.display = "";
-    } else {
-      trendTitle.textContent = "Annual Obligation Trend";
-      trendNote.style.display = "none";
+      kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0, scopeFY ? undefined : () => ({
+        title: "Net Obligations",
+        formula: `Sum of every transaction's signed obligation amount across all ${fmtNum(t.transaction_count)} transactions: `
+          + `${fmtMoney(t.gross_positive_obligations)} gross positive − ${fmtMoney(t.deobligations)} deobligated = ${fmtMoney(t.net_obligations)} net.`,
+        note: `Showing the ${KD.top_gross_transactions.length} largest positive and ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount -- not an exhaustive list of all ${fmtNum(t.transaction_count)} transactions.`,
+        columns: ["Date", "Supplier", "Award", "Signed Amount"],
+        rows: [...KD.top_gross_transactions, ...KD.top_deobligation_transactions]
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .map(txnRow),
+      })));
+      kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney, false, scopeFY ? undefined : () => ({
+        title: "Gross Positive Obligations",
+        formula: `Sum of the signed obligation amount for every transaction with a positive value (new obligations and upward modifications), across ${fmtNum(t.transaction_count)} transactions.`,
+        note: `Showing the ${KD.top_gross_transactions.length} largest positive transactions, ranked by dollar amount.`,
+        columns: ["Date", "Supplier", "Award", "Amount"],
+        rows: KD.top_gross_transactions.map(txnRow),
+      })));
+      kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney, false, scopeFY ? undefined : () => ({
+        title: "Deobligations",
+        formula: `Sum of the absolute value of every transaction with a negative signed amount (downward contract modifications) -- equal to ${fmtPct(t.deobligation_rate)} of gross positive obligations.`,
+        note: `Showing the ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount.`,
+        columns: ["Date", "Supplier", "Award", "Amount"],
+        rows: KD.top_deobligation_transactions.map(txnRow),
+      })));
+      kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum, false, scopeFY ? undefined : () => {
+        const posCount = t.transaction_count - t.negative_transaction_count - t.zero_dollar_action_count;
+        return {
+          title: "Transactions",
+          formula: "Count of every transaction row in this dataset, regardless of direction or size.",
+          columns: ["Type", "Count"],
+          rows: [
+            ["Positive obligations (new / increased)", fmtNum(posCount)],
+            ["Deobligations (decreased)", fmtNum(t.negative_transaction_count)],
+            ["Zero-dollar actions", fmtNum(t.zero_dollar_action_count)],
+          ],
+        };
+      }));
+      kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum, false, scopeFY ? undefined : () => {
+        const top = (DATA.awards_summary || []).slice().sort((a, b) => b.net_obligations - a.net_obligations).slice(0, 10);
+        return {
+          title: "Unique Awards",
+          formula: "Count of distinct Award ID (PIID) values across all transactions -- each award can span many transactions (new obligations, modifications, deobligations) over time.",
+          note: `Showing the top ${top.length} of ${fmtNum(t.unique_awards)} awards by net obligations.`,
+          columns: ["Award", "Supplier", "Net Obligations", "Transactions"],
+          rows: top.map(a => [a.award_id, a.supplier, fmtMoney(a.net_obligations), fmtNum(a.transaction_count)]),
+        };
+      }));
+      kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum, false, scopeFY ? undefined : () => {
+        const top = Object.entries(DATA.suppliers_detail || {})
+          .sort((a, b) => b[1].total_net_obligations - a[1].total_net_obligations)
+          .slice(0, 10);
+        return {
+          title: "Normalized Suppliers",
+          formula: "Count of distinct suppliers after name-variant resolution -- raw recipient name strings (punctuation, DBA names, store-number suffixes, etc.) that resolve to the same vendor are merged into one normalized_supplier before counting.",
+          note: `Showing the top ${top.length} of ${fmtNum(t.unique_suppliers)} normalized suppliers by net obligations.`,
+          columns: ["Supplier", "Net Obligations", "Transactions"],
+          rows: top.map(([name, d]) => [name, fmtMoney(d.total_net_obligations), fmtNum(d.transaction_count)]),
+        };
+      }));
+
+      // A single- (or two-) fiscal-year dataset gives the annual trend chart
+      // too few points to show a trend at all, so fall back to monthly
+      // granularity -- same three series, finer time axis. Otherwise the
+      // chart always shows every embedded year (its whole point is
+      // comparing years), with the selected year's bars highlighted rather
+      // than the chart being collapsed down to a single bar.
+      const trendTitle = document.getElementById("trend-chart-title");
+      const trendNote = document.getElementById("trend-chart-note");
+      const useMonthly = A.annual.length < 2 && (A.monthly || []).length > 1;
+      const trendSeries = useMonthly ? A.monthly : A.annual;
+      const trendX = useMonthly ? trendSeries.map(r => r.period) : trendSeries.map(r => "FY" + r.fiscal_year);
+      if (useMonthly) {
+        trendTitle.textContent = "Monthly Obligation Trend";
+        trendNote.textContent = "This dataset spans a single fiscal year, so monthly granularity is shown instead of a flat one-bar annual chart.";
+        trendNote.style.display = "";
+      } else {
+        trendTitle.textContent = scopeFY ? `Annual Obligation Trend (FY${scopeFY} highlighted)` : "Annual Obligation Trend";
+        trendNote.style.display = "none";
+      }
+      const highlightIdx = (scopeFY && !useMonthly) ? trendSeries.findIndex(r => r.fiscal_year === scopeFY) : -1;
+      const barColor = base => highlightIdx === -1 ? base : trendSeries.map((r, i) => i === highlightIdx ? base : "rgba(148,163,184,0.35)");
+      Plotly.newPlot("chart-annual-trend", [
+        { x: trendX, y: trendSeries.map(r => r.gross_positive_obligations), type: "bar", name: "Gross Obligations", marker: { color: barColor(BLUE) } },
+        { x: trendX, y: trendSeries.map(r => -r.deobligations), type: "bar", name: "Deobligations", marker: { color: barColor(RED) } },
+        { x: trendX, y: trendSeries.map(r => r.net_obligations), type: "scatter", mode: "lines+markers", name: "Net Obligations", line: { color: NAVY, width: 3 } },
+      ], darkLayout({
+        barmode: "relative", margin: { t: 10, r: 10, l: 60, b: 40 },
+        xaxis: darkAxis({}), yaxis: darkAxis({ title: "USD", tickformat: "~s" }), legend: { orientation: "h", y: -0.2 },
+      }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+
+      // "Other or Unclassified" is the classifier's catch-all -- it isn't a
+      // peer spend category, and when it's the largest slice it flattens
+      // every real category into an unreadable sliver. Pull it out of the
+      // ranked chart and surface it as a separate review-queue callout.
+      const OTHER_CATEGORY = "Other or Unclassified";
+      const cats = {};
+      if (scopeFY) {
+        Object.keys(DATA.categories_detail).forEach(cat => {
+          const row = DATA.categories_detail[cat].annual.find(r => r.fiscal_year === scopeFY);
+          cats[cat] = row ? row.net_obligations : 0;
+        });
+      } else {
+        A.category_breakdown.forEach(r => { cats[r.category] = (cats[r.category] || 0) + r.net_obligations; });
+      }
+      const otherTotal = cats[OTHER_CATEGORY] || 0;
+      const totalAll = Object.values(cats).reduce((a, b) => a + b, 0);
+      delete cats[OTHER_CATEGORY];
+      const catNames = Object.keys(cats).sort((a, b) => cats[b] - cats[a]);
+      const categoryChart = document.getElementById("chart-category-comp");
+      Plotly.newPlot(categoryChart, [{
+        x: catNames.map(c => cats[c]), y: catNames, type: "bar", orientation: "h",
+        marker: { color: BLUE },
+      }], darkLayout({
+        margin: { t: 10, r: 10, l: 230, b: 40 }, xaxis: darkAxis({ title: "Net Obligations (USD)", tickformat: "~s" }), yaxis: darkAxis({}),
+      }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+      categoryChart.on("plotly_click", ev => {
+        const name = ev.points && ev.points[0] && ev.points[0].y;
+        if (name) jumpToCategory(name);
+      });
+      categoryChart.style.cursor = "pointer";
+
+      const otherCallout = document.getElementById("category-other-callout");
+      otherCallout.innerHTML = "";
+      if (otherTotal > 0 && totalAll > 0) {
+        const pct = (otherTotal / totalAll * 100).toFixed(1);
+        const box = el("div", { class: "other-callout" }, [
+          "📋 ", el("strong", {}, [fmtMoney(otherTotal)]), ` (${pct}% of net obligations${scopeFY ? ` in FY${scopeFY}` : ""}) fell into "${OTHER_CATEGORY}" -- `,
+          "not shown above since it's a classification review queue, not a real spend category. Click to jump to it.",
+        ]);
+        box.addEventListener("click", () => jumpToCategory(OTHER_CATEGORY));
+        otherCallout.appendChild(box);
+      }
     }
-    Plotly.newPlot("chart-annual-trend", [
-      { x: trendX, y: trendSeries.map(r => r.gross_positive_obligations), type: "bar", name: "Gross Obligations", marker: { color: BLUE } },
-      { x: trendX, y: trendSeries.map(r => -r.deobligations), type: "bar", name: "Deobligations", marker: { color: RED } },
-      { x: trendX, y: trendSeries.map(r => r.net_obligations), type: "scatter", mode: "lines+markers", name: "Net Obligations", line: { color: NAVY, width: 3 } },
-    ], darkLayout({
-      barmode: "relative", margin: { t: 10, r: 10, l: 60, b: 40 },
-      xaxis: darkAxis({}), yaxis: darkAxis({ title: "USD", tickformat: "~s" }), legend: { orientation: "h", y: -0.2 },
-    }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
-    // "Other or Unclassified" is the classifier's catch-all -- it isn't a
-    // peer spend category, and when it's the largest slice it flattens
-    // every real category into an unreadable sliver. Pull it out of the
-    // ranked chart and surface it as a separate review-queue callout.
-    const OTHER_CATEGORY = "Other or Unclassified";
-    const cats = A.category_breakdown.slice().reduce((acc, r) => {
-      acc[r.category] = (acc[r.category] || 0) + r.net_obligations; return acc;
-    }, {});
-    const otherTotal = cats[OTHER_CATEGORY] || 0;
-    const totalAll = Object.values(cats).reduce((a, b) => a + b, 0);
-    delete cats[OTHER_CATEGORY];
-    const catNames = Object.keys(cats).sort((a, b) => cats[b] - cats[a]);
-    const categoryChart = document.getElementById("chart-category-comp");
-    Plotly.newPlot(categoryChart, [{
-      x: catNames.map(c => cats[c]), y: catNames, type: "bar", orientation: "h",
-      marker: { color: BLUE },
-    }], darkLayout({
-      margin: { t: 10, r: 10, l: 230, b: 40 }, xaxis: darkAxis({ title: "Net Obligations (USD)", tickformat: "~s" }), yaxis: darkAxis({}),
-    }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
-    categoryChart.on("plotly_click", ev => {
-      const name = ev.points && ev.points[0] && ev.points[0].y;
-      if (name) jumpToCategory(name);
-    });
-
-    const otherCallout = document.getElementById("category-other-callout");
-    otherCallout.innerHTML = "";
-    if (otherTotal > 0 && totalAll > 0) {
-      const pct = (otherTotal / totalAll * 100).toFixed(1);
-      const box = el("div", { class: "other-callout" }, [
-        "📋 ", el("strong", {}, [fmtMoney(otherTotal)]), ` (${pct}% of net obligations) fell into "${OTHER_CATEGORY}" -- `,
-        "not shown above since it's a classification review queue, not a real spend category. Click to jump to it.",
-      ]);
-      box.addEventListener("click", () => jumpToCategory(OTHER_CATEGORY));
-      otherCallout.appendChild(box);
-    }
-    categoryChart.style.cursor = "pointer";
+    drawEmbeddedOverview(null);
+    liveDrawEmbeddedOverviewFn = drawEmbeddedOverview;
 
     drawTopSuppliers();
     drawTopContracts();
@@ -799,17 +876,74 @@
     contractsTbl.appendChild(ctbody);
   }
 
+  // A finding "jumps" to the category/supplier it's actually about when one
+  // of its affected_entities resolves to a real entry in this dataset.
+  function findingJumpTarget(f) {
+    for (const name of (f.affected_entities || [])) {
+      if (DATA.categories_detail && DATA.categories_detail[name]) return { type: "category", name };
+      if (DATA.suppliers_detail && DATA.suppliers_detail[name]) return { type: "supplier", name };
+    }
+    return null;
+  }
+
+  // Clicking a finding pops up its full detail (title/description/every
+  // supporting metric, not just what's already visible on the card) plus,
+  // when the finding is actually about a known category or supplier, a
+  // one-click jump straight to that entity's own tab.
+  function openFindingModal(f) {
+    const target = findingJumpTarget(f);
+    document.getElementById("kpi-modal-title").textContent = f.title;
+    document.getElementById("kpi-modal-formula").textContent = f.description;
+    const noteEl = document.getElementById("kpi-modal-note");
+    noteEl.textContent = target ? `This finding is about ${target.name} -- jump to its full analysis below.` : "";
+    noteEl.style.display = target ? "" : "none";
+
+    const wrap = document.getElementById("kpi-modal-table-wrap");
+    wrap.innerHTML = "";
+    const metrics = f.supporting_metrics || [];
+    if (metrics.length) {
+      const tbl = el("table", { class: "data-table" });
+      tbl.appendChild(el("thead", {}, [el("tr", {}, ["Supporting metric", "Value"].map(h => el("th", {}, [h])))]));
+      const tbody = el("tbody");
+      metrics.forEach(m => {
+        const eq = m.indexOf("=");
+        const [k, v] = eq === -1 ? [m, ""] : [m.slice(0, eq), m.slice(eq + 1)];
+        tbody.appendChild(el("tr", {}, [el("td", {}, [k]), el("td", {}, [v])]));
+      });
+      tbl.appendChild(tbody);
+      wrap.appendChild(tbl);
+    }
+    if (target) {
+      const jumpRow = el("div", { class: "controls", style: "margin-top:12px;" });
+      const jumpBtn = el("button", {}, [`Jump to ${target.name} →`]);
+      jumpBtn.addEventListener("click", () => {
+        document.getElementById("kpi-modal-overlay").classList.remove("open");
+        if (target.type === "category") jumpToCategory(target.name);
+        else jumpToSupplier(target.name);
+      });
+      jumpRow.appendChild(jumpBtn);
+      wrap.appendChild(jumpRow);
+    }
+    document.getElementById("kpi-modal-overlay").classList.add("open");
+  }
+
   function renderFindings(container, findings) {
     if (!findings || !findings.length) {
       container.appendChild(el("div", { class: "small-note" }, ["No grounded findings met the reporting threshold for this dataset."]));
       return;
     }
     findings.forEach(f => {
-      const card = el("div", { class: "finding-card" }, [
+      const target = findingJumpTarget(f);
+      const card = el("div", { class: "finding-card clickable-card" }, [
         el("h4", {}, [f.title]),
         el("div", {}, [f.description]),
         el("div", { class: "metrics" }, ["Supporting metrics: " + (f.supporting_metrics || []).join(", ")]),
       ]);
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.title = target ? `Click to see details and jump to ${target.name}` : "Click to see details";
+      card.addEventListener("click", () => openFindingModal(f));
+      card.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openFindingModal(f); } });
       container.appendChild(card);
     });
   }
@@ -1165,7 +1299,7 @@
           el("strong", {}, ["Open Live Lookup"]), " to browse raw obligations for that year instead →",
         ]);
         const targetFY = [fromV, toV].filter(isLiveFY)[0].slice(5);
-        box.addEventListener("click", () => window.open(`nasa_live_dashboard.html?fy=${targetFY}`, "_blank", "noopener"));
+        box.addEventListener("click", () => jumpToLiveLookup(parseInt(targetFY, 10)));
         notice.appendChild(box);
       }
       const fromNum = isLiveFY(fromV) ? -Infinity : parseInt(fromV, 10);
@@ -1310,7 +1444,7 @@
           `🛰 FY${fyNum} isn't part of this dashboard's precomputed analysis (embedded data covers ${[...embeddedFYs].map(y => "FY" + y).join(", ")} only -- no supplier resolution, classification, or review-status for other years). `,
           el("strong", {}, [`Open Live Lookup for FY${fyNum}`]), " to browse raw USAspending.gov transactions for that year instead →",
         ]);
-        box.addEventListener("click", () => window.open(`nasa_live_dashboard.html?fy=${fyNum}`, "_blank", "noopener"));
+        box.addEventListener("click", () => jumpToLiveLookup(parseInt(fyNum, 10)));
         liveNotice.appendChild(box);
         return [];
       }
@@ -1554,6 +1688,175 @@
     if (names.length) { sel.value = names[0]; draw(); }
   }
 
+  // ---------------- Tab 7: Live Lookup ----------------
+  // A live, in-dashboard equivalent of the standalone Live Lookup page --
+  // built directly into this file so it never depends on a sibling file
+  // being present (see README.md "Live Lookup mode"). Loads lazily: nothing
+  // fires until this tab is actually opened.
+  function renderLiveLookupTab() {
+    const fySel = document.getElementById("live-fy");
+    const nowDate = new Date();
+    const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
+    for (let fy = currentLiveFY; fy >= 2008; fy--) {
+      fySel.appendChild(el("option", { value: fy }, ["FY" + fy + (fy === currentLiveFY ? " (in progress)" : "")]));
+    }
+    fySel.value = String(currentLiveFY - 1); // default to the most recently completed fiscal year
+
+    let activeType = null;
+    let sortKey = "Action Date";
+    let sortDir = -1;
+    let page = 1;
+    let registerToken = 0;
+    let summaryToken = 0;
+
+    function renderTypeChips() {
+      const wrap = document.getElementById("live-type-chips");
+      wrap.innerHTML = "";
+      [["", "All"], ...LIVE_AWARD_TYPE_CODES.map(c => [c, LIVE_AWARD_TYPE_NAMES[c]])].forEach(([code, label]) => {
+        const pressed = activeType === (code || null);
+        const btn = el("button", { class: "chip-btn", "aria-pressed": String(pressed) }, [label]);
+        btn.addEventListener("click", () => {
+          activeType = code || null;
+          page = 1;
+          renderTypeChips();
+          loadRegister();
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    function registerFilters() {
+      const q = document.getElementById("live-search").value.trim();
+      const extra = {};
+      if (activeType) extra.award_type_codes = [activeType];
+      if (q) extra.keywords = [q];
+      return liveBaseFilters(parseInt(fySel.value, 10), extra);
+    }
+
+    const REGISTER_COLS = [["Action Date", "Date"], ["Recipient Name", "Recipient"], [null, "Award ID"], [null, "Type"], ["Transaction Amount", "Amount"], [null, "Description"]];
+
+    async function loadRegister() {
+      const myToken = ++registerToken;
+      const filters = registerFilters();
+      const tbl = document.getElementById("live-register-table");
+      tbl.innerHTML = "";
+      tbl.appendChild(el("thead", {}, [el("tr", {}, REGISTER_COLS.map(([key, label]) => {
+        if (!key) return el("th", {}, [label]);
+        const th = el("th", { class: "col-sortable" }, [label]);
+        if (sortKey === key) th.classList.add(sortDir === 1 ? "sort-asc" : "sort-desc");
+        th.addEventListener("click", () => {
+          sortDir = sortKey === key ? -sortDir : (key === "Action Date" || key === "Transaction Amount" ? -1 : 1);
+          sortKey = key;
+          page = 1;
+          loadRegister();
+        });
+        return th;
+      }))]));
+      tbl.appendChild(el("tbody", {}, [el("tr", {}, [el("td", { colspan: REGISTER_COLS.length, class: "small-note" }, ["Loading…"])])]));
+      document.getElementById("live-register-pagination").innerHTML = "";
+
+      try {
+        const [countRes, rowsRes] = await Promise.all([
+          liveApiPost("/search/spending_by_transaction_count/", { filters }),
+          liveApiPost("/search/spending_by_transaction/", {
+            filters, fields: ["Award ID", "Mod", "Recipient Name", "Action Date", "Transaction Amount", "Award Type", "Transaction Description"],
+            page, limit: 50, sort: sortKey, order: sortDir === 1 ? "asc" : "desc",
+          }),
+        ]);
+        if (myToken !== registerToken) return;
+
+        const total = countRes.results ? countRes.results.contracts : 0;
+        const rows = rowsRes.results || [];
+        const totalPages = Math.max(1, Math.ceil(total / 50));
+        if (page > totalPages) { page = totalPages; return loadRegister(); }
+
+        document.getElementById("live-register-count").textContent =
+          `Showing ${rows.length ? ((page - 1) * 50 + 1) : 0}–${(page - 1) * 50 + rows.length} of ${fmtNum(total)} transactions`;
+
+        const tbody = el("tbody");
+        if (!rows.length) {
+          tbody.appendChild(el("tr", {}, [el("td", { colspan: REGISTER_COLS.length, class: "small-note" }, ["No transactions match these filters."])]));
+        }
+        rows.forEach(r => {
+          tbody.appendChild(el("tr", {}, [
+            el("td", {}, [r["Action Date"]]),
+            el("td", {}, [r["Recipient Name"]]),
+            el("td", { class: "code-text" }, [r["Award ID"] + (r["Mod"] ? " (mod " + r["Mod"] + ")" : "")]),
+            el("td", {}, [r["Award Type"] || ""]),
+            el("td", {}, [fmtMoney(r["Transaction Amount"])]),
+            el("td", {}, [(r["Transaction Description"] || "").slice(0, 200)]),
+          ]));
+        });
+        tbl.querySelector("tbody").replaceWith(tbody);
+
+        const pag = document.getElementById("live-register-pagination");
+        const prevBtn = el("button", { class: "secondary" }, ["Prev"]);
+        const nextBtn = el("button", { class: "secondary" }, ["Next"]);
+        if (page <= 1) prevBtn.disabled = true;
+        if (page >= totalPages) nextBtn.disabled = true;
+        prevBtn.addEventListener("click", () => { page--; loadRegister(); });
+        nextBtn.addEventListener("click", () => { page++; loadRegister(); });
+        pag.appendChild(prevBtn);
+        pag.appendChild(el("span", { class: "small-note" }, [`Page ${fmtNum(page)} of ${fmtNum(totalPages)}`]));
+        pag.appendChild(nextBtn);
+      } catch (err) {
+        if (myToken !== registerToken) return;
+        tbl.querySelector("tbody").replaceWith(el("tbody", {}, [el("tr", {}, [el("td", { colspan: REGISTER_COLS.length, class: "live-error" }, [`Couldn't load transactions: ${err.message}`])])]));
+      }
+    }
+
+    async function loadSummary(fy) {
+      const myToken = ++summaryToken;
+      document.getElementById("live-status").textContent = `Loading live summary for FY${fy}…`;
+      const kpis = document.getElementById("live-kpis");
+      kpis.innerHTML = "";
+      const netTile = kpiTile("Net Obligations (live)", "—");
+      const txnTile = kpiTile("Transactions (live)", "—");
+      const recipTile = kpiTile("Top Recipient (live)", "—");
+      kpis.appendChild(netTile);
+      kpis.appendChild(txnTile);
+      kpis.appendChild(recipTile);
+
+      const { monthRes, recipientRes, typeRes } = await fetchLiveSummary(fy);
+      if (myToken !== summaryToken) return;
+      document.getElementById("live-status").textContent = "";
+
+      const totalAmount = renderLiveMonthChart("livetab-chart-month", monthRes);
+      const totalTxns = renderLiveTypeChart("livetab-chart-types", typeRes);
+      netTile.querySelector(".value").textContent = monthRes.status === "fulfilled" ? fmtMoney(totalAmount) : "—";
+      txnTile.querySelector(".value").textContent = typeRes.status === "fulfilled" ? fmtNum(totalTxns) : "—";
+      if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) {
+        recipTile.querySelector(".value").textContent = recipientRes.value.results[0].name;
+      }
+    }
+
+    function loadYear() {
+      page = 1;
+      activeType = null;
+      document.getElementById("live-search").value = "";
+      renderTypeChips();
+      loadSummary(parseInt(fySel.value, 10));
+      loadRegister();
+    }
+
+    fySel.addEventListener("change", loadYear);
+    let liveSearchDebounce = null;
+    document.getElementById("live-search").addEventListener("input", () => {
+      clearTimeout(liveSearchDebounce);
+      liveSearchDebounce = setTimeout(() => { page = 1; loadRegister(); }, 400);
+    });
+
+    renderTypeChips();
+    liveLookupLoadFn = loadYear;
+
+    // Lazy: nothing is fetched until the tab is actually opened for the
+    // first time, whether by clicking it directly or via a jump-in link
+    // (jumpToLiveLookup calls liveLookupLoadFn() itself on every jump, so
+    // this only needs to cover the "clicked the tab button directly" path).
+    const liveTabBtn = document.querySelector('nav.tabs button[data-tab="live"]');
+    if (liveTabBtn) liveTabBtn.addEventListener("click", loadYear, { once: true });
+  }
+
   renderHeader();
   setupTabs();
   setupThemeToggle();
@@ -1569,4 +1872,7 @@
   renderExplorer();
   renderSupplierTab();
   renderCategoriesTab();
+  renderLiveLookupTab();
+  const liveLookupHeaderBtn = document.getElementById("live-lookup-trigger");
+  if (liveLookupHeaderBtn) liveLookupHeaderBtn.addEventListener("click", () => jumpToLiveLookup());
 })();
