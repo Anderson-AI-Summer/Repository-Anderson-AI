@@ -190,11 +190,38 @@ coverage, rather than only the most recent months (which is what a single
 flat cap on a most-recent-first sort would otherwise produce). Omitting
 `--limit` runs a fully uncapped refresh across the entire range.
 
-## Dashboard: branding and Standout Suppliers (added in v2)
+## Dashboard: branding, Standout Suppliers, and Top Contracts (added in v2)
 
-Two additions on top of the original five-tab dashboard, both computed in
-Python and rendered the same disclosed way as everything else here (never
+Additions on top of the original five-tab dashboard, all computed in Python
+and rendered the same disclosed way as everything else here (never
 hand-edited):
+
+- **Top Contracts & Awards panel** (Executive Overview tab, `_standout_awards`
+  in `src/dashboard/data_prep.py`). The same idea as Standout Suppliers, one
+  level down: up to 5 contract awards (grouped by `award_id_piid`) surfaced
+  by value and by two disclosed signals -- deobligation share, and growth
+  via modifications (current net obligations vs. the award's first recorded
+  transaction). Explicitly **not** a cost-overrun finding -- a repo-CSV- or
+  even API-sourced dataset has no contract ceiling/scope-of-record to
+  compare against, only what the transaction history itself shows, and the
+  card language says so. Each card shows the award's actual, unedited
+  transaction description from the government record (the closest thing to
+  "what was purchased" this data provides), a category icon, and the same
+  three actions as supplier cards (View award on USAspending.gov, Export
+  contract CSV, Mark for review).
+  - **No web-fetched product/mission photography.** This was considered and
+    intentionally not done: the dashboard's core design principle is
+    "self-contained, works fully offline, no network call at view time,"
+    and this build environment's outbound network access is blocked (a
+    direct test against `nasa.gov` itself returned a 403 at the connection
+    level), so no image could even be fetched and verified at *generation*
+    time either. Category icons are small inline SVGs generated locally
+    (`CATEGORY_ICONS` in `src/dashboard/app.js`) -- illustrative of the
+    spend category, not a photo of the actual hardware/product. A future
+    version could fetch real (public-domain) NASA imagery for well-known,
+    keyword-recognizable programs at *build* time and embed it as a data
+    URI (the same technique already used for fonts and Plotly.js), from an
+    environment where outbound network access isn't blocked.
 
 - **NASA-themed header.** A stylized orbit/rocket mark and "NASA" wordmark in
   NASA's brand blue/red, plus a visible "Unofficial · Not NASA-affiliated"

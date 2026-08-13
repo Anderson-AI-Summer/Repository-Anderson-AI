@@ -171,6 +171,96 @@ def _standout_suppliers(suppliers_detail: dict, max_results: int = 5) -> list[di
     return standout[:max_results]
 
 
+def _standout_awards(df: pd.DataFrame, max_results: int = 5) -> list[dict]:
+    """Same idea as _standout_suppliers, one level down: per-contract-award
+    (award_id_piid) instead of per-supplier. Surfaces high-value awards and
+    two neutral, evidence-based signals -- growth via modifications and
+    deobligation share -- never a cost-overrun or performance claim, since
+    a repo-CSV-ingested award has no ceiling/ ordering-office data to compare
+    against (only a live API award-detail lookup would have that). Reasons
+    always cite the exact supporting metric.
+    """
+    if df.empty:
+        return []
+
+    candidates = []
+    for award_id, g in df.groupby("award_id_piid"):
+        if not award_id:
+            continue
+        g_sorted = g.sort_values("action_date")
+        net = float(g["transaction_obligation_signed"].sum())
+        gross = float(g.loc[g["transaction_obligation_signed"] > 0, "transaction_obligation_signed"].sum())
+        deob = float(-g.loc[g["transaction_obligation_signed"] < 0, "transaction_obligation_signed"].sum())
+        deob_rate = (deob / gross) if gross else 0.0
+        initial_amount = float(g_sorted.iloc[0]["transaction_obligation_signed"])
+        mod_count = int(g["modification_number"].nunique())
+
+        growth_pct = None
+        if len(g) > 1 and abs(initial_amount) >= 50_000:
+            growth_pct = (net - initial_amount) / abs(initial_amount) * 100
+
+        # Longest description is usually the most informative one on record.
+        descriptions = [d for d in g["transaction_description"].tolist() if d]
+        description = max(descriptions, key=len) if descriptions else ""
+
+        supplier_counts = g["normalized_supplier"].value_counts()
+        category_counts = g["ai_spend_category"].value_counts()
+
+        reasons = []
+        if deob >= 10_000 and deob_rate >= 0.05:
+            reasons.append({
+                "type": "deobligation_flag",
+                "label": "Notable deobligations",
+                "detail": (
+                    f"${deob:,.0f} deobligated ({deob_rate * 100:.1f}% of gross positive obligations) -- "
+                    "worth confirming these reflect ordinary contract modifications rather than a data issue."
+                ),
+            })
+        if growth_pct is not None and growth_pct >= 75:
+            reasons.append({
+                "type": "cost_growth",
+                "label": "Grew via modifications",
+                "detail": (
+                    f"Net obligations grew {growth_pct:+.0f}% from the first recorded transaction "
+                    f"(${initial_amount:,.0f}) to ${net:,.0f} across {mod_count} modification(s) -- "
+                    "worth confirming against the award's scope-change or ceiling record; this is not "
+                    "evidence of a cost overrun on its own."
+                ),
+            })
+
+        candidates.append({
+            "award_id": str(award_id),
+            "supplier": supplier_counts.idxmax() if not supplier_counts.empty else "Unknown",
+            "category": category_counts.idxmax() if not category_counts.empty else "Uncategorized",
+            "net_obligations": net,
+            "transaction_count": int(len(g)),
+            "modification_count": mod_count,
+            "description": description[:400],
+            "reasons": reasons,
+        })
+
+    candidates.sort(key=lambda c: -c["net_obligations"])
+    standout = []
+    seen = set()
+    for c in candidates[:3]:
+        c["reasons"] = [{
+            "type": "high_value",
+            "label": "High contract value",
+            "detail": f"${c['net_obligations']:,.0f} in net obligations across {c['transaction_count']} transaction(s) -- one of the largest contracts in this dataset.",
+        }] + c["reasons"]
+        standout.append(c)
+        seen.add(c["award_id"])
+    for c in candidates:
+        if len(standout) >= max_results:
+            break
+        if c["award_id"] in seen:
+            continue
+        if c["reasons"]:
+            standout.append(c)
+            seen.add(c["award_id"])
+    return standout[:max_results]
+
+
 def build_payload(
     transactions: list[EnrichedTransaction],
     analytics: dict,
@@ -226,5 +316,6 @@ def build_payload(
         "suppliers_detail": suppliers_detail,
         "categories_detail": categories_detail,
         "standout_suppliers": _standout_suppliers(suppliers_detail),
+        "standout_awards": _standout_awards(df),
     }
     return payload

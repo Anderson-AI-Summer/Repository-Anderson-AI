@@ -155,6 +155,21 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 .sc-actions button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
 .sc-actions button.flag-btn.marked { background: #fff3d9; color: var(--warn); border-color: #f0c877; }
 .sc-actions button:hover { filter: brightness(0.96); }
+
+.award-card { border-left-color: var(--nasa-red); }
+.award-head-row { display: flex; gap: 10px; align-items: flex-start; }
+.award-icon {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 8px; background: #eef2f9;
+  display: flex; align-items: center; justify-content: center;
+}
+.award-head-text { flex: 1 1 auto; min-width: 0; }
+.award-id { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--text-muted); }
+.award-desc {
+  font-size: 11.5px; color: var(--text); font-style: italic; background: #f6f9ff;
+  border-radius: 5px; padding: 7px 9px; margin: 6px 0 8px; max-height: 74px; overflow: auto;
+}
+.reason-tag.high_value { background: #eaf0ff; color: var(--nasa-blue); }
+.reason-tag.cost_growth { background: #fff3d9; color: var(--warn); }
 </style>
 </head>
 <body>
@@ -220,6 +235,29 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
         exact supporting metric so it can be checked against the award record.
       </div>
       <div class="standout-grid" id="standout-suppliers" style="margin-top:10px;"></div>
+    </div>
+    <div class="panel">
+      <h2>Top Contracts &amp; Awards</h2>
+      <div class="small-note">
+        Up to 5 contract awards surfaced by value and by two disclosed signals
+        (deobligation share, growth via modifications) -- not a cost-overrun
+        finding; this dataset has no ceiling/scope-of-record to compare
+        against, only what the transaction history itself shows. The
+        description on each card is the actual, unedited transaction
+        description from the government record -- the closest thing to "what
+        was purchased" this data provides. Icons denote the award's spend
+        category (illustrative, not a photo of the actual product -- see
+        note below the panel).
+      </div>
+      <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
+      <div class="small-note" style="margin-top:10px;">
+        Real product/mission photography isn't embedded here: this dashboard
+        is self-contained and works fully offline (no network call at view
+        time), and this build environment's outbound network access is
+        blocked, so no image could be fetched and verified at generation
+        time either. The category icons are generated locally, not pulled
+        from the web.
+      </div>
     </div>
   </section>
 

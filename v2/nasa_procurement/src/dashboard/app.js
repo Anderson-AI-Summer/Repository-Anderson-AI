@@ -232,6 +232,81 @@
     });
   }
 
+  // ---------------- Category icons (generated locally, not fetched) ----------------
+  const CATEGORY_ICONS = {
+    "Aerospace, Spacecraft, and Mission Systems":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2c2 3 3 8 3 12 0 2-1 4-3 6-2-2-3-4-3-6 0-4 1-9 3-12Z" fill="#2a6df4"/><path d="M9 14l-3 3 1 3 3-1" stroke="#0b1f3a" stroke-width="1.2" fill="none"/><path d="M15 14l3 3-1 3-3-1" stroke="#0b1f3a" stroke-width="1.2" fill="none"/><circle cx="12" cy="9" r="1.4" fill="#fff"/></svg>',
+    "Research, Engineering, and Technical Services":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 3h6v4l4 9c.6 1.4-.4 3-2 3H7c-1.6 0-2.6-1.6-2-3l4-9V3Z" stroke="#2a6df4" stroke-width="1.3" fill="none"/><path d="M9 3h6" stroke="#2a6df4" stroke-width="1.3"/><path d="M8 14h8" stroke="#2a6df4" stroke-width="1.1"/></svg>',
+    "Information Technology and Cybersecurity":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="12" rx="1.5" stroke="#2a6df4" stroke-width="1.3"/><path d="M8 20h8M12 17v3" stroke="#2a6df4" stroke-width="1.3"/><path d="M7 10l2 2-2 2M13 14h4" stroke="#0b1f3a" stroke-width="1.1"/></svg>',
+    "Facilities, Construction, and Maintenance":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 21V10l8-6 8 6v11" stroke="#2a6df4" stroke-width="1.3" fill="none"/><path d="M9 21v-6h6v6" stroke="#0b1f3a" stroke-width="1.2"/></svg>',
+    "Scientific Instruments and Laboratory Supplies":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10 2v6l-5 10a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V2" stroke="#2a6df4" stroke-width="1.3" fill="none"/><path d="M8 2h8M7 15h10" stroke="#2a6df4" stroke-width="1.2"/></svg>',
+    "Professional and Administrative Services":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="1.5" stroke="#2a6df4" stroke-width="1.3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#2a6df4" stroke-width="1.3"/></svg>',
+    "Logistics, Transportation, and Operations":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="8" width="12" height="8" rx="1" stroke="#2a6df4" stroke-width="1.3"/><path d="M14 11h4l3 3v2h-7" stroke="#2a6df4" stroke-width="1.3"/><circle cx="6.5" cy="18" r="1.6" fill="#0b1f3a"/><circle cx="17.5" cy="18" r="1.6" fill="#0b1f3a"/></svg>',
+    "Communications and Electronics":
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0" stroke="#2a6df4" stroke-width="1.3" fill="none"/><path d="M7.5 12a4.5 4.5 0 0 1 9 0" stroke="#2a6df4" stroke-width="1.1" fill="none"/><circle cx="12" cy="12" r="1.6" fill="#0b1f3a"/><path d="M12 13.5V21" stroke="#2a6df4" stroke-width="1.3"/></svg>',
+  };
+  const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#8a93a6" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#8a93a6" stroke-width="1.3"/></svg>';
+  function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
+
+  function renderStandoutAwards() {
+    const container = document.getElementById("standout-awards");
+    const list = DATA.standout_awards || [];
+    if (!list.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["No contract award met the standout criteria for this dataset."]));
+      return;
+    }
+    const flags = getReviewFlags();
+
+    list.forEach(a => {
+      const key = "award:" + a.award_id;
+      const tagRow = el("div", {}, a.reasons.map(r => el("span", { class: "reason-tag " + r.type }, [r.label])));
+      const detailBlocks = a.reasons.map(r => el("div", { class: "sc-reason-detail" }, [r.detail]));
+
+      const flagBtn = el("button", { class: "flag-btn" + (flags[key] ? " marked" : "") },
+        [flags[key] ? "★ Marked for review" : "Mark for review"]);
+      flagBtn.title = "Saved locally in this browser only -- does not notify or send anything to anyone.";
+      flagBtn.addEventListener("click", () => {
+        const nowMarked = toggleReviewFlag(key);
+        flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
+        flagBtn.classList.toggle("marked", nowMarked);
+      });
+
+      const viewBtn = el("button", { class: "primary" }, ["View award on USAspending.gov ↗"]);
+      viewBtn.title = "Opens the official public search on usaspending.gov in a new tab.";
+      viewBtn.addEventListener("click", () => window.open(usaspendingSearchUrl(a.award_id), "_blank", "noopener"));
+
+      const exportBtn = el("button", {}, ["Export contract CSV"]);
+      exportBtn.addEventListener("click", () => {
+        const rows = DATA.explorer_rows.filter(r => r.award_id_piid === a.award_id);
+        const safeId = a.award_id.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
+        downloadCsv(`nasa_award_${safeId}.csv`, rowsToCsv(rows));
+      });
+
+      const card = el("div", { class: "standout-card award-card" }, [
+        el("div", { class: "award-head-row" }, [
+          el("div", { class: "award-icon", html: categoryIcon(a.category) }),
+          el("div", { class: "award-head-text" }, [
+            el("div", { class: "sc-name" }, [a.supplier]),
+            el("div", { class: "award-id" }, ["Award " + a.award_id + " · " + a.category]),
+          ]),
+          el("div", { class: "sc-amount" }, [fmtMoney(a.net_obligations)]),
+        ]),
+        el("div", { class: "sc-sub" }, [`${fmtNum(a.transaction_count)} transaction(s) · ${fmtNum(a.modification_count)} modification(s)`]),
+        a.description ? el("div", { class: "award-desc" }, [a.description]) : el("div", { class: "small-note" }, ["No transaction description on record."]),
+        tagRow,
+        ...detailBlocks,
+        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
+      ]);
+      container.appendChild(card);
+    });
+  }
+
   // ---------------- Tab 2: YoY ----------------
   function renderYoY() {
     const annual = A.annual;
@@ -538,6 +613,7 @@
   setupTabs();
   renderOverview();
   renderStandoutSuppliers();
+  renderStandoutAwards();
   renderYoY();
   renderExplorer();
   renderSupplierTab();
