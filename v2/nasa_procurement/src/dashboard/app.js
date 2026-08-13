@@ -130,15 +130,31 @@
   }
 
   function jumpToAward(awardId) {
-    switchTab("highlights");
-    setTimeout(() => {
-      const card = document.querySelector(`.award-card[data-award-id="${CSS.escape(awardId)}"]`);
-      if (!card) return;
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
-      card.classList.remove("flash-highlight");
-      void card.offsetWidth; // restart animation if clicked twice
-      card.classList.add("flash-highlight");
-    }, 60);
+    const isStandout = (DATA.standout_awards || []).some(a => a.award_id === awardId);
+    if (isStandout) {
+      switchTab("highlights");
+      setTimeout(() => {
+        const card = document.querySelector(`.award-card[data-award-id="${CSS.escape(awardId)}"]`);
+        if (!card) return;
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.remove("flash-highlight");
+        void card.offsetWidth; // restart animation if clicked twice
+        card.classList.add("flash-highlight");
+      }, 60);
+      return;
+    }
+    // Not one of the 5 signal-flagged standout cards -- fall back to the
+    // Transaction Explorer, filtered to this award, which works for any
+    // award (subject to the Explorer's own embedded-row cap, disclosed there).
+    switchTab("explorer");
+    const resetBtn = document.getElementById("ex-reset");
+    if (resetBtn) resetBtn.click();
+    const search = document.getElementById("ex-search");
+    if (search) {
+      search.value = awardId;
+      search.dispatchEvent(new Event("input"));
+    }
+    document.getElementById("tab-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function kpiTile(label, value, negClass) {
@@ -203,45 +219,73 @@
     });
     categoryChart.style.cursor = "pointer";
 
+    drawTopSuppliers();
+    drawTopContracts();
+    document.getElementById("top-suppliers-sort").addEventListener("change", drawTopSuppliers);
+    document.getElementById("top-contracts-sort").addEventListener("change", drawTopContracts);
+
+    renderFindings(document.getElementById("overview-findings"), DATA.insights);
+  }
+
+  // "TOP" is a choice, not a fact -- these two tables let the viewer pick
+  // which metric defines it instead of hard-coding "top = highest dollar
+  // value" as the only lens.
+  function drawTopSuppliers() {
+    const sortKey = document.getElementById("top-suppliers-sort").value;
+    const rows = Object.entries(DATA.suppliers_detail || {}).map(([name, d]) => ({
+      supplier: name,
+      net_obligations: d.total_net_obligations,
+      transaction_count: d.transaction_count,
+      unique_awards: d.unique_awards,
+      deobligations: d.deobligations,
+    }));
+    rows.sort((a, b) => b[sortKey] - a[sortKey]);
+
     const tbl = document.getElementById("table-top-suppliers");
-    tbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations", "Transactions", "Awards"].map(h => el("th", {}, [h])))]));
+    tbl.innerHTML = "";
+    tbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations", "Transactions", "Awards", "Deobligations"].map(h => el("th", {}, [h])))]));
     const tbody = el("tbody");
-    A.top_suppliers.slice(0, 12).forEach(r => {
+    rows.slice(0, 12).forEach(r => {
       const row = el("tr", { class: "jump-row" }, [
-        el("td", {}, [r.normalized_supplier]),
+        el("td", {}, [r.supplier]),
         el("td", {}, [fmtMoney(r.net_obligations)]),
         el("td", {}, [fmtNum(r.transaction_count)]),
         el("td", {}, [fmtNum(r.unique_awards)]),
+        el("td", {}, [fmtMoney(r.deobligations)]),
       ]);
       row.title = "Jump to full supplier analysis";
-      row.addEventListener("click", () => jumpToSupplier(r.normalized_supplier));
+      row.addEventListener("click", () => jumpToSupplier(r.supplier));
       tbody.appendChild(row);
     });
     tbl.appendChild(tbody);
+  }
+
+  function drawTopContracts() {
+    const sortKey = document.getElementById("top-contracts-sort").value;
+    const rows = (DATA.awards_summary || []).slice().sort((a, b) => b[sortKey] - a[sortKey]);
 
     const contractsTbl = document.getElementById("table-top-contracts");
-    const awards = DATA.standout_awards || [];
-    if (contractsTbl) {
-      contractsTbl.appendChild(el("thead", {}, [el("tr", {}, ["Award", "Supplier", "Category", "Net Obligations"].map(h => el("th", {}, [h])))]));
-      const ctbody = el("tbody");
-      if (!awards.length) {
-        ctbody.appendChild(el("tr", {}, [el("td", { colspan: 4, class: "small-note" }, ["No standout contract met the criteria for this dataset."])]));
-      }
-      awards.forEach(a => {
-        const row = el("tr", { class: "jump-row" }, [
-          el("td", {}, [a.award_id]),
-          el("td", {}, [a.supplier]),
-          el("td", {}, [a.category]),
-          el("td", {}, [fmtMoney(a.net_obligations)]),
-        ]);
-        row.title = "Jump to this award on the Standouts tab";
-        row.addEventListener("click", () => jumpToAward(a.award_id));
-        ctbody.appendChild(row);
-      });
-      contractsTbl.appendChild(ctbody);
+    if (!contractsTbl) return;
+    contractsTbl.innerHTML = "";
+    contractsTbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations", "Transactions", "Modifications", "Deobligations", "Award"].map(h => el("th", {}, [h])))]));
+    const ctbody = el("tbody");
+    if (!rows.length) {
+      ctbody.appendChild(el("tr", {}, [el("td", { colspan: 6, class: "small-note" }, ["No contract award data for this dataset."])]));
     }
-
-    renderFindings(document.getElementById("overview-findings"), DATA.insights);
+    rows.slice(0, 12).forEach(a => {
+      const row = el("tr", { class: "jump-row" }, [
+        el("td", {}, [a.supplier]),
+        el("td", {}, [fmtMoney(a.net_obligations)]),
+        el("td", {}, [fmtNum(a.transaction_count)]),
+        el("td", {}, [fmtNum(a.modification_count)]),
+        el("td", {}, [fmtMoney(a.deobligations)]),
+        el("td", { class: "code-text" }, [a.award_id]),
+      ]);
+      row.title = "Jump to this award";
+      row.addEventListener("click", () => jumpToAward(a.award_id));
+      ctbody.appendChild(row);
+    });
+    contractsTbl.appendChild(ctbody);
   }
 
   function renderFindings(container, findings) {
@@ -407,7 +451,8 @@
           el("div", { class: "award-icon", html: categoryIcon(a.category) }),
           el("div", { class: "award-head-text" }, [
             el("div", { class: "sc-name" }, [a.supplier]),
-            el("div", { class: "award-id" }, ["Award " + a.award_id + " · " + a.category]),
+            el("div", { class: "award-category" }, [a.category]),
+            el("div", { class: "award-id code-text" }, [a.award_id]),
           ]),
           el("div", { class: "sc-amount" }, [fmtMoney(a.net_obligations)]),
         ]),
@@ -576,12 +621,12 @@
           el("td", {}, [r.normalized_supplier]),
           el("td", { class: amt < 0 ? "neg" : "pos" }, [fmtMoney(amt)]),
           el("td", {}, [r.obligation_direction]),
-          el("td", {}, [r.award_id_piid]),
-          el("td", {}, [r.modification_number || ""]),
+          el("td", { class: "code-text" }, [r.award_id_piid]),
+          el("td", { class: "code-text" }, [r.modification_number || ""]),
           el("td", {}, [r.action_type_description || ""]),
           el("td", {}, [(r.transaction_description || "").slice(0, 80)]),
-          el("td", {}, [r.psc_code || ""]),
-          el("td", {}, [r.naics_code || ""]),
+          el("td", { class: "code-text" }, [r.psc_code || ""]),
+          el("td", { class: "code-text" }, [r.naics_code || ""]),
           el("td", {}, [r.ai_spend_category]),
           el("td", {}, [r.ai_spend_subcategory]),
           el("td", {}, [fmtPct(r.classification_confidence)]),
@@ -713,7 +758,7 @@
       DATA.explorer_rows.filter(r => r.ai_spend_category === name && r.review_status === "NEEDS_REVIEW").slice(0, 100).forEach(r => {
         const flags = [...(r.opportunity_flags || []), ...(r.data_quality_flags || [])];
         rqBody.appendChild(el("tr", {}, [
-          el("td", {}, [r.action_date]), el("td", {}, [r.normalized_supplier]), el("td", {}, [r.award_id_piid]),
+          el("td", {}, [r.action_date]), el("td", {}, [r.normalized_supplier]), el("td", { class: "code-text" }, [r.award_id_piid]),
           el("td", {}, [fmtMoney(r.transaction_obligation_signed)]), el("td", {}, [fmtPct(r.classification_confidence)]),
           el("td", {}, flags.map(f => el("span", { class: "flag-pill review" }, [f]))),
         ]));

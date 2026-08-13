@@ -190,6 +190,11 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
   display: flex; align-items: center; justify-content: center;
 }
 .award-head-text { flex: 1 1 auto; min-width: 0; }
+.award-category { font-size: 11.5px; color: var(--navy-2); margin: 1px 0 2px; }
+/* Codes/IDs (award IDs, PSC, NAICS, mod numbers) are reference data, not the
+   headline -- rendered smaller, monospaced, and muted so names/categories/
+   amounts read first. */
+.code-text { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.1px; }
 .award-id { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--text-muted); }
 .award-desc {
   font-size: 11.5px; color: var(--text); font-style: italic; background: #f6f9ff;
@@ -248,12 +253,34 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
     <div class="grid-2">
       <div class="panel">
         <h2>Top Suppliers</h2>
+        <div class="controls" style="margin-bottom:6px;">
+          <div>
+            <label>"Top" by</label>
+            <select id="top-suppliers-sort">
+              <option value="net_obligations">Net obligations ($)</option>
+              <option value="transaction_count">Transaction count</option>
+              <option value="unique_awards">Number of awards</option>
+              <option value="deobligations">Deobligations ($)</option>
+            </select>
+          </div>
+        </div>
         <div class="small-note">Click a row to jump to that supplier's full analysis.</div>
         <div class="table-wrap" style="max-height:300px;"><table class="data-table" id="table-top-suppliers"></table></div>
       </div>
       <div class="panel">
         <h2>Top Contracts</h2>
-        <div class="small-note">Click a row to jump to that award on the Standouts tab.</div>
+        <div class="controls" style="margin-bottom:6px;">
+          <div>
+            <label>"Top" by</label>
+            <select id="top-contracts-sort">
+              <option value="net_obligations">Net obligations ($)</option>
+              <option value="transaction_count">Transaction count</option>
+              <option value="modification_count">Modification count</option>
+              <option value="deobligations">Deobligations ($)</option>
+            </select>
+          </div>
+        </div>
+        <div class="small-note">Ranked from up to the 300 largest-value awards in this dataset. Click a row to jump to it (Standouts tab if flagged there, otherwise the Transaction Explorer).</div>
         <div class="table-wrap" style="max-height:300px;"><table class="data-table" id="table-top-contracts"></table></div>
       </div>
     </div>

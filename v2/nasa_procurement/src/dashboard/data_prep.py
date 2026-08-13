@@ -171,19 +171,15 @@ def _standout_suppliers(suppliers_detail: dict, max_results: int = 5) -> list[di
     return standout[:max_results]
 
 
-def _standout_awards(df: pd.DataFrame, max_results: int = 5) -> list[dict]:
-    """Same idea as _standout_suppliers, one level down: per-contract-award
-    (award_id_piid) instead of per-supplier. Surfaces high-value awards and
-    two neutral, evidence-based signals -- growth via modifications and
-    deobligation share -- never a cost-overrun or performance claim, since
-    a repo-CSV-ingested award has no ceiling/ ordering-office data to compare
-    against (only a live API award-detail lookup would have that). Reasons
-    always cite the exact supporting metric.
+def _award_rows(df: pd.DataFrame) -> list[dict]:
+    """Per-contract-award (award_id_piid) aggregation shared by the full
+    awards summary and the standout-awards signal detector below, so both
+    compute the same numbers from a single pass over the data.
     """
     if df.empty:
         return []
 
-    candidates = []
+    rows = []
     for award_id, g in df.groupby("award_id_piid"):
         if not award_id:
             continue
@@ -191,13 +187,8 @@ def _standout_awards(df: pd.DataFrame, max_results: int = 5) -> list[dict]:
         net = float(g["transaction_obligation_signed"].sum())
         gross = float(g.loc[g["transaction_obligation_signed"] > 0, "transaction_obligation_signed"].sum())
         deob = float(-g.loc[g["transaction_obligation_signed"] < 0, "transaction_obligation_signed"].sum())
-        deob_rate = (deob / gross) if gross else 0.0
         initial_amount = float(g_sorted.iloc[0]["transaction_obligation_signed"])
         mod_count = int(g["modification_number"].nunique())
-
-        growth_pct = None
-        if len(g) > 1 and abs(initial_amount) >= 50_000:
-            growth_pct = (net - initial_amount) / abs(initial_amount) * 100
 
         # Longest description is usually the most informative one on record.
         descriptions = [d for d in g["transaction_description"].tolist() if d]
@@ -205,6 +196,64 @@ def _standout_awards(df: pd.DataFrame, max_results: int = 5) -> list[dict]:
 
         supplier_counts = g["normalized_supplier"].value_counts()
         category_counts = g["ai_spend_category"].value_counts()
+
+        rows.append({
+            "award_id": str(award_id),
+            "supplier": supplier_counts.idxmax() if not supplier_counts.empty else "Unknown",
+            "category": category_counts.idxmax() if not category_counts.empty else "Uncategorized",
+            "net_obligations": net,
+            "gross_positive_obligations": gross,
+            "deobligations": deob,
+            "initial_amount": initial_amount,
+            "transaction_count": int(len(g)),
+            "modification_count": mod_count,
+            "description": description[:400],
+        })
+    return rows
+
+
+def _award_summary(rows: list[dict], max_results: int = 300) -> list[dict]:
+    """The full (well, top-N by value) ranked award list backing the
+    Executive Overview's filterable "Top Contracts" table -- distinct from
+    _standout_awards below, which is a small, signal-flagged subset, not a
+    plain leaderboard. Capped at max_results (deep enough to cover any of
+    the offered sort-by-metric views for a top-12 display) rather than
+    embedding every award, to keep payload size reasonable on datasets with
+    thousands of distinct awards.
+    """
+    ranked = sorted(rows, key=lambda r: -r["net_obligations"])[:max_results]
+    return [
+        {
+            "award_id": r["award_id"],
+            "supplier": r["supplier"],
+            "category": r["category"],
+            "net_obligations": r["net_obligations"],
+            "deobligations": r["deobligations"],
+            "transaction_count": r["transaction_count"],
+            "modification_count": r["modification_count"],
+        }
+        for r in ranked
+    ]
+
+
+def _standout_awards(rows: list[dict], max_results: int = 5) -> list[dict]:
+    """Same idea as _standout_suppliers, one level down: per-contract-award
+    instead of per-supplier. Surfaces high-value awards and two neutral,
+    evidence-based signals -- growth via modifications and deobligation
+    share -- never a cost-overrun or performance claim, since a repo-CSV-
+    ingested award has no ceiling/ordering-office data to compare against
+    (only a live API award-detail lookup would have that). Reasons always
+    cite the exact supporting metric.
+    """
+    candidates = []
+    for r in rows:
+        net, gross, deob = r["net_obligations"], r["gross_positive_obligations"], r["deobligations"]
+        deob_rate = (deob / gross) if gross else 0.0
+        initial_amount, mod_count = r["initial_amount"], r["modification_count"]
+
+        growth_pct = None
+        if r["transaction_count"] > 1 and abs(initial_amount) >= 50_000:
+            growth_pct = (net - initial_amount) / abs(initial_amount) * 100
 
         reasons = []
         if deob >= 10_000 and deob_rate >= 0.05:
@@ -229,13 +278,13 @@ def _standout_awards(df: pd.DataFrame, max_results: int = 5) -> list[dict]:
             })
 
         candidates.append({
-            "award_id": str(award_id),
-            "supplier": supplier_counts.idxmax() if not supplier_counts.empty else "Unknown",
-            "category": category_counts.idxmax() if not category_counts.empty else "Uncategorized",
+            "award_id": r["award_id"],
+            "supplier": r["supplier"],
+            "category": r["category"],
             "net_obligations": net,
-            "transaction_count": int(len(g)),
+            "transaction_count": r["transaction_count"],
             "modification_count": mod_count,
-            "description": description[:400],
+            "description": r["description"],
             "reasons": reasons,
         })
 
@@ -290,6 +339,8 @@ def build_payload(
         suppliers_detail = _supplier_detail(df, total_net)
         categories_detail = _category_detail(df)
 
+    award_rows = _award_rows(df)
+
     review_status_flag = analytics.get("current_fiscal_year")
     partial_year_warning = is_partial_fiscal_year(review_status_flag, today) if review_status_flag else False
 
@@ -316,6 +367,7 @@ def build_payload(
         "suppliers_detail": suppliers_detail,
         "categories_detail": categories_detail,
         "standout_suppliers": _standout_suppliers(suppliers_detail),
-        "standout_awards": _standout_awards(df),
+        "standout_awards": _standout_awards(award_rows),
+        "awards_summary": _award_summary(award_rows),
     }
     return payload
