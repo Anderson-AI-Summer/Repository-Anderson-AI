@@ -1,0 +1,1 @@
+{"filters": {"agencies": [{"type": "awarding", "tier": "toptier", "name": "Department of Defense"}], "time_period": [{"start_date": "2024-10-01", "end_date": "2025-09-30", "date_type": "action_date"}], "recipient_search_text": ["ELECTRIC BOAT"]}, "category": "naics", "limit": 50, "page": 1}
