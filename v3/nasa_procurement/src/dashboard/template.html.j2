@@ -246,15 +246,6 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 .standout-card .sc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
 .standout-card .sc-name { font-weight: 700; color: var(--navy); font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
 
-/* Initials avatar in place of a real logo -- deterministic color per name,
-   no fetched image, no trademark exposure. See supplierBadge() in app.js. */
-.supplier-badge {
-  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
-  width: 24px; height: 24px; border-radius: 50%; font-size: 9.5px; font-weight: 700;
-  color: #ffffff; letter-spacing: -0.2px;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-}
-.supplier-badge.lg { width: 38px; height: 38px; font-size: 14px; }
 .standout-card .sc-amount {
   font-family: ui-monospace, "SF Mono", Consolas, monospace; font-weight: 700; color: var(--blue);
   font-size: 13px; white-space: nowrap; text-shadow: var(--glow-blue);

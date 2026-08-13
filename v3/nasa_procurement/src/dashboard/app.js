@@ -831,7 +831,7 @@
     const tbody = el("tbody");
     rows.slice(0, 12).forEach(r => {
       const row = el("tr", { class: "jump-row" }, [
-        el("td", { style: "display:flex; align-items:center; gap:8px;" }, [supplierBadge(r.supplier), r.supplier]),
+        el("td", {}, [r.supplier]),
         el("td", {}, [fmtMoney(r.net_obligations)]),
         el("td", {}, [fmtNum(r.transaction_count)]),
         el("td", {}, [fmtNum(r.unique_awards)]),
@@ -1022,7 +1022,7 @@
 
       const card = el("div", { class: "standout-card" }, [
         el("div", { class: "sc-head" }, [
-          el("div", { class: "sc-name" }, [supplierBadge(s.supplier), s.supplier, newBadge(s.is_new)].filter(Boolean)),
+          el("div", { class: "sc-name" }, [s.supplier, newBadge(s.is_new)].filter(Boolean)),
           el("div", { class: "sc-amount" }, [fmtMoney(s.net_obligations)]),
         ]),
         el("div", { class: "sc-sub" }, [`${fmtNum(s.transaction_count)} transactions · ${fmtNum(s.unique_awards)} awards · ${s.concentration_pct.toFixed(1)}% of total`]),
@@ -1056,55 +1056,6 @@
   };
   const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#64748b" stroke-width="1.3"/></svg>';
   function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
-
-  // ---------------- Supplier badges (initials avatar, generated locally --
-  // not a fetched logo; see the standing decision not to embed real company
-  // trademarks or the NASA insignia without rights clearance) ----------------
-  const BADGE_PALETTE = ["#0891b2", "#0f1e33", "#dc2626", "#d97706", "#16a34a", "#7c3aed", "#0369a1", "#be185d", "#4d7c0f", "#c2410c"];
-  const SUPPLIER_LEGAL_SUFFIXES = new Set(["THE", "INC", "LLC", "LLP", "LP", "LTD", "CORP", "CORPORATION", "COMPANY", "CO", "INCORPORATED", "LIMITED"]);
-  // Publicly known primary brand colors for a handful of frequent NASA
-  // contractors -- a single hex value, not a logo mark, used only to tint
-  // the initials badge. Falls back to the hashed palette for anyone not
-  // in this short list.
-  const KNOWN_BRAND_COLORS = [
-    { match: /BOEING/, color: "#0033A0" },
-    { match: /LOCKHEED MARTIN/, color: "#00247D" },
-    { match: /NORTHROP GRUMMAN/, color: "#00305A" },
-    { match: /SPACE EXPLORATION TECHNOLOGIES|\bSPACEX\b/, color: "#1A1A1A" },
-    { match: /BOOZ ALLEN/, color: "#00A9E0" },
-    { match: /CALIFORNIA INSTITUTE OF TECHNOLOGY|\bCALTECH\b/, color: "#FF6C0C" },
-    { match: /RAYTHEON|\bRTX\b/, color: "#CF102D" },
-    { match: /L3HARRIS|L3 HARRIS/, color: "#00A9CE" },
-    { match: /GENERAL DYNAMICS/, color: "#0072CE" },
-    { match: /\bLEIDOS\b/, color: "#00A19A" },
-    { match: /\bSAIC\b/, color: "#E31C3D" },
-    { match: /\bJACOBS\b/, color: "#FDB913" },
-    { match: /\bBECHTEL\b/, color: "#00843D" },
-    { match: /\bKBR\b/, color: "#00539B" },
-    { match: /\bPERATON\b/, color: "#1B3A63" },
-    { match: /AEROSPACE CORPORATION/, color: "#003057" },
-  ];
-  function supplierInitials(name) {
-    const words = (name || "").toUpperCase().replace(/[.,]/g, "").split(/\s+/).filter(w => w && !SUPPLIER_LEGAL_SUFFIXES.has(w));
-    if (!words.length) return "?";
-    if (words.length === 1) return words[0].slice(0, 2);
-    return words[0][0] + words[1][0];
-  }
-  function supplierColor(name) {
-    const upper = (name || "").toUpperCase();
-    for (const { match, color } of KNOWN_BRAND_COLORS) {
-      if (match.test(upper)) return color;
-    }
-    let hash = 0;
-    for (let i = 0; i < (name || "").length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return BADGE_PALETTE[hash % BADGE_PALETTE.length];
-  }
-  function supplierBadge(name, size) {
-    const badge = el("div", { class: "supplier-badge" + (size === "lg" ? " lg" : "") }, [supplierInitials(name)]);
-    badge.style.background = supplierColor(name);
-    badge.title = name;
-    return badge;
-  }
 
   function renderStandoutAwards() {
     const photoToggle = document.getElementById("award-photo-note-toggle");
@@ -1165,7 +1116,7 @@
         el("div", { class: "award-head-row" }, [
           el("div", { class: "award-icon", html: categoryIcon(a.category) }),
           el("div", { class: "award-head-text" }, [
-            el("div", { class: "sc-name" }, [supplierBadge(a.supplier), a.supplier, newBadge(a.is_new)].filter(Boolean)),
+            el("div", { class: "sc-name" }, [a.supplier, newBadge(a.is_new)].filter(Boolean)),
             el("div", { class: "award-category" }, [a.category]),
             el("div", { class: "award-id code-text" }, [a.award_id]),
           ]),
@@ -1587,7 +1538,6 @@
       if (!d) return;
 
       const headline = document.getElementById("supplier-headline");
-      headline.appendChild(supplierBadge(name, "lg"));
       headline.appendChild(el("h3", { style: "margin:0; font-size:17px; color:var(--navy); text-transform:none; letter-spacing:0;" }, [name]));
 
       const kpis = document.getElementById("supplier-kpis");
