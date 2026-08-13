@@ -105,6 +105,42 @@
     });
   }
 
+  // ---------------- Cross-tab "jump-in" navigation ----------------
+  function switchTab(tabName) {
+    const btn = document.querySelector(`nav.tabs button[data-tab="${tabName}"]`);
+    if (btn) btn.click();
+  }
+
+  function jumpToSupplier(name) {
+    switchTab("supplier");
+    const sel = document.getElementById("supplier-select");
+    if (!sel) return;
+    sel.value = name;
+    sel.dispatchEvent(new Event("change"));
+    document.getElementById("tab-supplier").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function jumpToCategory(name) {
+    switchTab("categories");
+    const sel = document.getElementById("category-select");
+    if (!sel) return;
+    sel.value = name;
+    sel.dispatchEvent(new Event("change"));
+    document.getElementById("tab-categories").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function jumpToAward(awardId) {
+    switchTab("highlights");
+    setTimeout(() => {
+      const card = document.querySelector(`.award-card[data-award-id="${CSS.escape(awardId)}"]`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.classList.remove("flash-highlight");
+      void card.offsetWidth; // restart animation if clicked twice
+      card.classList.add("flash-highlight");
+    }, 60);
+  }
+
   function kpiTile(label, value, negClass) {
     return el("div", { class: "kpi" }, [
       el("div", { class: "label" }, [label]),
@@ -119,6 +155,18 @@
         `⚠ FY${DATA.meta.current_fiscal_year} is still in progress (partial year). Totals for the current fiscal year are not directly comparable to completed fiscal years.`
       ]));
     }
+    const standoutSupplierCount = (DATA.standout_suppliers || []).length;
+    const standoutAwardCount = (DATA.standout_awards || []).length;
+    const cta = document.getElementById("overview-jump-cta");
+    if (cta && (standoutSupplierCount || standoutAwardCount)) {
+      const ctaBtn = el("button", {}, ["View Standouts →"]);
+      ctaBtn.addEventListener("click", () => switchTab("highlights"));
+      cta.appendChild(el("div", {}, [
+        `🌟 ${standoutSupplierCount} standout supplier(s) and ${standoutAwardCount} notable contract(s) flagged for this dataset.`
+      ]));
+      cta.appendChild(ctaBtn);
+    }
+
     const t = A.totals;
     const kpis = document.getElementById("overview-kpis");
     kpis.appendChild(kpiTile("Net Obligations", fmtMoney(t.net_obligations), t.net_obligations < 0));
@@ -142,25 +190,56 @@
       acc[r.category] = (acc[r.category] || 0) + r.net_obligations; return acc;
     }, {});
     const catNames = Object.keys(cats).sort((a, b) => cats[b] - cats[a]);
-    Plotly.newPlot("chart-category-comp", [{
+    const categoryChart = document.getElementById("chart-category-comp");
+    Plotly.newPlot(categoryChart, [{
       x: catNames.map(c => cats[c]), y: catNames, type: "bar", orientation: "h",
       marker: { color: BLUE },
     }], {
       margin: { t: 10, r: 10, l: 230, b: 40 }, xaxis: { title: "Net Obligations (USD)", tickformat: "~s" },
     }, { displayModeBar: false, responsive: true });
+    categoryChart.on("plotly_click", ev => {
+      const name = ev.points && ev.points[0] && ev.points[0].y;
+      if (name) jumpToCategory(name);
+    });
+    categoryChart.style.cursor = "pointer";
 
     const tbl = document.getElementById("table-top-suppliers");
     tbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations", "Transactions", "Awards"].map(h => el("th", {}, [h])))]));
     const tbody = el("tbody");
     A.top_suppliers.slice(0, 12).forEach(r => {
-      tbody.appendChild(el("tr", {}, [
+      const row = el("tr", { class: "jump-row" }, [
         el("td", {}, [r.normalized_supplier]),
         el("td", {}, [fmtMoney(r.net_obligations)]),
         el("td", {}, [fmtNum(r.transaction_count)]),
         el("td", {}, [fmtNum(r.unique_awards)]),
-      ]));
+      ]);
+      row.title = "Jump to full supplier analysis";
+      row.addEventListener("click", () => jumpToSupplier(r.normalized_supplier));
+      tbody.appendChild(row);
     });
     tbl.appendChild(tbody);
+
+    const contractsTbl = document.getElementById("table-top-contracts");
+    const awards = DATA.standout_awards || [];
+    if (contractsTbl) {
+      contractsTbl.appendChild(el("thead", {}, [el("tr", {}, ["Award", "Supplier", "Category", "Net Obligations"].map(h => el("th", {}, [h])))]));
+      const ctbody = el("tbody");
+      if (!awards.length) {
+        ctbody.appendChild(el("tr", {}, [el("td", { colspan: 4, class: "small-note" }, ["No standout contract met the criteria for this dataset."])]));
+      }
+      awards.forEach(a => {
+        const row = el("tr", { class: "jump-row" }, [
+          el("td", {}, [a.award_id]),
+          el("td", {}, [a.supplier]),
+          el("td", {}, [a.category]),
+          el("td", {}, [fmtMoney(a.net_obligations)]),
+        ]);
+        row.title = "Jump to this award on the Standouts tab";
+        row.addEventListener("click", () => jumpToAward(a.award_id));
+        ctbody.appendChild(row);
+      });
+      contractsTbl.appendChild(ctbody);
+    }
 
     renderFindings(document.getElementById("overview-findings"), DATA.insights);
   }
@@ -323,7 +402,7 @@
         downloadCsv(`nasa_award_${safeId}.csv`, rowsToCsv(rows));
       });
 
-      const card = el("div", { class: "standout-card award-card" }, [
+      const card = el("div", { class: "standout-card award-card", "data-award-id": a.award_id }, [
         el("div", { class: "award-head-row" }, [
           el("div", { class: "award-icon", html: categoryIcon(a.category) }),
           el("div", { class: "award-head-text" }, [
