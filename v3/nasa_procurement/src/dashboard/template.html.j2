@@ -130,12 +130,12 @@ nav.tabs {
 }
 nav.tabs button {
   background: none; border: none; padding: 13px 18px; font-size: 12.5px;
-  text-transform: uppercase; letter-spacing: 0.6px;
+  text-transform: uppercase; letter-spacing: 0.6px; border-radius: 6px 6px 0 0;
   cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent;
-  white-space: nowrap; font-weight: 700;
+  white-space: nowrap; font-weight: 700; transition: background 0.15s ease, color 0.15s ease;
 }
-nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); text-shadow: var(--glow-blue); }
-nav.tabs button:hover { color: var(--navy); }
+nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); text-shadow: var(--glow-blue); background: rgba(34,211,238,0.07); }
+nav.tabs button:hover { color: var(--navy); background: rgba(34,211,238,0.04); }
 main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
 .grid-2-even { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 @media (max-width: 1100px) { .grid-2-even { grid-template-columns: 1fr; } }
@@ -145,10 +145,11 @@ main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
   background: rgba(255,176,32,0.08); border: 1px solid rgba(255,176,32,0.4); color: #ffcf7d;
   padding: 10px 14px; border-radius: 4px; font-size: 12.5px; margin-bottom: 16px;
 }
-.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 13px; margin-bottom: 18px; }
 .kpi {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-  padding: 12px 14px; position: relative; border-top: 2px solid var(--blue);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 13px 15px; position: relative; border-top: 2px solid var(--blue);
+  box-shadow: 0 2px 10px rgba(15,30,51,0.05); transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 .kpi .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 6px; }
 .kpi .value {
@@ -161,15 +162,22 @@ main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
   content: "⋯ how?"; position: absolute; top: 12px; right: 12px; font-size: 9.5px; letter-spacing: 0.3px;
   color: var(--text-muted); text-transform: uppercase; opacity: 0.7;
 }
-.kpi.clickable:hover, .kpi.clickable:focus-visible { border-color: var(--blue); }
+.kpi.clickable:hover, .kpi.clickable:focus-visible {
+  border-color: var(--blue); box-shadow: 0 6px 18px rgba(8,145,178,0.16); transform: translateY(-1px);
+}
 .kpi.clickable:hover::after, .kpi.clickable:focus-visible::after { opacity: 1; color: var(--blue); }
 .panel {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-  padding: 16px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(15,30,51,0.06);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 9px;
+  padding: 17px 18px; margin-bottom: 18px; box-shadow: 0 3px 14px rgba(15,30,51,0.055);
 }
 .panel h2 {
   margin: 0 0 12px 0; font-size: 13px; color: var(--blue); text-transform: uppercase;
   letter-spacing: 0.8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 7px;
+}
+.panel h2::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--blue); flex: 0 0 auto;
+  box-shadow: var(--glow-blue);
 }
 .panel h3 { margin: 14px 0 8px; font-size: 12px; color: var(--navy-2); text-transform: uppercase; letter-spacing: 0.5px; }
 .grid-2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
@@ -230,11 +238,23 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 
 .standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
 .standout-card {
-  border: 1px solid var(--border); border-left: 3px solid var(--nasa-blue); border-radius: 6px;
-  padding: 12px 14px; background: var(--panel); box-shadow: 0 2px 8px rgba(15,30,51,0.06);
+  border: 1px solid var(--border); border-left: 3px solid var(--nasa-blue); border-radius: 8px;
+  padding: 13px 15px; background: var(--panel); box-shadow: 0 3px 12px rgba(15,30,51,0.06);
+  transition: box-shadow 0.15s ease;
 }
-.standout-card .sc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-.standout-card .sc-name { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.standout-card:hover { box-shadow: 0 5px 18px rgba(15,30,51,0.1); }
+.standout-card .sc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.standout-card .sc-name { font-weight: 700; color: var(--navy); font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+
+/* Initials avatar in place of a real logo -- deterministic color per name,
+   no fetched image, no trademark exposure. See supplierBadge() in app.js. */
+.supplier-badge {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 24px; height: 24px; border-radius: 50%; font-size: 9.5px; font-weight: 700;
+  color: #ffffff; letter-spacing: -0.2px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.supplier-badge.lg { width: 38px; height: 38px; font-size: 14px; }
 .standout-card .sc-amount {
   font-family: ui-monospace, "SF Mono", Consolas, monospace; font-weight: 700; color: var(--blue);
   font-size: 13px; white-space: nowrap; text-shadow: var(--glow-blue);
@@ -657,6 +677,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       <div class="controls">
         <div style="min-width:280px;"><label>Select supplier</label><select id="supplier-select"></select></div>
       </div>
+      <div id="supplier-headline" style="display:flex; align-items:center; gap:12px; margin-bottom:14px;"></div>
       <div class="kpi-row" id="supplier-kpis"></div>
       <div class="grid-2">
         <div><h3>Annual Net Obligations</h3><div id="chart-supplier-annual" style="height:260px;"></div></div>

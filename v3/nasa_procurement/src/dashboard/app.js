@@ -831,7 +831,7 @@
     const tbody = el("tbody");
     rows.slice(0, 12).forEach(r => {
       const row = el("tr", { class: "jump-row" }, [
-        el("td", {}, [r.supplier]),
+        el("td", { style: "display:flex; align-items:center; gap:8px;" }, [supplierBadge(r.supplier), r.supplier]),
         el("td", {}, [fmtMoney(r.net_obligations)]),
         el("td", {}, [fmtNum(r.transaction_count)]),
         el("td", {}, [fmtNum(r.unique_awards)]),
@@ -1022,7 +1022,7 @@
 
       const card = el("div", { class: "standout-card" }, [
         el("div", { class: "sc-head" }, [
-          el("div", { class: "sc-name" }, [s.supplier, newBadge(s.is_new)].filter(Boolean)),
+          el("div", { class: "sc-name" }, [supplierBadge(s.supplier), s.supplier, newBadge(s.is_new)].filter(Boolean)),
           el("div", { class: "sc-amount" }, [fmtMoney(s.net_obligations)]),
         ]),
         el("div", { class: "sc-sub" }, [`${fmtNum(s.transaction_count)} transactions · ${fmtNum(s.unique_awards)} awards · ${s.concentration_pct.toFixed(1)}% of total`]),
@@ -1056,6 +1056,29 @@
   };
   const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#64748b" stroke-width="1.3"/></svg>';
   function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
+
+  // ---------------- Supplier badges (initials avatar, generated locally --
+  // not a fetched logo; see the standing decision not to embed real company
+  // trademarks or the NASA insignia without rights clearance) ----------------
+  const BADGE_PALETTE = ["#0891b2", "#0f1e33", "#dc2626", "#d97706", "#16a34a", "#7c3aed", "#0369a1", "#be185d", "#4d7c0f", "#c2410c"];
+  const SUPPLIER_LEGAL_SUFFIXES = new Set(["THE", "INC", "LLC", "LLP", "LP", "LTD", "CORP", "CORPORATION", "COMPANY", "CO", "INCORPORATED", "LIMITED"]);
+  function supplierInitials(name) {
+    const words = (name || "").toUpperCase().replace(/[.,]/g, "").split(/\s+/).filter(w => w && !SUPPLIER_LEGAL_SUFFIXES.has(w));
+    if (!words.length) return "?";
+    if (words.length === 1) return words[0].slice(0, 2);
+    return words[0][0] + words[1][0];
+  }
+  function supplierColor(name) {
+    let hash = 0;
+    for (let i = 0; i < (name || "").length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return BADGE_PALETTE[hash % BADGE_PALETTE.length];
+  }
+  function supplierBadge(name, size) {
+    const badge = el("div", { class: "supplier-badge" + (size === "lg" ? " lg" : "") }, [supplierInitials(name)]);
+    badge.style.background = supplierColor(name);
+    badge.title = name;
+    return badge;
+  }
 
   function renderStandoutAwards() {
     const photoToggle = document.getElementById("award-photo-note-toggle");
@@ -1116,7 +1139,7 @@
         el("div", { class: "award-head-row" }, [
           el("div", { class: "award-icon", html: categoryIcon(a.category) }),
           el("div", { class: "award-head-text" }, [
-            el("div", { class: "sc-name" }, [a.supplier, newBadge(a.is_new)].filter(Boolean)),
+            el("div", { class: "sc-name" }, [supplierBadge(a.supplier), a.supplier, newBadge(a.is_new)].filter(Boolean)),
             el("div", { class: "award-category" }, [a.category]),
             el("div", { class: "award-id code-text" }, [a.award_id]),
           ]),
@@ -1533,9 +1556,13 @@
     function draw() {
       const name = sel.value;
       const d = DATA.suppliers_detail[name];
-      ["supplier-kpis", "chart-supplier-annual", "chart-supplier-category", "supplier-variants", "supplier-evidence", "supplier-offices", "supplier-flags"]
+      ["supplier-kpis", "chart-supplier-annual", "chart-supplier-category", "supplier-variants", "supplier-evidence", "supplier-offices", "supplier-flags", "supplier-headline"]
         .forEach(id => { const e = document.getElementById(id); e.innerHTML = ""; });
       if (!d) return;
+
+      const headline = document.getElementById("supplier-headline");
+      headline.appendChild(supplierBadge(name, "lg"));
+      headline.appendChild(el("h3", { style: "margin:0; font-size:17px; color:var(--navy); text-transform:none; letter-spacing:0;" }, [name]));
 
       const kpis = document.getElementById("supplier-kpis");
       kpis.appendChild(kpiTile("Total Net Obligations", fmtMoney(d.total_net_obligations), d.total_net_obligations < 0));
