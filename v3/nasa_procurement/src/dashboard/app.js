@@ -1062,6 +1062,28 @@
   // trademarks or the NASA insignia without rights clearance) ----------------
   const BADGE_PALETTE = ["#0891b2", "#0f1e33", "#dc2626", "#d97706", "#16a34a", "#7c3aed", "#0369a1", "#be185d", "#4d7c0f", "#c2410c"];
   const SUPPLIER_LEGAL_SUFFIXES = new Set(["THE", "INC", "LLC", "LLP", "LP", "LTD", "CORP", "CORPORATION", "COMPANY", "CO", "INCORPORATED", "LIMITED"]);
+  // Publicly known primary brand colors for a handful of frequent NASA
+  // contractors -- a single hex value, not a logo mark, used only to tint
+  // the initials badge. Falls back to the hashed palette for anyone not
+  // in this short list.
+  const KNOWN_BRAND_COLORS = [
+    { match: /BOEING/, color: "#0033A0" },
+    { match: /LOCKHEED MARTIN/, color: "#00247D" },
+    { match: /NORTHROP GRUMMAN/, color: "#00305A" },
+    { match: /SPACE EXPLORATION TECHNOLOGIES|\bSPACEX\b/, color: "#1A1A1A" },
+    { match: /BOOZ ALLEN/, color: "#00A9E0" },
+    { match: /CALIFORNIA INSTITUTE OF TECHNOLOGY|\bCALTECH\b/, color: "#FF6C0C" },
+    { match: /RAYTHEON|\bRTX\b/, color: "#CF102D" },
+    { match: /L3HARRIS|L3 HARRIS/, color: "#00A9CE" },
+    { match: /GENERAL DYNAMICS/, color: "#0072CE" },
+    { match: /\bLEIDOS\b/, color: "#00A19A" },
+    { match: /\bSAIC\b/, color: "#E31C3D" },
+    { match: /\bJACOBS\b/, color: "#FDB913" },
+    { match: /\bBECHTEL\b/, color: "#00843D" },
+    { match: /\bKBR\b/, color: "#00539B" },
+    { match: /\bPERATON\b/, color: "#1B3A63" },
+    { match: /AEROSPACE CORPORATION/, color: "#003057" },
+  ];
   function supplierInitials(name) {
     const words = (name || "").toUpperCase().replace(/[.,]/g, "").split(/\s+/).filter(w => w && !SUPPLIER_LEGAL_SUFFIXES.has(w));
     if (!words.length) return "?";
@@ -1069,6 +1091,10 @@
     return words[0][0] + words[1][0];
   }
   function supplierColor(name) {
+    const upper = (name || "").toUpperCase();
+    for (const { match, color } of KNOWN_BRAND_COLORS) {
+      if (match.test(upper)) return color;
+    }
     let hash = 0;
     for (let i = 0; i < (name || "").length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
     return BADGE_PALETTE[hash % BADGE_PALETTE.length];
