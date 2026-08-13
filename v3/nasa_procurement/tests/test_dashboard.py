@@ -100,6 +100,40 @@ def test_rebuild_from_cached_processed_data(make_txn, tmp_path, monkeypatch):
     assert result["row_counts"]["enriched_transactions"] == 1
 
 
+def test_rebuild_handles_missing_transaction_description(make_txn, tmp_path, monkeypatch):
+    # A blank transaction_description round-trips through the processed-data
+    # CSV as an empty cell, which pandas reads back as a float NaN -- not
+    # None or "". NaN is truthy in Python, so a naive `if d` filter doesn't
+    # exclude it, and _award_rows's "pick the longest description on record"
+    # logic (max(descriptions, key=len)) crashed on this against a real
+    # multi-year pull, where some award records have no description at all.
+    import src.pipeline as pipeline
+
+    enriched_csv = tmp_path / "enriched_transactions_latest.csv"
+    manifest_json = tmp_path / "refresh_manifest_latest.json"
+    dashboard_html = tmp_path / "nasa_procurement_dashboard.html"
+    snapshot_json = tmp_path / "standouts_snapshot.json"
+
+    stats = AgentRunStats()
+    txns = [
+        make_txn(transaction_id="1", award_id_piid="AWD001", transaction_description=""),
+        make_txn(transaction_id="2", award_id_piid="AWD001", transaction_description="real description"),
+    ]
+    enriched = enrich_transactions(txns, stats)
+    df = pd.DataFrame([e.model_dump(mode="json") for e in enriched])
+    df.to_csv(enriched_csv, index=False)
+
+    monkeypatch.setattr(pipeline, "ENRICHED_LATEST", enriched_csv)
+    monkeypatch.setattr(pipeline, "MANIFEST_LATEST", manifest_json)
+    monkeypatch.setattr(pipeline, "DASHBOARD_PATH", dashboard_html)
+    monkeypatch.setattr(pipeline, "STANDOUTS_SNAPSHOT", snapshot_json)
+
+    result = pipeline.run_pipeline(mode="rebuild")
+
+    assert result["status"] == "ok"
+    assert dashboard_html.exists()
+
+
 def test_snapshot_marks_nothing_new_on_first_run(tmp_path, monkeypatch):
     import src.pipeline as pipeline
 

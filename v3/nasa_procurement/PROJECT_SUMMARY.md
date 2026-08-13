@@ -154,6 +154,17 @@ endpoint to call, so Live Lookup shows raw, unnormalized API figures and
 says so explicitly rather than implying it carries the same analysis. See
 `nasa_procurement/README.md` "Live Lookup mode" for the full rationale.
 
+Once this environment's network access was actually opened up, the same
+pipeline that built the FY2025 dashboard ran a genuine
+`refresh --start 2019-10-01` pull -- `outputs/nasa_fy2019_present_realdata_dashboard.html`
+carries the full analysis (not just live raw figures) for FY2020-FY2026:
+142,290 transactions, $102.67B net obligations, 41,411 unique awards. That
+pull also surfaced a real bug -- `_award_rows`' "longest description on
+record" logic crashed on transactions with a blank description, because a
+blank cell round-trips through the processed-data CSV as a pandas float NaN,
+and NaN is truthy in Python so a naive `if d` filter didn't exclude it. Fixed
+with an explicit `isinstance(d, str)` check and covered by a regression test.
+
 ## Limitations and future improvements
 
 See `README.md` "Limitations" for the full list (bulk-download endpoint

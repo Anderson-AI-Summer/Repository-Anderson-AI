@@ -221,7 +221,10 @@ def _award_rows(df: pd.DataFrame) -> list[dict]:
         mod_count = int(g["modification_number"].nunique())
 
         # Longest description is usually the most informative one on record.
-        descriptions = [d for d in g["transaction_description"].tolist() if d]
+        # `if d` alone isn't enough -- missing values load as float NaN, and
+        # NaN is truthy in Python, so it survives the filter and then crashes
+        # max(..., key=len) with "object of type 'float' has no len()".
+        descriptions = [d for d in g["transaction_description"].tolist() if isinstance(d, str) and d]
         description = max(descriptions, key=len) if descriptions else ""
 
         supplier_counts = g["normalized_supplier"].value_counts()

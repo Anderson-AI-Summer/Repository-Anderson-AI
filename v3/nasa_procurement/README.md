@@ -249,6 +249,20 @@ $15.78B net obligations, 20,354 deduplicated transactions, 2,867 normalized
 suppliers. `outputs/nasa_procurement_dashboard_presentation.html` (the
 originally frozen live-API pull) is left untouched.
 
+`outputs/nasa_fy2019_present_realdata_dashboard.html` goes further: a genuine
+`python -m src.cli refresh --start 2019-10-01` pull once this environment's
+network access was opened up, covering FY2020-FY2026 (142,290 transactions,
+$102.67B net obligations, 41,411 unique awards, 7,049 normalized suppliers)
+with the full analysis pipeline -- supplier resolution, taxonomy
+classification, HHI/tail-spend, standout signals -- run for every one of
+those years, not just one. Run with `--skip-award-details` (the award-detail
+enrichment call is the pipeline's known bottleneck at this volume; see
+"Limitations" below), so it carries the same `award_detail_unavailable`
+caveat the FY2025 CSV pull above does. The Fiscal Year selector on Executive
+Overview, Transaction Explorer, and Year-over-Year Trends is data-driven, so
+opening this file automatically treats FY2020-FY2026 as embedded/analyzed
+and only years outside that range fall back to the Live Lookup handoff.
+
 ## Live Lookup mode (added in v3)
 
 `outputs/nasa_live_dashboard.html` (Harrison) is a second, independent
