@@ -690,7 +690,11 @@ function populateYearSelect() {
     opts.push(`<option value="${fy}">FY${fy}${partial ? ' (in progress)' : ''}</option>`);
   }
   sel.innerHTML = opts.join('');
-  sel.value = String(nowFY - 1); // default to the most recently completed fiscal year
+  // Deep-link support: ?fy=2022 preselects that year -- used by the analysis
+  // dashboard's Transaction Explorer / Year-over-Year tabs to hand off a
+  // fiscal year that isn't part of their embedded, precomputed data.
+  const requestedFY = parseInt(new URLSearchParams(location.search).get('fy'), 10);
+  sel.value = (requestedFY && requestedFY >= earliest && requestedFY <= nowFY) ? String(requestedFY) : String(nowFY - 1);
   sel.addEventListener('change', () => loadYear(parseInt(sel.value, 10)));
 }
 

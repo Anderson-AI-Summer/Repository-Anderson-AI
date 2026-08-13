@@ -581,6 +581,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       <div><label>to FY</label><select id="yoy-fy-to"></select></div>
       <div><label>View</label><select id="yoy-view"><option value="full">Full fiscal year</option><option value="ytd">Comparable year-to-date</option></select></div>
     </div>
+    <div id="yoy-live-notice"></div>
     <div class="grid-2">
       <div class="panel"><h2>Net &amp; Gross Obligations by Fiscal Year</h2><div id="chart-yoy-obligations" style="height:300px;"></div></div>
       <div class="panel"><h2>Deobligations by Fiscal Year</h2><div id="chart-yoy-deob" style="height:300px;"></div></div>
@@ -612,6 +613,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
         <div style="align-self:flex-end;"><button id="ex-reset" class="secondary">Reset filters</button></div>
       </div>
       <div class="small-note" id="explorer-count"></div>
+      <div id="explorer-live-notice"></div>
       <div class="table-wrap"><table class="data-table" id="table-explorer"></table></div>
     </div>
   </section>
