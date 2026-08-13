@@ -6,26 +6,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
-  /* Mission-control dark palette. Semantic variable names kept the same so
-     every component below is already themed via var(--...) with no further
-     edits needed -- only the values changed. */
-  --navy: #eaf2ff;        /* was dark-on-light headings; now bright text on dark */
-  --navy-2: #9fb4d6;       /* secondary readable text (was darker navy) */
-  --blue: #22d3ee;         /* primary electric-cyan accent */
-  --red: #ff4d5e;          /* danger / deobligation neon red */
-  --bg: #05070c;           /* page background, near-black */
-  --panel: #0b1220;        /* panel background, dark slate-navy */
-  --panel-2: #0e1626;      /* slightly lighter panel accent (table headers etc) */
-  --border: #1c2b42;       /* panel/table borders, subtle blue-grey */
-  --text: #dbe6f5;         /* primary body text, light blue-white */
-  --text-muted: #6b7d9c;   /* muted labels/secondary text */
-  --ok: #2bffa0;           /* neon green: positive / success */
-  --warn: #ffb020;         /* amber: warning / growth flags */
-  --nasa-blue: #22d3ee;
-  --nasa-red: #ff5b3d;
-  --glow-blue: 0 0 10px rgba(34,211,238,0.35);
-  --glow-green: 0 0 10px rgba(43,255,160,0.3);
-  --glow-red: 0 0 10px rgba(255,77,94,0.3);
+  /* Mission-control theme, bright variant: same technical language (crisp
+     panels, glow-accented readouts, uppercase mono labels) as the dark
+     version, but on a light background instead -- everything below still
+     themes purely via these var(--...) values. Only the header stays dark,
+     as a deliberate "instrument panel" accent bar; see its own rules. */
+  --navy: #0f1e33;         /* primary heading/dark text */
+  --navy-2: #3d5a75;       /* secondary readable text */
+  --blue: #0891b2;         /* primary accent -- bold technical teal */
+  --red: #dc2626;          /* danger / deobligation */
+  --bg: #eef2f7;           /* page background, light blue-grey */
+  --panel: #ffffff;        /* panel background */
+  --panel-2: #f1f5f9;      /* secondary panel accent (table headers etc) */
+  --border: #cbd5e1;       /* panel/table borders */
+  --text: #0f1e33;         /* primary body text */
+  --text-muted: #64748b;   /* muted labels/secondary text */
+  --ok: #059669;           /* green: positive / success */
+  --warn: #d97706;         /* amber: warning / growth flags */
+  --nasa-blue: #0891b2;
+  --nasa-red: #e8482c;
+  --glow-blue: 0 0 6px rgba(8,145,178,0.3);
+  --glow-green: 0 0 6px rgba(5,150,105,0.3);
+  --glow-red: 0 0 6px rgba(220,38,38,0.3);
 }
 * { box-sizing: border-box; }
 html { scrollbar-color: var(--border) var(--bg); }
@@ -36,11 +38,10 @@ html { scrollbar-color: var(--border) var(--bg); }
 body {
   margin: 0; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   background:
-    linear-gradient(rgba(34,211,238,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34,211,238,0.035) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% -10%, rgba(34,211,238,0.09), transparent 60%),
+    linear-gradient(rgba(8,145,178,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(8,145,178,0.05) 1px, transparent 1px),
     var(--bg);
-  background-size: 34px 34px, 34px 34px, 100% 100%, 100% 100%;
+  background-size: 34px 34px, 34px 34px, 100% 100%;
   color: var(--text); font-size: 14px;
 }
 header.top {
@@ -74,14 +75,18 @@ header.top h1 {
 }
 header.top .disclosure { font-size: 12px; color: #7fa8c4; margin: 6px 0 10px 0; }
 .meta-bar { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12px; color: #7fa8c4; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
-.meta-bar b { color: var(--blue); text-shadow: 0 0 6px rgba(34,211,238,0.4); }
+/* Header stays dark deliberately (instrument-panel accent bar), so its own
+   accent color is fixed bright cyan rather than following --blue, which is
+   tuned for readability on the light body below. */
+.meta-bar b { color: #22d3ee; text-shadow: 0 0 6px rgba(34,211,238,0.4); }
 .meta-bar .badge {
   background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.25);
   border-radius: 3px; padding: 2px 8px;
 }
 nav.tabs {
-  display: flex; background: #070b14; border-bottom: 1px solid var(--border);
+  display: flex; background: var(--panel); border-bottom: 1px solid var(--border);
   padding: 0 20px; position: sticky; top: 0; z-index: 20; overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(15,30,51,0.04);
 }
 nav.tabs button {
   background: none; border: none; padding: 13px 18px; font-size: 12.5px;
@@ -89,7 +94,7 @@ nav.tabs button {
   cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent;
   white-space: nowrap; font-weight: 700;
 }
-nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); text-shadow: 0 0 8px rgba(34,211,238,0.5); }
+nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); text-shadow: var(--glow-blue); }
 nav.tabs button:hover { color: var(--navy); }
 main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
 .grid-2-even { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
@@ -113,7 +118,7 @@ main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
 .kpi .value.neg { color: var(--red); text-shadow: var(--glow-red); }
 .panel {
   background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-  padding: 16px; margin-bottom: 18px; box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  padding: 16px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(15,30,51,0.06);
 }
 .panel h2 {
   margin: 0 0 12px 0; font-size: 13px; color: var(--blue); text-transform: uppercase;
@@ -129,8 +134,8 @@ table.data-table th {
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
   border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; position: sticky; top: 0;
 }
-table.data-table th.sortable:hover { background: #142338; }
-table.data-table td { padding: 6px 8px; border-bottom: 1px solid #131d2e; vertical-align: top; color: var(--text); }
+table.data-table th.sortable:hover { background: #e2e8f0; }
+table.data-table td { padding: 6px 8px; border-bottom: 1px solid #eef1f6; vertical-align: top; color: var(--text); }
 table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
 .pos { color: var(--ok); } .neg { color: var(--red); }
 .flag-pill {
@@ -142,14 +147,14 @@ table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
 .controls label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); display: block; margin-bottom: 3px; }
 .controls select, .controls input {
   padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12.5px; min-width: 130px;
-  background: #0e1728; color: var(--text);
+  background: #ffffff; color: var(--text);
 }
 .controls button {
   background: rgba(34,211,238,0.12); color: var(--blue); border: 1px solid var(--blue); border-radius: 4px; padding: 7px 14px;
   font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer; font-weight: 700;
 }
 .controls button:hover { background: rgba(34,211,238,0.22); box-shadow: var(--glow-blue); }
-.controls button.secondary { background: rgba(255,255,255,0.04); color: var(--navy-2); border-color: var(--border); }
+.controls button.secondary { background: #f1f5f9; color: var(--navy-2); border-color: var(--border); }
 .table-wrap { max-height: 560px; overflow: auto; border: 1px solid var(--border); border-radius: 5px; }
 .finding-card {
   border-left: 3px solid var(--blue); background: rgba(34,211,238,0.05); padding: 10px 12px;
@@ -159,13 +164,13 @@ table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
 .finding-card .metrics { color: var(--text-muted); font-size: 11.5px; margin-top: 6px; }
 .small-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
-.chip { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 3px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
+.chip { background: #f1f5f9; border: 1px solid var(--border); border-radius: 3px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
 footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 11.5px; }
 
 .standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
 .standout-card {
   border: 1px solid var(--border); border-left: 3px solid var(--nasa-blue); border-radius: 6px;
-  padding: 12px 14px; background: var(--panel-2); box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  padding: 12px 14px; background: var(--panel); box-shadow: 0 2px 8px rgba(15,30,51,0.06);
 }
 .standout-card .sc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
 .standout-card .sc-name { font-weight: 700; color: var(--navy); font-size: 13.5px; }
@@ -216,11 +221,11 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
 .sc-actions button {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
   border-radius: 4px; padding: 5px 9px; cursor: pointer;
-  border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--navy-2);
+  border: 1px solid var(--border); background: #ffffff; color: var(--navy-2);
 }
 .sc-actions button.primary { background: rgba(34,211,238,0.15); color: var(--blue); border-color: var(--blue); }
 .sc-actions button.flag-btn.marked { background: rgba(255,176,32,0.12); color: var(--warn); border-color: var(--warn); }
-.sc-actions button:hover { filter: brightness(1.25); }
+.sc-actions button:hover { filter: brightness(0.97); }
 
 .award-card { border-left-color: var(--nasa-red); }
 .award-head-row { display: flex; gap: 10px; align-items: flex-start; }

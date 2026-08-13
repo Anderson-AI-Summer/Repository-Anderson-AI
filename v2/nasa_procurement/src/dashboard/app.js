@@ -2,12 +2,12 @@
   "use strict";
   const DATA = JSON.parse(document.getElementById("dashboard-data").textContent);
   const A = DATA.analytics;
-  const NAVY = "#e8f2ff", BLUE = "#22d3ee", RED = "#ff4d5e", GREY = "#6b7d9c", GOLD = "#ffb020";
-  const CHART_MUTED = "#6b7d9c", CHART_GRID = "rgba(255,255,255,0.07)", CHART_LINE = "rgba(255,255,255,0.15)";
-  // Shared dark-theme base merged into every Plotly layout: transparent
-  // canvas (so the dark panel background shows through) plus muted
-  // axis/legend text so charts match the surrounding mission-control theme
-  // instead of rendering Plotly's default white background.
+  const NAVY = "#0f1e33", BLUE = "#0891b2", RED = "#dc2626", GREY = "#64748b", GOLD = "#d97706";
+  const CHART_MUTED = "#64748b", CHART_GRID = "rgba(15,30,51,0.08)", CHART_LINE = "rgba(15,30,51,0.2)";
+  // Shared theme base merged into every Plotly layout: transparent canvas
+  // (so the panel background shows through) plus muted axis/legend text so
+  // charts match the surrounding mission-control theme instead of Plotly's
+  // own default styling.
   function darkLayout(extra) {
     return Object.assign({
       paper_bgcolor: "rgba(0,0,0,0)",
@@ -389,23 +389,23 @@
   // ---------------- Category icons (generated locally, not fetched) ----------------
   const CATEGORY_ICONS = {
     "Aerospace, Spacecraft, and Mission Systems":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2c2 3 3 8 3 12 0 2-1 4-3 6-2-2-3-4-3-6 0-4 1-9 3-12Z" fill="#22d3ee"/><path d="M9 14l-3 3 1 3 3-1" stroke="#9fb4d6" stroke-width="1.2" fill="none"/><path d="M15 14l3 3-1 3-3-1" stroke="#9fb4d6" stroke-width="1.2" fill="none"/><circle cx="12" cy="9" r="1.4" fill="#fff"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2c2 3 3 8 3 12 0 2-1 4-3 6-2-2-3-4-3-6 0-4 1-9 3-12Z" fill="#0891b2"/><path d="M9 14l-3 3 1 3 3-1" stroke="#3d5a75" stroke-width="1.2" fill="none"/><path d="M15 14l3 3-1 3-3-1" stroke="#3d5a75" stroke-width="1.2" fill="none"/><circle cx="12" cy="9" r="1.4" fill="#fff"/></svg>',
     "Research, Engineering, and Technical Services":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 3h6v4l4 9c.6 1.4-.4 3-2 3H7c-1.6 0-2.6-1.6-2-3l4-9V3Z" stroke="#22d3ee" stroke-width="1.3" fill="none"/><path d="M9 3h6" stroke="#22d3ee" stroke-width="1.3"/><path d="M8 14h8" stroke="#22d3ee" stroke-width="1.1"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 3h6v4l4 9c.6 1.4-.4 3-2 3H7c-1.6 0-2.6-1.6-2-3l4-9V3Z" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M9 3h6" stroke="#0891b2" stroke-width="1.3"/><path d="M8 14h8" stroke="#0891b2" stroke-width="1.1"/></svg>',
     "Information Technology and Cybersecurity":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="12" rx="1.5" stroke="#22d3ee" stroke-width="1.3"/><path d="M8 20h8M12 17v3" stroke="#22d3ee" stroke-width="1.3"/><path d="M7 10l2 2-2 2M13 14h4" stroke="#9fb4d6" stroke-width="1.1"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="12" rx="1.5" stroke="#0891b2" stroke-width="1.3"/><path d="M8 20h8M12 17v3" stroke="#0891b2" stroke-width="1.3"/><path d="M7 10l2 2-2 2M13 14h4" stroke="#3d5a75" stroke-width="1.1"/></svg>',
     "Facilities, Construction, and Maintenance":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 21V10l8-6 8 6v11" stroke="#22d3ee" stroke-width="1.3" fill="none"/><path d="M9 21v-6h6v6" stroke="#9fb4d6" stroke-width="1.2"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 21V10l8-6 8 6v11" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M9 21v-6h6v6" stroke="#3d5a75" stroke-width="1.2"/></svg>',
     "Scientific Instruments and Laboratory Supplies":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10 2v6l-5 10a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V2" stroke="#22d3ee" stroke-width="1.3" fill="none"/><path d="M8 2h8M7 15h10" stroke="#22d3ee" stroke-width="1.2"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10 2v6l-5 10a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V2" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M8 2h8M7 15h10" stroke="#0891b2" stroke-width="1.2"/></svg>',
     "Professional and Administrative Services":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="1.5" stroke="#22d3ee" stroke-width="1.3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#22d3ee" stroke-width="1.3"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="1.5" stroke="#0891b2" stroke-width="1.3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#0891b2" stroke-width="1.3"/></svg>',
     "Logistics, Transportation, and Operations":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="8" width="12" height="8" rx="1" stroke="#22d3ee" stroke-width="1.3"/><path d="M14 11h4l3 3v2h-7" stroke="#22d3ee" stroke-width="1.3"/><circle cx="6.5" cy="18" r="1.6" fill="#9fb4d6"/><circle cx="17.5" cy="18" r="1.6" fill="#9fb4d6"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="8" width="12" height="8" rx="1" stroke="#0891b2" stroke-width="1.3"/><path d="M14 11h4l3 3v2h-7" stroke="#0891b2" stroke-width="1.3"/><circle cx="6.5" cy="18" r="1.6" fill="#3d5a75"/><circle cx="17.5" cy="18" r="1.6" fill="#3d5a75"/></svg>',
     "Communications and Electronics":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0" stroke="#22d3ee" stroke-width="1.3" fill="none"/><path d="M7.5 12a4.5 4.5 0 0 1 9 0" stroke="#22d3ee" stroke-width="1.1" fill="none"/><circle cx="12" cy="12" r="1.6" fill="#9fb4d6"/><path d="M12 13.5V21" stroke="#22d3ee" stroke-width="1.3"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M7.5 12a4.5 4.5 0 0 1 9 0" stroke="#0891b2" stroke-width="1.1" fill="none"/><circle cx="12" cy="12" r="1.6" fill="#3d5a75"/><path d="M12 13.5V21" stroke="#0891b2" stroke-width="1.3"/></svg>',
   };
-  const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6b7d9c" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#6b7d9c" stroke-width="1.3"/></svg>';
+  const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#64748b" stroke-width="1.3"/></svg>';
   function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
 
   function renderStandoutAwards() {
@@ -702,7 +702,7 @@
 
       Plotly.newPlot("chart-supplier-category", [{
         labels: d.category_mix.map(r => r.category), values: d.category_mix.map(r => Math.max(r.net_obligations, 0)), type: "pie", hole: 0.45,
-        marker: { line: { color: "#0b1220", width: 2 } }, textfont: { color: "#0a0e17" },
+        marker: { line: { color: "#ffffff", width: 2 } }, textfont: { color: "#0f1e33" },
       }], darkLayout({ margin: { t: 10, r: 10, l: 10, b: 10 }, showlegend: true, legend: { font: { color: CHART_MUTED } } }), { displayModeBar: false, responsive: true });
 
       const variants = document.getElementById("supplier-variants");
