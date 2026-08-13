@@ -68,7 +68,9 @@ nav.tabs button {
 }
 nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); }
 nav.tabs button:hover { color: var(--navy); }
-main { padding: 20px 24px 60px; max-width: 1440px; margin: 0 auto; }
+main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
+.grid-2-even { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .grid-2-even { grid-template-columns: 1fr; } }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 .warning-banner {
@@ -128,7 +130,7 @@ table.data-table tr:hover td { background: #f8fafd; }
 .chip { background: #eef2f9; border-radius: 12px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
 footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 11.5px; }
 
-.standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
 .standout-card {
   border: 1px solid var(--border); border-left: 4px solid var(--nasa-blue); border-radius: 8px;
   padding: 12px 14px; background: #fbfcfe;
@@ -200,6 +202,7 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 
 <nav class="tabs">
   <button data-tab="overview" class="active">Executive Overview</button>
+  <button data-tab="highlights">Standout Suppliers &amp; Contracts</button>
   <button data-tab="yoy">Year-over-Year Trends</button>
   <button data-tab="explorer">Transaction Explorer</button>
   <button data-tab="supplier">Supplier Analysis</button>
@@ -213,50 +216,56 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
     <div id="overview-warning"></div>
     <div class="kpi-row" id="overview-kpis"></div>
     <div class="grid-2">
-      <div class="panel"><h2>Annual Obligation Trend</h2><div id="chart-annual-trend" style="height:320px;"></div></div>
-      <div class="panel"><h2>Category Composition (Net Obligations)</h2><div id="chart-category-comp" style="height:320px;"></div></div>
+      <div class="panel"><h2>Annual Obligation Trend</h2><div id="chart-annual-trend" style="height:280px;"></div></div>
+      <div class="panel"><h2>Category Composition (Net Obligations)</h2><div id="chart-category-comp" style="height:280px;"></div></div>
     </div>
     <div class="grid-2">
       <div class="panel">
         <h2>Top Suppliers</h2>
-        <div class="table-wrap"><table class="data-table" id="table-top-suppliers"></table></div>
+        <div class="table-wrap" style="max-height:340px;"><table class="data-table" id="table-top-suppliers"></table></div>
       </div>
       <div class="panel">
         <h2>Key Findings</h2>
         <div id="overview-findings"></div>
       </div>
     </div>
-    <div class="panel">
-      <h2>Standout Suppliers</h2>
-      <div class="small-note">
-        Up to 5 suppliers surfaced by disclosed, evidence-based signals (spend
-        concentration, deobligation share, year-over-year swings) -- not a
-        performance rating or a finding of wrongdoing. Each reason cites the
-        exact supporting metric so it can be checked against the award record.
+  </section>
+
+  <!-- ================= TAB 1B: HIGHLIGHTS (Standout Suppliers & Contracts) ================= -->
+  <section id="tab-highlights" class="tab-panel">
+    <div class="grid-2-even">
+      <div class="panel">
+        <h2>Standout Suppliers</h2>
+        <div class="small-note">
+          Up to 5 suppliers surfaced by disclosed, evidence-based signals (spend
+          concentration, deobligation share, year-over-year swings) -- not a
+          performance rating or a finding of wrongdoing. Each reason cites the
+          exact supporting metric so it can be checked against the award record.
+        </div>
+        <div class="standout-grid" id="standout-suppliers" style="margin-top:10px;"></div>
       </div>
-      <div class="standout-grid" id="standout-suppliers" style="margin-top:10px;"></div>
-    </div>
-    <div class="panel">
-      <h2>Top Contracts &amp; Awards</h2>
-      <div class="small-note">
-        Up to 5 contract awards surfaced by value and by two disclosed signals
-        (deobligation share, growth via modifications) -- not a cost-overrun
-        finding; this dataset has no ceiling/scope-of-record to compare
-        against, only what the transaction history itself shows. The
-        description on each card is the actual, unedited transaction
-        description from the government record -- the closest thing to "what
-        was purchased" this data provides. Icons denote the award's spend
-        category (illustrative, not a photo of the actual product -- see
-        note below the panel).
-      </div>
-      <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
-      <div class="small-note" style="margin-top:10px;">
-        Real product/mission photography isn't embedded here: this dashboard
-        is self-contained and works fully offline (no network call at view
-        time), and this build environment's outbound network access is
-        blocked, so no image could be fetched and verified at generation
-        time either. The category icons are generated locally, not pulled
-        from the web.
+      <div class="panel">
+        <h2>Top Contracts &amp; Awards</h2>
+        <div class="small-note">
+          Up to 5 contract awards surfaced by value and by two disclosed signals
+          (deobligation share, growth via modifications) -- not a cost-overrun
+          finding; this dataset has no ceiling/scope-of-record to compare
+          against, only what the transaction history itself shows. The
+          description on each card is the actual, unedited transaction
+          description from the government record -- the closest thing to "what
+          was purchased" this data provides. Icons denote the award's spend
+          category (illustrative, not a photo of the actual product -- see
+          note below the panel).
+        </div>
+        <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
+        <div class="small-note" style="margin-top:10px;">
+          Real product/mission photography isn't embedded here: this dashboard
+          is self-contained and works fully offline (no network call at view
+          time), and this build environment's outbound network access is
+          blocked, so no image could be fetched and verified at generation
+          time either. The category icons are generated locally, not pulled
+          from the web.
+        </div>
       </div>
     </div>
   </section>
