@@ -61,6 +61,34 @@ def _supplier_detail(df: pd.DataFrame, total_net: float) -> dict:
     return detail
 
 
+def _kpi_drilldowns(df: pd.DataFrame, max_rows: int = 12) -> dict:
+    """Backs the Executive Overview KPI tiles' "how does this number build
+    up?" drill-down. The dollar-value KPIs (Net/Gross/Deobligations) are
+    sums over every transaction, but the Transaction Explorer only embeds
+    the most recent EXPLORER_EMBED_ROW_LIMIT rows -- not necessarily the
+    largest ones -- so the largest contributors have to be computed here,
+    over the full dataset, rather than filtered client-side from a capped
+    subset that could miss them entirely.
+    """
+    if df.empty:
+        return {"top_gross_transactions": [], "top_deobligation_transactions": []}
+
+    def _rows(g: pd.DataFrame) -> list[dict]:
+        return [{
+            "action_date": r["action_date"].date().isoformat(),
+            "supplier": r["normalized_supplier"],
+            "award_id": r["award_id_piid"],
+            "amount": float(r["transaction_obligation_signed"]),
+        } for _, r in g.iterrows()]
+
+    pos = df.loc[df["transaction_obligation_signed"] > 0].sort_values("transaction_obligation_signed", ascending=False).head(max_rows)
+    neg = df.loc[df["transaction_obligation_signed"] < 0].sort_values("transaction_obligation_signed", ascending=True).head(max_rows)
+    return {
+        "top_gross_transactions": _rows(pos),
+        "top_deobligation_transactions": _rows(neg),
+    }
+
+
 def _category_detail(df: pd.DataFrame) -> dict:
     detail: dict[str, dict] = {}
     for cat, g in df.groupby("ai_spend_category"):
@@ -484,5 +512,6 @@ def build_payload(
         "awards_summary": _award_summary(award_rows),
         "consolidation_opportunities": _consolidation_opportunities(categories_detail),
         "duplicate_purchase_candidates": _duplicate_purchase_candidates(award_rows),
+        "kpi_drilldowns": _kpi_drilldowns(df),
     }
     return payload

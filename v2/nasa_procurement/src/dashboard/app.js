@@ -273,11 +273,55 @@
     }
     requestAnimationFrame(frame);
   }
-  function animatedKpiTile(label, targetNum, formatFn, negClass) {
+  function animatedKpiTile(label, targetNum, formatFn, negClass, drilldown) {
     const valueEl = el("div", { class: "value" + (negClass ? " neg" : "") }, [formatFn(0)]);
-    const tile = el("div", { class: "kpi" }, [el("div", { class: "label" }, [label]), valueEl]);
+    const tile = el("div", { class: "kpi" + (drilldown ? " clickable" : "") }, [el("div", { class: "label" }, [label]), valueEl]);
     animateNumber(valueEl, 0, targetNum || 0, formatFn, 700);
+    if (drilldown) {
+      tile.tabIndex = 0;
+      tile.setAttribute("role", "button");
+      tile.title = "Click to see how this number is calculated";
+      tile.addEventListener("click", () => openKpiModal(drilldown()));
+      tile.addEventListener("keydown", ev => {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openKpiModal(drilldown()); }
+      });
+    }
     return tile;
+  }
+
+  // ---------------- KPI drill-down modal ("how does this number build up?") ----------------
+  function setupKpiModal() {
+    const overlay = document.getElementById("kpi-modal-overlay");
+    const closeModal = () => overlay.classList.remove("open");
+    document.getElementById("kpi-modal-close").addEventListener("click", closeModal);
+    overlay.addEventListener("click", ev => { if (ev.target === overlay) closeModal(); });
+    document.addEventListener("keydown", ev => {
+      if (ev.key === "Escape" && overlay.classList.contains("open")) closeModal();
+    });
+  }
+
+  function openKpiModal(spec) {
+    document.getElementById("kpi-modal-title").textContent = spec.title;
+    document.getElementById("kpi-modal-formula").textContent = spec.formula;
+    const noteEl = document.getElementById("kpi-modal-note");
+    noteEl.textContent = spec.note || "";
+    noteEl.style.display = spec.note ? "" : "none";
+
+    const wrap = document.getElementById("kpi-modal-table-wrap");
+    wrap.innerHTML = "";
+    if (spec.rows && spec.rows.length) {
+      const tbl = el("table", { class: "data-table" });
+      tbl.appendChild(el("thead", {}, [el("tr", {}, spec.columns.map(h => el("th", {}, [h])))]));
+      const tbody = el("tbody");
+      spec.rows.forEach(r => tbody.appendChild(el("tr", {}, r.map(c => el("td", {}, [c])))));
+      tbl.appendChild(tbody);
+      wrap.appendChild(tbl);
+    } else if (!spec.rows) {
+      // no drill-down list available for this KPI -- formula-only explanation.
+    } else {
+      wrap.appendChild(el("div", { class: "small-note" }, ["No contributing rows to show for this dataset."]));
+    }
+    document.getElementById("kpi-modal-overlay").classList.add("open");
   }
 
   // ---------------- Cross-tab "jump-in" navigation ----------------
@@ -332,11 +376,24 @@
     document.getElementById("tab-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function kpiTile(label, value, negClass) {
-    return el("div", { class: "kpi" }, [
+  // `drilldown` is a zero-arg function returning { title, formula, note,
+  // columns, rows } -- called lazily on click/Enter so building the
+  // explanation never costs anything unless someone actually opens it.
+  function kpiTile(label, value, negClass, drilldown) {
+    const tile = el("div", { class: "kpi" + (drilldown ? " clickable" : "") }, [
       el("div", { class: "label" }, [label]),
       el("div", { class: "value" + (negClass ? " neg" : "") }, [value]),
     ]);
+    if (drilldown) {
+      tile.tabIndex = 0;
+      tile.setAttribute("role", "button");
+      tile.title = "Click to see how this number is calculated";
+      tile.addEventListener("click", () => openKpiModal(drilldown()));
+      tile.addEventListener("keydown", ev => {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openKpiModal(drilldown()); }
+      });
+    }
+    return tile;
   }
 
   // ---------------- Tab 1: Executive Overview ----------------
@@ -360,12 +417,68 @@
 
     const t = A.totals;
     const kpis = document.getElementById("overview-kpis");
-    kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0));
-    kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney));
-    kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney));
-    kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum));
-    kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum));
-    kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum));
+    const KD = DATA.kpi_drilldowns || { top_gross_transactions: [], top_deobligation_transactions: [] };
+    const txnRow = r => [r.action_date, r.supplier, r.award_id, fmtMoney(r.amount)];
+
+    kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0, () => ({
+      title: "Net Obligations",
+      formula: `Sum of every transaction's signed obligation amount across all ${fmtNum(t.transaction_count)} transactions: `
+        + `${fmtMoney(t.gross_positive_obligations)} gross positive − ${fmtMoney(t.deobligations)} deobligated = ${fmtMoney(t.net_obligations)} net.`,
+      note: `Showing the ${KD.top_gross_transactions.length} largest positive and ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount -- not an exhaustive list of all ${fmtNum(t.transaction_count)} transactions.`,
+      columns: ["Date", "Supplier", "Award", "Signed Amount"],
+      rows: [...KD.top_gross_transactions, ...KD.top_deobligation_transactions]
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+        .map(txnRow),
+    })));
+    kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney, false, () => ({
+      title: "Gross Positive Obligations",
+      formula: `Sum of the signed obligation amount for every transaction with a positive value (new obligations and upward modifications), across ${fmtNum(t.transaction_count)} transactions.`,
+      note: `Showing the ${KD.top_gross_transactions.length} largest positive transactions, ranked by dollar amount.`,
+      columns: ["Date", "Supplier", "Award", "Amount"],
+      rows: KD.top_gross_transactions.map(txnRow),
+    })));
+    kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney, false, () => ({
+      title: "Deobligations",
+      formula: `Sum of the absolute value of every transaction with a negative signed amount (downward contract modifications) -- equal to ${fmtPct(t.deobligation_rate)} of gross positive obligations.`,
+      note: `Showing the ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount.`,
+      columns: ["Date", "Supplier", "Award", "Amount"],
+      rows: KD.top_deobligation_transactions.map(txnRow),
+    })));
+    kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum, false, () => {
+      const posCount = t.transaction_count - t.negative_transaction_count - t.zero_dollar_action_count;
+      return {
+        title: "Transactions",
+        formula: "Count of every transaction row in this dataset, regardless of direction or size.",
+        columns: ["Type", "Count"],
+        rows: [
+          ["Positive obligations (new / increased)", fmtNum(posCount)],
+          ["Deobligations (decreased)", fmtNum(t.negative_transaction_count)],
+          ["Zero-dollar actions", fmtNum(t.zero_dollar_action_count)],
+        ],
+      };
+    }));
+    kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum, false, () => {
+      const top = (DATA.awards_summary || []).slice().sort((a, b) => b.net_obligations - a.net_obligations).slice(0, 10);
+      return {
+        title: "Unique Awards",
+        formula: "Count of distinct Award ID (PIID) values across all transactions -- each award can span many transactions (new obligations, modifications, deobligations) over time.",
+        note: `Showing the top ${top.length} of ${fmtNum(t.unique_awards)} awards by net obligations.`,
+        columns: ["Award", "Supplier", "Net Obligations", "Transactions"],
+        rows: top.map(a => [a.award_id, a.supplier, fmtMoney(a.net_obligations), fmtNum(a.transaction_count)]),
+      };
+    }));
+    kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum, false, () => {
+      const top = Object.entries(DATA.suppliers_detail || {})
+        .sort((a, b) => b[1].total_net_obligations - a[1].total_net_obligations)
+        .slice(0, 10);
+      return {
+        title: "Normalized Suppliers",
+        formula: "Count of distinct suppliers after name-variant resolution -- raw recipient name strings (punctuation, DBA names, store-number suffixes, etc.) that resolve to the same vendor are merged into one normalized_supplier before counting.",
+        note: `Showing the top ${top.length} of ${fmtNum(t.unique_suppliers)} normalized suppliers by net obligations.`,
+        columns: ["Supplier", "Net Obligations", "Transactions"],
+        rows: top.map(([name, d]) => [name, fmtMoney(d.total_net_obligations), fmtNum(d.transaction_count)]),
+      };
+    }));
 
     // A single- (or two-) fiscal-year dataset gives the annual trend chart
     // too few points to show a trend at all, so fall back to monthly
@@ -1107,10 +1220,42 @@
 
       const kpis = document.getElementById("category-kpis");
       const totalNet = d.annual.reduce((s, r) => s + r.net_obligations, 0);
-      kpis.appendChild(kpiTile("Net Obligations", fmtMoney(totalNet), totalNet < 0));
-      kpis.appendChild(kpiTile("Unique Suppliers", fmtNum(d.unique_suppliers)));
-      kpis.appendChild(kpiTile("Concentration (HHI)", d.concentration_hhi.toFixed(0)));
-      kpis.appendChild(kpiTile("Tail Spend Share", fmtPct(d.tail_spend_share)));
+      const leadingRows = () => d.leading_suppliers.map(r => [r.supplier, fmtMoney(r.net_obligations)]);
+      const leadingNote = `Showing the top ${d.leading_suppliers.length} of ${fmtNum(d.unique_suppliers)} suppliers active in this category, by net obligations.`;
+
+      kpis.appendChild(kpiTile("Net Obligations", fmtMoney(totalNet), totalNet < 0, () => ({
+        title: `Net Obligations -- ${name}`,
+        formula: `Sum of signed obligation amounts for every transaction classified into "${name}", across all fiscal years in this dataset.`,
+        note: leadingNote,
+        columns: ["Supplier", "Net Obligations"],
+        rows: leadingRows(),
+      })));
+      kpis.appendChild(kpiTile("Unique Suppliers", fmtNum(d.unique_suppliers), false, () => ({
+        title: `Unique Suppliers -- ${name}`,
+        formula: `Count of distinct normalized suppliers with at least one transaction classified into "${name}".`,
+        note: leadingNote,
+        columns: ["Supplier", "Net Obligations"],
+        rows: leadingRows(),
+      })));
+      kpis.appendChild(kpiTile("Concentration (HHI)", d.concentration_hhi.toFixed(0), false, () => {
+        const posTotal = d.leading_suppliers.reduce((s, r) => s + Math.max(r.net_obligations, 0), 0);
+        return {
+          title: `Concentration (HHI) -- ${name}`,
+          formula: "Herfindahl-Hirschman Index: each supplier's % share of this category's positive spend, squared, then summed (0-10,000 scale). DOJ/FTC convention: <1,500 unconcentrated, 1,500-2,500 moderate, >2,500 concentrated. Computed server-side over every supplier in the category, not just the ones shown below.",
+          note: posTotal > 0
+            ? `Share breakdown for the top ${d.leading_suppliers.length} suppliers shown below (long-tail suppliers outside this list also contribute to the actual HHI).`
+            : undefined,
+          columns: ["Supplier", "Share of Category Spend"],
+          rows: posTotal > 0 ? d.leading_suppliers.map(r => [r.supplier, fmtPct(Math.max(r.net_obligations, 0) / posTotal)]) : [],
+        };
+      }));
+      kpis.appendChild(kpiTile("Tail Spend Share", fmtPct(d.tail_spend_share), false, () => ({
+        title: `Tail Spend Share -- ${name}`,
+        formula: "Share of this category's positive net obligations attributable to suppliers outside the top 10% (by spend) within the category -- a measure of how much spend sits with the long tail of smaller vendors rather than the handful of largest ones.",
+        note: "No per-supplier drill-down list is stored for the tail itself (only the top 10 \"head\" suppliers are embedded, shown on the Leading Suppliers table on this tab) -- the percentage above is computed server-side over every supplier in the category.",
+        columns: null,
+        rows: null,
+      })));
 
       Plotly.newPlot("chart-category-annual", [{
         x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: BLUE },
@@ -1130,9 +1275,31 @@
         findingsContainer.appendChild(el("div", { class: "small-note" }, ["No findings specifically cite this category. See Executive Overview for dataset-wide findings."]));
       }
 
+      const explorerIsPartial = DATA.meta.transaction_count > DATA.meta.explorer_embedded_count;
+      const explorerCaveat = explorerIsPartial
+        ? ` The Transaction Explorer only embeds the ${fmtNum(DATA.meta.explorer_embedded_count)} most recent of ${fmtNum(DATA.meta.transaction_count)} transactions dataset-wide, so this sample may not include every matching row.`
+        : "";
       const qk = document.getElementById("category-quality-kpis");
-      qk.appendChild(kpiTile("Needs Review (this category)", fmtNum(d.needs_review_count)));
-      qk.appendChild(kpiTile("Low Classification Confidence (<0.6)", fmtNum(d.low_confidence_count)));
+      qk.appendChild(kpiTile("Needs Review (this category)", fmtNum(d.needs_review_count), false, () => {
+        const rows = DATA.explorer_rows.filter(r => r.ai_spend_category === name && r.review_status === "NEEDS_REVIEW").slice(0, 10);
+        return {
+          title: `Needs Review -- ${name}`,
+          formula: `Count of transactions in "${name}" where review_status is NEEDS_REVIEW -- classification or supplier resolution fell below the confidence threshold and was not confirmed by an agent call.`,
+          note: `Showing up to ${rows.length} matching rows.${explorerCaveat}`,
+          columns: ["Date", "Supplier", "Award", "Amount"],
+          rows: rows.map(r => [r.action_date, r.normalized_supplier, r.award_id_piid, fmtMoney(r.transaction_obligation_signed)]),
+        };
+      }));
+      qk.appendChild(kpiTile("Low Classification Confidence (<0.6)", fmtNum(d.low_confidence_count), false, () => {
+        const rows = DATA.explorer_rows.filter(r => r.ai_spend_category === name && r.classification_confidence < 0.6).slice(0, 10);
+        return {
+          title: `Low Classification Confidence -- ${name}`,
+          formula: `Count of transactions in "${name}" with classification_confidence below 0.6.`,
+          note: `Showing up to ${rows.length} matching rows.${explorerCaveat}`,
+          columns: ["Date", "Supplier", "Award", "Confidence"],
+          rows: rows.map(r => [r.action_date, r.normalized_supplier, r.award_id_piid, fmtPct(r.classification_confidence)]),
+        };
+      }));
 
       const rq = document.getElementById("table-review-queue");
       rq.appendChild(el("thead", {}, [el("tr", {}, ["Action Date", "Supplier", "Award ID", "Amount", "Confidence", "Flags"].map(h => el("th", {}, [h])))]));
@@ -1155,6 +1322,7 @@
   setupTabs();
   setupThemeToggle();
   setupCommandPalette();
+  setupKpiModal();
   renderOverview();
   renderSnapshotStatus();
   renderStandoutSuppliers();
