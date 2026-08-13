@@ -149,6 +149,13 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 .reason-tag.rapid_decline { background: #fff3d9; color: var(--warn); }
 .standout-card .sc-reason-detail { font-size: 11.5px; color: var(--text); margin: 4px 0 8px; }
 .standout-card .sc-reason-detail:last-of-type { margin-bottom: 10px; }
+.sc-details { display: none; }
+.sc-details.expanded { display: block; }
+.sc-details-toggle {
+  background: none; border: none; color: var(--blue); font-size: 11px; font-weight: 600;
+  cursor: pointer; padding: 2px 0; margin-bottom: 6px; text-decoration: underline;
+}
+.award-desc-short { font-size: 11.5px; color: var(--text-muted); margin: 4px 0 6px; }
 .sc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .sc-actions button {
   font-size: 11px; font-weight: 600; border-radius: 5px; padding: 5px 9px; cursor: pointer;
@@ -237,35 +244,23 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
       <div class="panel">
         <h2>Standout Suppliers</h2>
         <div class="small-note">
-          Up to 5 suppliers surfaced by disclosed, evidence-based signals (spend
-          concentration, deobligation share, year-over-year swings) -- not a
-          performance rating or a finding of wrongdoing. Each reason cites the
-          exact supporting metric so it can be checked against the award record.
+          Up to 5 suppliers, surfaced by disclosed signals -- not a performance rating. Click "Details" on a card for the supporting metric.
         </div>
         <div class="standout-grid" id="standout-suppliers" style="margin-top:10px;"></div>
       </div>
       <div class="panel">
         <h2>Top Contracts &amp; Awards</h2>
         <div class="small-note">
-          Up to 5 contract awards surfaced by value and by two disclosed signals
-          (deobligation share, growth via modifications) -- not a cost-overrun
-          finding; this dataset has no ceiling/scope-of-record to compare
-          against, only what the transaction history itself shows. The
-          description on each card is the actual, unedited transaction
-          description from the government record -- the closest thing to "what
-          was purchased" this data provides. Icons denote the award's spend
-          category (illustrative, not a photo of the actual product -- see
-          note below the panel).
+          Up to 5 awards, surfaced by value and by disclosed signals -- not a cost-overrun finding. Icons are illustrative category icons, not product photos.
+          <button class="sc-details-toggle" id="award-photo-note-toggle" style="margin-left:4px;">Why no real photos?</button>
+          <div class="sc-details" id="award-photo-note">
+            This dashboard is self-contained and works fully offline (no network call at view
+            time), and this build environment's outbound network access is blocked, so no image
+            could be fetched and verified at generation time either -- the category icons are
+            generated locally, not pulled from the web.
+          </div>
         </div>
         <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
-        <div class="small-note" style="margin-top:10px;">
-          Real product/mission photography isn't embedded here: this dashboard
-          is self-contained and works fully offline (no network call at view
-          time), and this build environment's outbound network access is
-          blocked, so no image could be fetched and verified at generation
-          time either. The category icons are generated locally, not pulled
-          from the web.
-        </div>
       </div>
     </div>
   </section>

@@ -185,6 +185,19 @@
     return "https://www.usaspending.gov/search/?keyword=" + encodeURIComponent(supplier);
   }
 
+  // A collapsed-by-default wrapper for the longer evidence text, so cards
+  // read as a scannable stat + tags by default and the full sentence is one
+  // click away rather than always taking up space.
+  function detailsToggle(detailNodes) {
+    const wrap = el("div", { class: "sc-details" }, detailNodes);
+    const btn = el("button", { class: "sc-details-toggle" }, ["Details ▾"]);
+    btn.addEventListener("click", () => {
+      const nowExpanded = wrap.classList.toggle("expanded");
+      btn.textContent = nowExpanded ? "Details ▴" : "Details ▾";
+    });
+    return { btn, wrap };
+  }
+
   function renderStandoutSuppliers() {
     const container = document.getElementById("standout-suppliers");
     const list = DATA.standout_suppliers || [];
@@ -196,7 +209,9 @@
 
     list.forEach(s => {
       const tagRow = el("div", {}, s.reasons.map(r => el("span", { class: "reason-tag " + r.type }, [r.label])));
-      const detailBlocks = s.reasons.map(r => el("div", { class: "sc-reason-detail" }, [r.detail]));
+      const { btn: detailsBtn, wrap: detailsWrap } = detailsToggle(
+        s.reasons.map(r => el("div", { class: "sc-reason-detail" }, [r.detail]))
+      );
 
       const flagBtn = el("button", { class: "flag-btn" + (flags[s.supplier] ? " marked" : "") },
         [flags[s.supplier] ? "★ Marked for review" : "Mark for review"]);
@@ -225,7 +240,8 @@
         ]),
         el("div", { class: "sc-sub" }, [`${fmtNum(s.transaction_count)} transactions · ${fmtNum(s.unique_awards)} awards · ${s.concentration_pct.toFixed(1)}% of total`]),
         tagRow,
-        ...detailBlocks,
+        detailsBtn,
+        detailsWrap,
         el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
       ]);
       container.appendChild(card);
@@ -255,6 +271,15 @@
   function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
 
   function renderStandoutAwards() {
+    const photoToggle = document.getElementById("award-photo-note-toggle");
+    const photoNote = document.getElementById("award-photo-note");
+    if (photoToggle && photoNote) {
+      photoToggle.addEventListener("click", () => {
+        const nowExpanded = photoNote.classList.toggle("expanded");
+        photoToggle.textContent = nowExpanded ? "Why no real photos? (hide)" : "Why no real photos?";
+      });
+    }
+
     const container = document.getElementById("standout-awards");
     const list = DATA.standout_awards || [];
     if (!list.length) {
@@ -263,10 +288,20 @@
     }
     const flags = getReviewFlags();
 
+    const DESC_SHORT_LEN = 110;
+
     list.forEach(a => {
       const key = "award:" + a.award_id;
       const tagRow = el("div", {}, a.reasons.map(r => el("span", { class: "reason-tag " + r.type }, [r.label])));
-      const detailBlocks = a.reasons.map(r => el("div", { class: "sc-reason-detail" }, [r.detail]));
+
+      const desc = a.description || "";
+      const descIsLong = desc.length > DESC_SHORT_LEN;
+      const descShort = descIsLong ? desc.slice(0, DESC_SHORT_LEN) + "…" : desc;
+      const detailNodes = [
+        ...(descIsLong ? [el("div", { class: "award-desc" }, [desc])] : []),
+        ...a.reasons.map(r => el("div", { class: "sc-reason-detail" }, [r.detail])),
+      ];
+      const { btn: detailsBtn, wrap: detailsWrap } = detailsToggle(detailNodes);
 
       const flagBtn = el("button", { class: "flag-btn" + (flags[key] ? " marked" : "") },
         [flags[key] ? "★ Marked for review" : "Mark for review"]);
@@ -298,9 +333,10 @@
           el("div", { class: "sc-amount" }, [fmtMoney(a.net_obligations)]),
         ]),
         el("div", { class: "sc-sub" }, [`${fmtNum(a.transaction_count)} transaction(s) · ${fmtNum(a.modification_count)} modification(s)`]),
-        a.description ? el("div", { class: "award-desc" }, [a.description]) : el("div", { class: "small-note" }, ["No transaction description on record."]),
+        desc ? el("div", { class: "award-desc-short" }, [descShort]) : el("div", { class: "small-note" }, ["No transaction description on record."]),
         tagRow,
-        ...detailBlocks,
+        detailsBtn,
+        detailsWrap,
         el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
       ]);
       container.appendChild(card);
