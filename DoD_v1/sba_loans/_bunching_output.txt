@@ -1,0 +1,53 @@
+=== VENDOR SUMMARY ===
+AmerisourceBergen Drug Corp                records= 491  clusters= 124  same-vehicle(normal)=   4  STANDALONE(flag)= 120  $standalone=121,717,717
+Atlantic Diving Supply, Inc.               records= 223  clusters=  52  same-vehicle(normal)=  31  STANDALONE(flag)=  21  $standalone=22,382,773
+Noble Supply & Logistics, LLC              records=  80  clusters=  12  same-vehicle(normal)=   4  STANDALONE(flag)=   8  $standalone=6,827,140
+SupplyCore LLC                             records=  59  clusters=  11  same-vehicle(normal)=   7  STANDALONE(flag)=   4  $standalone=3,005,987
+ASRC Federal Facilities Logistics, LLC     records=  51  clusters=   6  same-vehicle(normal)=   4  STANDALONE(flag)=   2  $standalone=1,624,477
+W S Darley & Co                            records=  81  clusters=  13  same-vehicle(normal)=  13  STANDALONE(flag)=   0  $standalone=0
+Lazarus Energy Holdings LLC                records=  45  clusters=  10  same-vehicle(normal)=  10  STANDALONE(flag)=   0  $standalone=0
+Leidos, Inc.                               records=  55  clusters=   9  same-vehicle(normal)=   9  STANDALONE(flag)=   0  $standalone=0
+
+=== STANDALONE CLUSTERS ONLY (different/no parent vehicle — the real signal) ===
+AmerisourceBergen Drug Corp            2025-04-14  Defense Logistics Agency         n=8  sum=$2,646,438  parents=5
+AmerisourceBergen Drug Corp            2025-08-04  Defense Logistics Agency         n=8  sum=$2,568,766  parents=5
+AmerisourceBergen Drug Corp            2025-01-06  Defense Logistics Agency         n=7  sum=$2,257,198  parents=5
+AmerisourceBergen Drug Corp            2024-12-09  Defense Logistics Agency         n=7  sum=$2,217,227  parents=5
+AmerisourceBergen Drug Corp            2025-06-09  Defense Logistics Agency         n=6  sum=$2,027,674  parents=5
+AmerisourceBergen Drug Corp            2025-03-10  Defense Logistics Agency         n=6  sum=$1,987,104  parents=3
+AmerisourceBergen Drug Corp            2025-02-03  Defense Logistics Agency         n=6  sum=$1,955,719  parents=5
+Atlantic Diving Supply, Inc.           2025-09-27  Defense Logistics Agency         n=6  sum=$1,937,855  parents=2
+AmerisourceBergen Drug Corp            2024-11-11  Defense Logistics Agency         n=6  sum=$1,935,915  parents=5
+Atlantic Diving Supply, Inc.           2025-09-29  Defense Logistics Agency         n=6  sum=$1,923,391  parents=3
+AmerisourceBergen Drug Corp            2024-12-23  Defense Logistics Agency         n=5  sum=$1,686,282  parents=4
+AmerisourceBergen Drug Corp            2025-05-26  Defense Logistics Agency         n=5  sum=$1,673,613  parents=4
+Atlantic Diving Supply, Inc.           2025-09-25  Defense Logistics Agency         n=5  sum=$1,665,904  parents=2
+AmerisourceBergen Drug Corp            2025-03-03  Defense Logistics Agency         n=5  sum=$1,661,152  parents=5
+AmerisourceBergen Drug Corp            2024-12-16  Defense Logistics Agency         n=5  sum=$1,655,598  parents=3
+AmerisourceBergen Drug Corp            2025-03-17  Defense Logistics Agency         n=5  sum=$1,653,864  parents=5
+AmerisourceBergen Drug Corp            2025-07-28  Defense Logistics Agency         n=5  sum=$1,644,749  parents=5
+Atlantic Diving Supply, Inc.           2025-08-19  Defense Logistics Agency         n=5  sum=$1,644,483  parents=2
+AmerisourceBergen Drug Corp            2025-03-31  Defense Logistics Agency         n=5  sum=$1,631,890  parents=3
+AmerisourceBergen Drug Corp            2024-11-25  Defense Logistics Agency         n=5  sum=$1,623,327  parents=3
+AmerisourceBergen Drug Corp            2024-11-04  Defense Logistics Agency         n=5  sum=$1,620,203  parents=5
+AmerisourceBergen Drug Corp            2025-04-28  Defense Logistics Agency         n=5  sum=$1,616,567  parents=4
+AmerisourceBergen Drug Corp            2024-10-09  Defense Logistics Agency         n=5  sum=$1,608,368  parents=4
+AmerisourceBergen Drug Corp            2025-02-17  Defense Logistics Agency         n=5  sum=$1,606,237  parents=4
+AmerisourceBergen Drug Corp            2025-01-13  Defense Logistics Agency         n=5  sum=$1,602,758  parents=4
+Atlantic Diving Supply, Inc.           2025-09-17  Defense Logistics Agency         n=5  sum=$1,600,763  parents=2
+AmerisourceBergen Drug Corp            2025-05-19  Defense Logistics Agency         n=5  sum=$1,588,524  parents=4
+AmerisourceBergen Drug Corp            2025-07-07  Defense Logistics Agency         n=5  sum=$1,577,768  parents=3
+AmerisourceBergen Drug Corp            2025-05-21  Defense Logistics Agency         n=4  sum=$1,330,991  parents=4
+Noble Supply & Logistics, LLC          2025-09-18  Defense Logistics Agency         n=4  sum=$1,317,118  parents=2
+AmerisourceBergen Drug Corp            2025-09-11  Defense Logistics Agency         n=4  sum=$1,315,835  parents=4
+AmerisourceBergen Drug Corp            2025-09-01  Defense Logistics Agency         n=4  sum=$1,315,351  parents=4
+AmerisourceBergen Drug Corp            2025-08-18  Defense Logistics Agency         n=4  sum=$1,313,068  parents=4
+AmerisourceBergen Drug Corp            2025-04-07  Defense Logistics Agency         n=4  sum=$1,309,576  parents=3
+AmerisourceBergen Drug Corp            2025-01-08  Defense Logistics Agency         n=4  sum=$1,308,366  parents=3
+AmerisourceBergen Drug Corp            2025-09-22  Defense Logistics Agency         n=4  sum=$1,305,657  parents=4
+AmerisourceBergen Drug Corp            2025-06-16  Defense Logistics Agency         n=4  sum=$1,297,194  parents=3
+Atlantic Diving Supply, Inc.           2025-03-17  Defense Logistics Agency         n=4  sum=$1,296,653  parents=2
+AmerisourceBergen Drug Corp            2025-01-27  Defense Logistics Agency         n=4  sum=$1,294,206  parents=3
+AmerisourceBergen Drug Corp            2025-02-24  Defense Logistics Agency         n=4  sum=$1,293,262  parents=4
+
+total standalone clusters: 155
