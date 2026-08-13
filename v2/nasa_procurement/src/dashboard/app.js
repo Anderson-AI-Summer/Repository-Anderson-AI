@@ -106,10 +106,142 @@
     });
   }
 
+  // ---------------- Toast notifications ----------------
+  // "Visibility of system status" -- actions like marking for review or
+  // exporting a CSV used to happen silently (only a button label change).
+  function showToast(message) {
+    let container = document.getElementById("toast-container");
+    if (!container) {
+      container = el("div", { id: "toast-container" });
+      document.body.appendChild(container);
+    }
+    const toast = el("div", { class: "toast" }, [message]);
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("show"));
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 300);
+    }, 2600);
+  }
+
+  // ---------------- Theme toggle ----------------
+  function setupThemeToggle() {
+    const btn = document.getElementById("theme-toggle-btn");
+    if (!btn) return;
+    function label(theme) { return theme === "dark" ? "☀ Light theme" : "🌙 Dark theme"; }
+    btn.textContent = label(document.documentElement.getAttribute("data-theme") || "light");
+    btn.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme") || "light";
+      const next = current === "dark" ? "light" : "dark";
+      try { localStorage.setItem("nasa_dashboard_theme", next); } catch (e) {}
+      showToast(`Switching to ${next} theme…`);
+      // A full reload (not a live swap) is deliberate: chart colors and the
+      // category icon SVGs are generated once from theme-specific color
+      // constants at load time (see THEME below), same as every other
+      // render in this file -- re-running that from a clean load is far
+      // less error-prone than re-coloring ~15 already-drawn Plotly charts
+      // and re-rendering every already-inserted icon in place. The saved
+      // preference (read in the inline <head> script) means the reload
+      // renders the new theme immediately, with no flash of the old one.
+      setTimeout(() => location.reload(), 200);
+    });
+  }
+
+  // ---------------- Command palette (Ctrl/Cmd+K) ----------------
+  function buildCommandIndex() {
+    const items = [];
+    document.querySelectorAll("nav.tabs button").forEach(btn => {
+      items.push({ type: "Tab", label: btn.textContent.trim(), action: () => switchTab(btn.dataset.tab) });
+    });
+    Object.keys(DATA.suppliers_detail || {}).forEach(name => {
+      items.push({ type: "Supplier", label: name, action: () => jumpToSupplier(name) });
+    });
+    (DATA.awards_summary || []).forEach(a => {
+      items.push({ type: "Award", label: `${a.award_id} — ${a.supplier}`, action: () => jumpToAward(a.award_id) });
+    });
+    Object.keys(DATA.categories_detail || {}).forEach(name => {
+      items.push({ type: "Category", label: name, action: () => jumpToCategory(name) });
+    });
+    return items;
+  }
+
+  function setupCommandPalette() {
+    const overlay = document.getElementById("cmdk-overlay");
+    const input = document.getElementById("cmdk-input");
+    const results = document.getElementById("cmdk-results");
+    const trigger = document.getElementById("cmdk-trigger");
+    if (!overlay || !input || !results) return;
+
+    const index = buildCommandIndex();
+    let activeIndex = 0;
+    let currentMatches = [];
+
+    function draw(query) {
+      const q = query.trim().toLowerCase();
+      currentMatches = (q ? index.filter(it => it.label.toLowerCase().includes(q)) : index.slice(0, 30)).slice(0, 30);
+      activeIndex = 0;
+      results.innerHTML = "";
+      if (!currentMatches.length) {
+        results.appendChild(el("div", { class: "cmdk-empty" }, ["No matches. Try a supplier name, award ID, or category."]));
+        return;
+      }
+      currentMatches.forEach((it, i) => {
+        const row = el("div", { class: "cmdk-item" + (i === 0 ? " active" : "") }, [
+          el("span", { class: "cmdk-type" }, [it.type]),
+          el("span", {}, [it.label]),
+        ]);
+        row.addEventListener("mouseenter", () => setActive(i));
+        row.addEventListener("click", () => select(i));
+        results.appendChild(row);
+      });
+    }
+
+    function setActive(i) {
+      const rows = results.querySelectorAll(".cmdk-item");
+      rows.forEach(r => r.classList.remove("active"));
+      activeIndex = (i + rows.length) % rows.length;
+      if (rows[activeIndex]) {
+        rows[activeIndex].classList.add("active");
+        rows[activeIndex].scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    function select(i) {
+      const item = currentMatches[i];
+      if (!item) return;
+      close();
+      item.action();
+    }
+
+    function open() {
+      overlay.classList.add("open");
+      input.value = "";
+      draw("");
+      setTimeout(() => input.focus(), 20);
+    }
+    function close() { overlay.classList.remove("open"); }
+
+    input.addEventListener("input", () => draw(input.value));
+    input.addEventListener("keydown", ev => {
+      if (ev.key === "ArrowDown") { ev.preventDefault(); setActive(activeIndex + 1); }
+      else if (ev.key === "ArrowUp") { ev.preventDefault(); setActive(activeIndex - 1); }
+      else if (ev.key === "Enter") { ev.preventDefault(); select(activeIndex); }
+      else if (ev.key === "Escape") { ev.preventDefault(); close(); }
+    });
+    overlay.addEventListener("click", ev => { if (ev.target === overlay) close(); });
+    if (trigger) trigger.addEventListener("click", open);
+    document.addEventListener("keydown", ev => {
+      if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "k") {
+        ev.preventDefault();
+        overlay.classList.contains("open") ? close() : open();
+      }
+    });
+  }
+
   // ---------------- Tabs ----------------
   function setupTabs() {
     const buttons = document.querySelectorAll("nav.tabs button");
-    buttons.forEach(btn => {
+    buttons.forEach((btn, i) => {
       btn.addEventListener("click", () => {
         buttons.forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
@@ -117,7 +249,35 @@
         document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
         window.dispatchEvent(new Event("resize"));
       });
+      // Left/Right arrow-key navigation between tabs, standard for a tab
+      // list (WAI-ARIA tabs pattern) -- keyboard users shouldn't be limited
+      // to Tab-and-Enter through every button in the bar.
+      btn.addEventListener("keydown", ev => {
+        if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
+        ev.preventDefault();
+        const next = buttons[(i + (ev.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length];
+        next.focus();
+        next.click();
+      });
     });
+  }
+
+  // ---------------- Animated KPI count-up (Executive Overview only) ----------------
+  function animateNumber(valueEl, from, to, formatFn, duration) {
+    const start = performance.now();
+    function frame(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      valueEl.textContent = formatFn(Math.round(from + (to - from) * eased));
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  function animatedKpiTile(label, targetNum, formatFn, negClass) {
+    const valueEl = el("div", { class: "value" + (negClass ? " neg" : "") }, [formatFn(0)]);
+    const tile = el("div", { class: "kpi" }, [el("div", { class: "label" }, [label]), valueEl]);
+    animateNumber(valueEl, 0, targetNum || 0, formatFn, 700);
+    return tile;
   }
 
   // ---------------- Cross-tab "jump-in" navigation ----------------
@@ -200,12 +360,12 @@
 
     const t = A.totals;
     const kpis = document.getElementById("overview-kpis");
-    kpis.appendChild(kpiTile("Net Obligations", fmtMoney(t.net_obligations), t.net_obligations < 0));
-    kpis.appendChild(kpiTile("Gross Positive Obligations", fmtMoney(t.gross_positive_obligations)));
-    kpis.appendChild(kpiTile("Deobligations", fmtMoney(t.deobligations)));
-    kpis.appendChild(kpiTile("Transactions", fmtNum(t.transaction_count)));
-    kpis.appendChild(kpiTile("Unique Awards", fmtNum(t.unique_awards)));
-    kpis.appendChild(kpiTile("Normalized Suppliers", fmtNum(t.unique_suppliers)));
+    kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0));
+    kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney));
+    kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney));
+    kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum));
+    kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum));
+    kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum));
 
     const years = A.annual.map(r => "FY" + r.fiscal_year);
     Plotly.newPlot("chart-annual-trend", [
@@ -236,17 +396,41 @@
 
     drawTopSuppliers();
     drawTopContracts();
-    document.getElementById("top-suppliers-sort").addEventListener("change", drawTopSuppliers);
-    document.getElementById("top-contracts-sort").addEventListener("change", drawTopContracts);
+    document.getElementById("top-suppliers-sort").addEventListener("change", () => { topSuppliersSortDir = "desc"; drawTopSuppliers(); });
+    document.getElementById("top-contracts-sort").addEventListener("change", () => { topContractsSortDir = "desc"; drawTopContracts(); });
 
     renderFindings(document.getElementById("overview-findings"), DATA.insights);
   }
 
   // "TOP" is a choice, not a fact -- these two tables let the viewer pick
   // which metric defines it instead of hard-coding "top = highest dollar
-  // value" as the only lens.
+  // value" as the only lens. Sort direction is separate per-table state so a
+  // header click can flip asc/desc without disturbing the "top by" dropdown.
+  let topSuppliersSortDir = "desc";
+  let topContractsSortDir = "desc";
+
+  // A clickable <th>: click once to sort by this column (descending), click
+  // again to flip to ascending. Columns with no numeric key (e.g. "Supplier"
+  // name) render as a plain header.
+  function sortableHeaderCell(label, key, sortSelect, currentDir, onResort) {
+    if (!key) return el("th", {}, [label]);
+    const th = el("th", { class: "col-sortable" }, [label]);
+    if (sortSelect.value === key) th.classList.add(currentDir === "asc" ? "sort-asc" : "sort-desc");
+    th.title = "Sort by " + label.toLowerCase();
+    th.addEventListener("click", () => {
+      if (sortSelect.value === key) {
+        onResort(currentDir === "asc" ? "desc" : "asc");
+      } else {
+        sortSelect.value = key;
+        onResort("desc");
+      }
+    });
+    return th;
+  }
+
   function drawTopSuppliers() {
-    const sortKey = document.getElementById("top-suppliers-sort").value;
+    const sortSelect = document.getElementById("top-suppliers-sort");
+    const sortKey = sortSelect.value;
     const rows = Object.entries(DATA.suppliers_detail || {}).map(([name, d]) => ({
       supplier: name,
       net_obligations: d.total_net_obligations,
@@ -254,11 +438,13 @@
       unique_awards: d.unique_awards,
       deobligations: d.deobligations,
     }));
-    rows.sort((a, b) => b[sortKey] - a[sortKey]);
+    rows.sort((a, b) => topSuppliersSortDir === "asc" ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]);
 
     const tbl = document.getElementById("table-top-suppliers");
     tbl.innerHTML = "";
-    tbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations", "Transactions", "Awards", "Deobligations"].map(h => el("th", {}, [h])))]));
+    const supplierCols = [["Supplier", null], ["Net Obligations", "net_obligations"], ["Transactions", "transaction_count"], ["Awards", "unique_awards"], ["Deobligations", "deobligations"]];
+    tbl.appendChild(el("thead", {}, [el("tr", {}, supplierCols.map(([label, key]) =>
+      sortableHeaderCell(label, key, sortSelect, topSuppliersSortDir, dir => { topSuppliersSortDir = dir; drawTopSuppliers(); })))]));
     const tbody = el("tbody");
     rows.slice(0, 12).forEach(r => {
       const row = el("tr", { class: "jump-row" }, [
@@ -276,13 +462,17 @@
   }
 
   function drawTopContracts() {
-    const sortKey = document.getElementById("top-contracts-sort").value;
-    const rows = (DATA.awards_summary || []).slice().sort((a, b) => b[sortKey] - a[sortKey]);
+    const sortSelect = document.getElementById("top-contracts-sort");
+    const sortKey = sortSelect.value;
+    const rows = (DATA.awards_summary || []).slice()
+      .sort((a, b) => topContractsSortDir === "asc" ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]);
 
     const contractsTbl = document.getElementById("table-top-contracts");
     if (!contractsTbl) return;
     contractsTbl.innerHTML = "";
-    contractsTbl.appendChild(el("thead", {}, [el("tr", {}, ["Supplier", "Net Obligations", "Transactions", "Modifications", "Deobligations", "Award"].map(h => el("th", {}, [h])))]));
+    const contractCols = [["Supplier", null], ["Net Obligations", "net_obligations"], ["Transactions", "transaction_count"], ["Modifications", "modification_count"], ["Deobligations", "deobligations"], ["Award", null]];
+    contractsTbl.appendChild(el("thead", {}, [el("tr", {}, contractCols.map(([label, key]) =>
+      sortableHeaderCell(label, key, sortSelect, topContractsSortDir, dir => { topContractsSortDir = dir; drawTopContracts(); })))]));
     const ctbody = el("tbody");
     if (!rows.length) {
       ctbody.appendChild(el("tr", {}, [el("td", { colspan: 6, class: "small-note" }, ["No contract award data for this dataset."])]));
@@ -375,6 +565,7 @@
         const nowMarked = toggleReviewFlag(s.supplier);
         flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
         flagBtn.classList.toggle("marked", nowMarked);
+        showToast(nowMarked ? `Marked ${s.supplier} for review` : `Removed ${s.supplier} from review`);
       });
 
       const viewBtn = el("button", { class: "primary" }, ["View on USAspending.gov ↗"]);
@@ -386,6 +577,7 @@
         const rows = DATA.explorer_rows.filter(r => r.normalized_supplier === s.supplier);
         const safeName = s.supplier.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
         downloadCsv(`nasa_supplier_${safeName}.csv`, rowsToCsv(rows));
+        showToast(`Exported ${fmtNum(rows.length)} row(s) for ${s.supplier}`);
       });
 
       const card = el("div", { class: "standout-card" }, [
@@ -465,6 +657,7 @@
         const nowMarked = toggleReviewFlag(key);
         flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
         flagBtn.classList.toggle("marked", nowMarked);
+        showToast(nowMarked ? `Marked award ${a.award_id} for review` : `Removed award ${a.award_id} from review`);
       });
 
       const viewBtn = el("button", { class: "primary" }, ["View award on USAspending.gov ↗"]);
@@ -476,6 +669,7 @@
         const rows = DATA.explorer_rows.filter(r => r.award_id_piid === a.award_id);
         const safeId = a.award_id.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
         downloadCsv(`nasa_award_${safeId}.csv`, rowsToCsv(rows));
+        showToast(`Exported ${fmtNum(rows.length)} row(s) for award ${a.award_id}`);
       });
 
       const card = el("div", { class: "standout-card award-card", "data-award-id": a.award_id }, [
@@ -524,6 +718,7 @@
         const nowMarked = toggleReviewFlag(key);
         flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
         flagBtn.classList.toggle("marked", nowMarked);
+        showToast(nowMarked ? `Marked ${c.category} for review` : `Removed ${c.category} from review`);
       });
 
       const viewBtn = el("button", { class: "primary" }, ["View category ↗"]);
@@ -535,6 +730,7 @@
         const rows = DATA.explorer_rows.filter(r => r.ai_spend_category === c.category);
         const safeName = c.category.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
         downloadCsv(`nasa_category_${safeName}.csv`, rowsToCsv(rows));
+        showToast(`Exported ${fmtNum(rows.length)} row(s) for ${c.category}`);
       });
 
       const card = el("div", { class: "standout-card" }, [
@@ -590,6 +786,7 @@
         const nowMarked = toggleReviewFlag(key);
         flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
         flagBtn.classList.toggle("marked", nowMarked);
+        showToast(nowMarked ? `Marked this pair for review` : `Removed this pair from review`);
       });
 
       const exportBtn = el("button", { class: "primary" }, ["Export both awards' CSV"]);
@@ -597,6 +794,7 @@
         const rows = DATA.explorer_rows.filter(r => r.award_id_piid === d.award_id_a || r.award_id_piid === d.award_id_b);
         const safeId = d.pair_id.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
         downloadCsv(`nasa_duplicate_pair_${safeId}.csv`, rowsToCsv(rows));
+        showToast(`Exported ${fmtNum(rows.length)} row(s) for this pair`);
       });
 
       const card = el("div", { class: "standout-card" }, [
@@ -920,6 +1118,8 @@
 
   renderHeader();
   setupTabs();
+  setupThemeToggle();
+  setupCommandPalette();
   renderOverview();
   renderSnapshotStatus();
   renderStandoutSuppliers();

@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <title>NASA Procurement Intelligence Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// Resolve theme (saved choice, else system preference) before first paint,
+// so switching or reloading never flashes the wrong theme.
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem("nasa_dashboard_theme"); } catch (e) {}
+  var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
 <style>
 :root {
   /* Mission-control theme, bright variant: same technical language (crisp
@@ -29,6 +39,36 @@
   --glow-green: 0 0 6px rgba(5,150,105,0.3);
   --glow-red: 0 0 6px rgba(220,38,38,0.3);
 }
+/* Dark variant, toggled via the header's theme button. Values match the
+   earlier all-dark build; kept here so a viewer's preference decides,
+   rather than us deciding once for everyone. Resolved and applied before
+   first paint by the inline script in <head> so there's no flash. */
+:root[data-theme="dark"] {
+  --navy: #eaf2ff; --navy-2: #9fb4d6; --blue: #22d3ee; --red: #ff4d5e;
+  --bg: #05070c; --panel: #0b1220; --panel-2: #0e1626; --border: #1c2b42;
+  --text: #dbe6f5; --text-muted: #6b7d9c; --ok: #2bffa0; --warn: #ffb020;
+  --nasa-blue: #22d3ee; --nasa-red: #ff5b3d;
+  --glow-blue: 0 0 10px rgba(34,211,238,0.35);
+  --glow-green: 0 0 10px rgba(43,255,160,0.3);
+  --glow-red: 0 0 10px rgba(255,77,94,0.3);
+}
+:root[data-theme="dark"] body {
+  background:
+    linear-gradient(rgba(34,211,238,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,211,238,0.035) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% -10%, rgba(34,211,238,0.09), transparent 60%),
+    var(--bg);
+  background-size: 34px 34px, 34px 34px, 100% 100%, 100% 100%;
+}
+:root[data-theme="dark"] nav.tabs { box-shadow: none; }
+:root[data-theme="dark"] table.data-table th.sortable:hover { background: #142338; }
+:root[data-theme="dark"] table.data-table td { border-bottom-color: #131d2e; }
+:root[data-theme="dark"] .controls select, :root[data-theme="dark"] .controls input { background: #0e1728; }
+:root[data-theme="dark"] .controls button.secondary { background: rgba(255,255,255,0.05); }
+:root[data-theme="dark"] .chip { background: rgba(255,255,255,0.05); }
+:root[data-theme="dark"] .sc-actions button { background: rgba(255,255,255,0.04); }
+:root[data-theme="dark"] .sc-actions button:hover { filter: brightness(1.25); }
+:root[data-theme="dark"] .panel, :root[data-theme="dark"] .standout-card { box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
 * { box-sizing: border-box; }
 html { scrollbar-color: var(--border) var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -258,6 +298,79 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
 }
 .duplicate-pair-row { display: flex; gap: 10px; font-size: 11.5px; color: var(--text); margin: 4px 0; }
 .duplicate-pair-row .code-text { display: block; }
+
+/* Keyboard accessibility: every interactive element gets a visible focus
+   ring on keyboard nav (not on mouse click, via :focus-visible) -- a
+   dashboard is not "interactive" if it only works with a mouse. */
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible,
+tr.jump-row:focus-visible, .duplicate-pair-row:focus-visible {
+  outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 2px;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.35); color: #22d3ee;
+  border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; cursor: pointer; white-space: nowrap;
+}
+.theme-toggle:hover { background: rgba(34,211,238,0.2); }
+
+/* Command palette (Ctrl/Cmd+K) */
+.cmdk-trigger {
+  background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.25); color: #7fa8c4;
+  border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; white-space: nowrap;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+.cmdk-trigger:hover { background: rgba(34,211,238,0.14); }
+.cmdk-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(5,7,12,0.55); z-index: 200;
+  align-items: flex-start; justify-content: center; padding-top: 12vh;
+}
+.cmdk-overlay.open { display: flex; }
+.cmdk-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: min(600px, 90vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4); overflow: hidden;
+}
+.cmdk-input {
+  width: 100%; border: none; border-bottom: 1px solid var(--border); padding: 14px 16px; font-size: 14px;
+  background: var(--panel); color: var(--text); outline: none;
+}
+.cmdk-results { max-height: 50vh; overflow-y: auto; }
+.cmdk-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; font-size: 13px;
+  color: var(--text); border-bottom: 1px solid var(--panel-2);
+}
+.cmdk-item.active { background: rgba(8,145,178,0.1); }
+.cmdk-item .cmdk-type {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; color: var(--blue);
+  background: rgba(8,145,178,0.1); border-radius: 3px; padding: 2px 6px; flex: 0 0 auto;
+}
+.cmdk-empty { padding: 20px 16px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+.cmdk-hint { padding: 8px 16px; font-size: 10.5px; color: var(--text-muted); border-top: 1px solid var(--border); }
+.cmdk-hint kbd {
+  font-family: ui-monospace, monospace; background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0 5px; font-size: 10px;
+}
+
+/* Toast notifications */
+#toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--navy); color: var(--panel); padding: 10px 16px; border-radius: 6px; font-size: 12.5px;
+  font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease; max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* Sortable Top Suppliers/Contracts headers (complements the "Top by" select) */
+table.data-table th.col-sortable { position: relative; padding-right: 18px; }
+table.data-table th.col-sortable::after { content: "⇅"; position: absolute; right: 6px; opacity: 0.35; font-size: 10px; }
+table.data-table th.col-sortable.sort-asc::after { content: "▲"; opacity: 1; color: var(--blue); }
+table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; color: var(--blue); }
+
+/* Subtle entrance animation when a tab becomes active -- signals "this is
+   fresh," not just an instant show/hide toggle. */
+@keyframes tab-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.tab-panel.active { animation: tab-fade-in 0.25s ease; }
 </style>
 </head>
 <body>
@@ -283,8 +396,20 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
       <div class="disclosure" id="dash-disclosure"></div>
       <div class="meta-bar" id="meta-bar"></div>
     </div>
+    <div style="display:flex; gap:8px; flex:0 0 auto; align-self:flex-start;">
+      <button class="cmdk-trigger" id="cmdk-trigger" title="Search suppliers, awards, categories, tabs">🔍 Search <kbd style="margin-left:4px;">Ctrl K</kbd></button>
+      <button class="theme-toggle" id="theme-toggle-btn"></button>
+    </div>
   </div>
 </header>
+
+<div class="cmdk-overlay" id="cmdk-overlay">
+  <div class="cmdk-box">
+    <input class="cmdk-input" id="cmdk-input" type="text" placeholder="Jump to a supplier, award, category, or tab…" autocomplete="off">
+    <div class="cmdk-results" id="cmdk-results"></div>
+    <div class="cmdk-hint"><kbd>↑</kbd> <kbd>↓</kbd> to navigate · <kbd>Enter</kbd> to jump · <kbd>Esc</kbd> to close</div>
+  </div>
+</div>
 
 <nav class="tabs">
   <button data-tab="overview" class="active">Executive Overview</button>
