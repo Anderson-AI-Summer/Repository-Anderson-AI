@@ -203,6 +203,12 @@ table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
 .finding-card h4 { margin: 0 0 4px 0; font-size: 13px; color: var(--navy); }
 .finding-card .metrics { color: var(--text-muted); font-size: 11.5px; margin-top: 6px; }
 .small-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.other-callout {
+  margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 4px;
+  font-size: 11.5px; color: var(--text-muted); cursor: pointer;
+}
+.other-callout:hover { border-color: var(--blue); color: var(--navy-2); }
+.other-callout strong { color: var(--navy); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .chip { background: #f1f5f9; border: 1px solid var(--border); border-radius: 3px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
 footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 11.5px; }
@@ -428,8 +434,8 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
     <div class="kpi-row" id="overview-kpis"></div>
     <div class="jump-cta" id="overview-jump-cta"></div>
     <div class="grid-2">
-      <div class="panel"><h2>Annual Obligation Trend</h2><div id="chart-annual-trend" style="height:280px;"></div></div>
-      <div class="panel"><h2>Category Composition (Net Obligations)</h2><div class="small-note" style="margin-bottom:4px;">Click a bar to jump to that category.</div><div id="chart-category-comp" style="height:264px;"></div></div>
+      <div class="panel"><h2 id="trend-chart-title">Annual Obligation Trend</h2><div class="small-note" id="trend-chart-note" style="margin-bottom:4px; display:none;"></div><div id="chart-annual-trend" style="height:280px;"></div></div>
+      <div class="panel"><h2>Category Composition (Net Obligations)</h2><div class="small-note" style="margin-bottom:4px;">Click a bar to jump to that category. "Other or Unclassified" is shown separately below -- it's a review queue, not a spend category.</div><div id="chart-category-comp" style="height:264px;"></div><div id="category-other-callout"></div></div>
     </div>
     <div class="grid-2">
       <div class="panel">

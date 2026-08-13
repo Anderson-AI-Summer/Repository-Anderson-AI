@@ -46,6 +46,7 @@ def compute_analytics(transactions: list[EnrichedTransaction], today: dt.date | 
             "current_fiscal_year": cur_fy,
             "totals": {},
             "annual": [],
+            "monthly": [],
             "category_breakdown": [],
             "top_suppliers": [],
             "concentration": {"hhi": 0.0, "top5_share": 0.0, "top10_share": 0.0},
@@ -99,6 +100,25 @@ def compute_analytics(transactions: list[EnrichedTransaction], today: dt.date | 
             "unique_suppliers": int(g["normalized_supplier"].nunique()),
         })
     annual_rows.sort(key=lambda r: r["fiscal_year"])
+
+    # --- monthly series -- finer granularity than fiscal year. Some datasets
+    # (a single sample/refresh pull) only span one or two fiscal years, at
+    # which point an annual trend chart has too few points to show a trend
+    # at all; the dashboard falls back to this when that happens. ---
+    monthly_rows = []
+    month_key = df["action_date"].dt.to_period("M")
+    for period, g in df.groupby(month_key):
+        g_net = float(g["transaction_obligation_signed"].sum())
+        g_gross = float(g.loc[g["transaction_obligation_signed"] > 0, "transaction_obligation_signed"].sum())
+        g_deob = float(-g.loc[g["transaction_obligation_signed"] < 0, "transaction_obligation_signed"].sum())
+        monthly_rows.append({
+            "period": str(period),
+            "net_obligations": g_net,
+            "gross_positive_obligations": g_gross,
+            "deobligations": g_deob,
+            "transaction_count": int(len(g)),
+        })
+    monthly_rows.sort(key=lambda r: r["period"])
 
     # --- year-over-year % changes (net obligations) ---
     yoy = []
@@ -193,6 +213,7 @@ def compute_analytics(transactions: list[EnrichedTransaction], today: dt.date | 
         "current_fiscal_year": cur_fy,
         "totals": totals,
         "annual": annual_rows,
+        "monthly": monthly_rows,
         "year_over_year": yoy,
         "category_breakdown": cat_rows,
         "top_suppliers": top_suppliers,

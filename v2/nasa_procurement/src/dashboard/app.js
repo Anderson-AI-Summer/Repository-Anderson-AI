@@ -367,19 +367,42 @@
     kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum));
     kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum));
 
-    const years = A.annual.map(r => "FY" + r.fiscal_year);
+    // A single- (or two-) fiscal-year dataset gives the annual trend chart
+    // too few points to show a trend at all, so fall back to monthly
+    // granularity -- same three series, finer time axis.
+    const trendTitle = document.getElementById("trend-chart-title");
+    const trendNote = document.getElementById("trend-chart-note");
+    const useMonthly = A.annual.length < 2 && (A.monthly || []).length > 1;
+    const trendSeries = useMonthly ? A.monthly : A.annual;
+    const trendX = useMonthly ? trendSeries.map(r => r.period) : trendSeries.map(r => "FY" + r.fiscal_year);
+    if (useMonthly) {
+      trendTitle.textContent = "Monthly Obligation Trend";
+      trendNote.textContent = "This dataset spans a single fiscal year, so monthly granularity is shown instead of a flat one-bar annual chart.";
+      trendNote.style.display = "";
+    } else {
+      trendTitle.textContent = "Annual Obligation Trend";
+      trendNote.style.display = "none";
+    }
     Plotly.newPlot("chart-annual-trend", [
-      { x: years, y: A.annual.map(r => r.gross_positive_obligations), type: "bar", name: "Gross Obligations", marker: { color: BLUE } },
-      { x: years, y: A.annual.map(r => -r.deobligations), type: "bar", name: "Deobligations", marker: { color: RED } },
-      { x: years, y: A.annual.map(r => r.net_obligations), type: "scatter", mode: "lines+markers", name: "Net Obligations", line: { color: NAVY, width: 3 } },
+      { x: trendX, y: trendSeries.map(r => r.gross_positive_obligations), type: "bar", name: "Gross Obligations", marker: { color: BLUE } },
+      { x: trendX, y: trendSeries.map(r => -r.deobligations), type: "bar", name: "Deobligations", marker: { color: RED } },
+      { x: trendX, y: trendSeries.map(r => r.net_obligations), type: "scatter", mode: "lines+markers", name: "Net Obligations", line: { color: NAVY, width: 3 } },
     ], darkLayout({
       barmode: "relative", margin: { t: 10, r: 10, l: 60, b: 40 },
       yaxis: darkAxis({ title: "USD", tickformat: "~s" }), legend: { orientation: "h", y: -0.2 },
     }), { displayModeBar: false, responsive: true });
 
+    // "Other or Unclassified" is the classifier's catch-all -- it isn't a
+    // peer spend category, and when it's the largest slice it flattens
+    // every real category into an unreadable sliver. Pull it out of the
+    // ranked chart and surface it as a separate review-queue callout.
+    const OTHER_CATEGORY = "Other or Unclassified";
     const cats = A.category_breakdown.slice().reduce((acc, r) => {
       acc[r.category] = (acc[r.category] || 0) + r.net_obligations; return acc;
     }, {});
+    const otherTotal = cats[OTHER_CATEGORY] || 0;
+    const totalAll = Object.values(cats).reduce((a, b) => a + b, 0);
+    delete cats[OTHER_CATEGORY];
     const catNames = Object.keys(cats).sort((a, b) => cats[b] - cats[a]);
     const categoryChart = document.getElementById("chart-category-comp");
     Plotly.newPlot(categoryChart, [{
@@ -392,6 +415,18 @@
       const name = ev.points && ev.points[0] && ev.points[0].y;
       if (name) jumpToCategory(name);
     });
+
+    const otherCallout = document.getElementById("category-other-callout");
+    otherCallout.innerHTML = "";
+    if (otherTotal > 0 && totalAll > 0) {
+      const pct = (otherTotal / totalAll * 100).toFixed(1);
+      const box = el("div", { class: "other-callout" }, [
+        "📋 ", el("strong", {}, [fmtMoney(otherTotal)]), ` (${pct}% of net obligations) fell into "${OTHER_CATEGORY}" -- `,
+        "not shown above since it's a classification review queue, not a real spend category. Click to jump to it.",
+      ]);
+      box.addEventListener("click", () => jumpToCategory(OTHER_CATEGORY));
+      otherCallout.appendChild(box);
+    }
     categoryChart.style.cursor = "pointer";
 
     drawTopSuppliers();
