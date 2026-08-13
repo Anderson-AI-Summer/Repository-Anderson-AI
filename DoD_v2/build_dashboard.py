@@ -24,6 +24,14 @@ with open(r"C:\finances\DoD_v1\sba_loans\_drilldown_final_fullrange.json") as f:
 with open(r"C:\finances\DoD_v1\sba_loans\_singlebid_detail_export_fullrange.json", encoding="utf-8") as f:
     CD_RECORDS = json.load(f)
 
+# Quality-of-life-by-branch analysis
+with open(r"C:\finances\DoD_v2\data\qol_payload.json") as f:
+    QOL = json.load(f)
+
+# Sole-source pricing risk + foreign vendor spend analysis
+with open(r"C:\finances\DoD_v2\data\risk_payload.json") as f:
+    RISK = json.load(f)
+
 A = P["analytics"]
 TOTALS = A["totals"]
 
@@ -228,15 +236,166 @@ NOBID_BRANCH_ROWS_HTML = "".join(
 )
 
 # ============================================================
+# QUALITY OF LIFE BY BRANCH (unique to DoD_v2, per user request)
+# ============================================================
+QOL_META = QOL["meta"]
+QOL_ADJ_NOTE = QOL["beneficiary_adjustment"]
+
+def qol_percap_bars(summary, max_val):
+    rows = [r for r in summary if r["qol_per_servicemember_per_year"]]
+    return "".join(
+        f'<div class="bar-row"><div class="bar-name">{r["branch"]}</div>'
+        f'<div class="bar-track"><div class="bar-fill" style="width:{max(r["qol_per_servicemember_per_year"]/max_val*100,1):.1f}%"></div></div>'
+        f'<div class="bar-figures"><span>${r["qol_per_servicemember_per_year"]:,.0f}/yr</span><span class="bar-pct">{fmt_b(r["qol_total"])}</span></div></div>'
+        for r in rows
+    )
+
+QOL_PERCAP_MAX = max(r["qol_per_servicemember_per_year"] for r in QOL["branch_summary"] if r["qol_per_servicemember_per_year"])
+QOL_BRANCH_BARS_HTML = qol_percap_bars(QOL["branch_summary"], QOL_PERCAP_MAX)
+QOL_BRANCH_BARS_ADJUSTED_HTML = qol_percap_bars(QOL["branch_summary_adjusted"], QOL_PERCAP_MAX)
+
+def _ppy(r):
+    return f'${r["qol_per_servicemember_per_year"]:,.0f}' if r["qol_per_servicemember_per_year"] else "n/a"
+
+QOL_COMPARE_TABLE_ROWS = "".join(
+    f'<tr><td>{a["branch"]}</td>'
+    f'<td class="num">{fmt_b(a["qol_total"])}</td>'
+    f'<td class="num">{_ppy(a)}</td>'
+    f'<td class="num">{fmt_b(b["qol_total"])}</td>'
+    f'<td class="num">{_ppy(b)}</td></tr>'
+    for a, b in zip(
+        sorted(QOL["branch_summary"], key=lambda r: r["branch"]),
+        sorted(QOL["branch_summary_adjusted"], key=lambda r: r["branch"]),
+    )
+)
+
+QOL_CATEGORY_ROWS_HTML = "".join(
+    f'<tr><td>{c["category"]}</td>'
+    f'<td class="num">{fmt_b(c["Army"])}</td>'
+    f'<td class="num">{fmt_b(c["Navy / Marine Corps"])}</td>'
+    f'<td class="num">{fmt_b(c["Air Force / Space Force"])}</td>'
+    f'<td class="num">{fmt_b(c["Defense-Wide / Multi-Service"])}</td>'
+    f'<td class="num">{fmt_b(c["total"])}</td></tr>'
+    for c in QOL["category_matrix"]
+)
+
+qol_awards_json = json.dumps(QOL["qol_awards"])
+QOL_BRANCH_OPTIONS_HTML = "".join(
+    f'<option value="{b}">{b}</option>' for b in ["Army", "Navy / Marine Corps", "Air Force / Space Force", "Defense-Wide / Multi-Service"]
+)
+
+# ============================================================
+# SPEND RISK SIGNALS: sole-source pricing risk + foreign vendor spend
+# ============================================================
+high_risk_awards_json = json.dumps(RISK["high_risk_awards"])
+foreign_awards_json = json.dumps(RISK["foreign_awards"])
+
+RISK_MATRIX_ROWS_HTML = "".join(
+    f'<tr><td>{r["competed_bucket"]}</td><td>{r["pricing_bucket"]}</td>'
+    f'<td class="num">{fmt_b(r["amount"])}</td><td class="num">{r["count"]:,}</td></tr>'
+    for r in RISK["risk_matrix"] if r["amount"] > 0
+)
+
+JUSTIFICATION_MAX = max((j["amount"] for j in RISK["justification_breakdown"]), default=1)
+JUSTIFICATION_BARS_HTML = "".join(
+    f'<div class="bar-row"><div class="bar-name" title="{j["justification"]}">{j["justification"]}</div>'
+    f'<div class="bar-track"><div class="bar-fill" style="width:{max(j["amount"]/JUSTIFICATION_MAX*100,1):.1f}%"></div></div>'
+    f'<div class="bar-figures"><span>{fmt_b(j["amount"])}</span><span class="bar-pct">{j["count"]:,}</span></div></div>'
+    for j in RISK["justification_breakdown"][:10]
+)
+
+SUB_MEGA_CAT_MAX = max((c["amount"] for c in RISK["sub_mega_by_category"]), default=1)
+SUB_MEGA_CATEGORY_BARS_HTML = "".join(
+    f'<div class="bar-row"><div class="bar-name" title="{c["ai_spend_category"]}">{c["ai_spend_category"]}</div>'
+    f'<div class="bar-track"><div class="bar-fill" style="width:{max(c["amount"]/SUB_MEGA_CAT_MAX*100,1):.1f}%"></div></div>'
+    f'<div class="bar-figures"><span>{fmt_b(c["amount"])}</span><span class="bar-pct">{c["count"]:,}</span></div></div>'
+    for c in RISK["sub_mega_by_category"][:12]
+)
+
+SUB_MEGA_SUP_MAX = max((s["amount"] for s in RISK["sub_mega_by_supplier"]), default=1)
+SUB_MEGA_SUPPLIER_BARS_HTML = "".join(
+    f'<div class="bar-row"><div class="bar-name" title="{s["normalized_supplier"]}">{s["normalized_supplier"]}</div>'
+    f'<div class="bar-track"><div class="bar-fill" style="width:{max(s["amount"]/SUB_MEGA_SUP_MAX*100,1):.1f}%"></div></div>'
+    f'<div class="bar-figures"><span>{fmt_b(s["amount"])}</span><span class="bar-pct">{s["count"]:,}</span></div></div>'
+    for s in RISK["sub_mega_by_supplier"][:15]
+)
+
+COUNTRY_MAX = max((c["amount"] for c in RISK["country_breakdown"]), default=1)
+COUNTRY_ROWS_HTML = "".join(
+    f'<tr><td>{c["country"]}</td><td class="num">{fmt_b(c["amount"])}</td>'
+    f'<td class="num">{c["count"]:,}</td><td class="num">{c["not_competed_pct"]:.1f}%</td></tr>'
+    for c in RISK["country_breakdown"][:20]
+)
+
+FOREIGN_CAT_MAX = max((c["amount"] for c in RISK["foreign_category_breakdown"]), default=1)
+FOREIGN_CATEGORY_BARS_HTML = "".join(
+    f'<div class="bar-row"><div class="bar-name" title="{c["category"]}">{c["category"]}</div>'
+    f'<div class="bar-track"><div class="bar-fill" style="width:{max(c["amount"]/FOREIGN_CAT_MAX*100,1):.1f}%"></div></div>'
+    f'<div class="bar-figures"><span>{fmt_b(c["amount"])}</span><span class="bar-pct">{c["count"]:,}</span></div></div>'
+    for c in RISK["foreign_category_breakdown"][:12]
+)
+
+niche_awards_json = json.dumps(RISK["niche_awards"])
+
+def niche_row_html(n):
+    note = n["note"] or "Unverified &mdash; no independently confirmed structural explanation on file"
+    note_cls = "" if n["note"] else "warn"
+    return (
+        f'<tr><td>{n["country"]}</td><td>{n["category"]}</td><td>{n["top_vendor"]}</td>'
+        f'<td class="num">{fmt_b(n["total"])}</td><td class="num">{n["top_share"]*100:.0f}%</td>'
+        f'<td class="num">{n["top_award_count"]}</td><td class="num">{n["not_competed_pct"]*100:.0f}%</td>'
+        f'<td style="max-width:280px;font-size:11px;color:var(--ink-muted)">{note}</td></tr>'
+    )
+
+NICHE_ROWS_HTML = "".join(niche_row_html(n) for n in RISK["flagged_niches"])
+NICHE_UNVERIFIED_COUNT = sum(1 for n in RISK["flagged_niches"] if not n["note"])
+
+# ============================================================
+# ORIGINAL STYLIZED BADGE (not a reproduction of any official seal --
+# a generic star-in-ring emblem, since this project explicitly
+# disclaims official DoD/War Department affiliation or endorsement)
+# ============================================================
+import math as _math
+def _star_points(cx, cy, r_outer, r_inner, n=5, rotate_deg=-90):
+    pts = []
+    for i in range(n * 2):
+        r = r_outer if i % 2 == 0 else r_inner
+        angle = _math.radians(rotate_deg + i * (360 / (n * 2)))
+        pts.append((cx + r * _math.cos(angle), cy + r * _math.sin(angle)))
+    return " ".join(f"{x:.2f},{y:.2f}" for x, y in pts)
+
+def _tick_lines(cx, cy, r_in, r_out, n=24):
+    lines = []
+    for i in range(n):
+        angle = _math.radians(i * (360 / n))
+        x1, y1 = cx + r_in * _math.cos(angle), cy + r_in * _math.sin(angle)
+        x2, y2 = cx + r_out * _math.cos(angle), cy + r_out * _math.sin(angle)
+        lines.append(f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>')
+    return "".join(lines)
+
+BADGE_SVG = f"""<svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="60" cy="60" r="56" stroke="currentColor" stroke-width="2"/>
+<circle cx="60" cy="60" r="46" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+{_tick_lines(60, 60, 50, 56, 24)}
+<polygon points="{_star_points(60, 60, 30, 12)}" fill="currentColor"/>
+</svg>"""
+
+# ============================================================
 # HTML BODY (masthead + tab nav + 7 tab panels)
 # ============================================================
 body_html = f"""
 <div class="page">
   <header class="masthead">
+    <div class="masthead-top">
+      <div class="masthead-badge">{BADGE_SVG}</div>
+      <div>
+        <div class="wordmark-primary">Department of War</div>
+        <div class="wordmark-secondary">Office of Procurement Analytics &middot; Unofficial Project</div>
+      </div>
+    </div>
     <div class="eyebrow">DoD_v2 &middot; Educational Procurement Intelligence Project</div>
     <h1>DoD Procurement Intelligence Dashboard</h1>
     <p class="dek">{P["meta"]["disclosure"]} Data period {P["meta"]["data_period_start"]} through {P["meta"]["data_period_end"]}, covering {TOTALS["transaction_count"]:,} definitive contract awards from USAspending.gov's bulk award-download API.</p>
-    <div class="scope-banner"><b>Read this before the numbers below:</b> {META_NOTE}</div>
   </header>
 
   <nav class="tabnav" role="tablist">
@@ -247,6 +406,8 @@ body_html = f"""
     <button class="tab-btn" data-tab="supplier" role="tab">Supplier Analysis</button>
     <button class="tab-btn" data-tab="categories" role="tab">Categories &amp; Opportunities</button>
     <button class="tab-btn" data-tab="nobid" role="tab">No-Bid Contracts<span class="new-badge">unique</span></button>
+    <button class="tab-btn" data-tab="qol" role="tab">Quality of Life by Branch<span class="new-badge">unique</span></button>
+    <button class="tab-btn" data-tab="risk" role="tab">Spend Risk Signals<span class="new-badge">unique</span></button>
   </nav>
 
   <section class="tabpanel is-active" id="tab-overview">
@@ -431,6 +592,243 @@ body_html = f"""
     </div>
   </section>
 
+  <section class="tabpanel" id="tab-qol">
+    <div class="callout">
+      <div class="callout-mark">i</div>
+      <div class="callout-body">
+        <p>Unique to this DoD_v2 build: awards are keyword-matched against nine quality-of-life categories (dining facilities, chapels, family housing, dormitories/barracks, fitness &amp; recreation, child &amp; youth services, medical clinics, commissary/exchange, and MWR), then grouped by service branch and divided by each branch's active-duty headcount.</p>
+        <p><strong>FPDS doesn't distinguish Space Force from Air Force, or Marine Corps from Navy</strong> at the awarding-agency level -- both pairs share contracting infrastructure, so branches are reported as combined pairs: "Air Force / Space Force" and "Navy / Marine Corps". Army is reported alone.</p>
+        <p><strong>The result runs opposite to a common assumption that Air Force/Space Force spend more per person on quality of life.</strong> In this data, Army and Navy/Marine Corps show roughly 2-3x the per-servicemember rate that Air Force/Space Force does -- see Methodology below for why that comparison itself needs a caveat before treating it as a definitive finding.</p>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total QoL-Coded Spend</div><div class="kpi-value">{fmt_b(QOL["qol_total_all_branches"])}</div><div class="kpi-sub">{QOL["qol_award_count_all_branches"]:,} awards, {QOL_META["categories_tracked"].__len__()} categories</div></div>
+      <div class="kpi"><div class="kpi-label">Share of Total DoD Spend</div><div class="kpi-value">{QOL["qol_total_all_branches"]/TOTALS["net_obligations"]*100:.2f}%</div><div class="kpi-sub">of {fmt_b(TOTALS['net_obligations'])} total</div></div>
+      <div class="kpi"><div class="kpi-label">Data Period</div><div class="kpi-value">{QOL_META["years_covered"]:.1f} yrs</div><div class="kpi-sub">FY2020 &ndash; FY2026 YTD</div></div>
+      <div class="kpi"><div class="kpi-label">Beneficiary Reassignments</div><div class="kpi-value">{QOL_ADJ_NOTE["awards_reassigned"]}</div><div class="kpi-sub">{fmt_b(QOL_ADJ_NOTE["value_reassigned"])} moved off awarding branch</div></div>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>QoL Spend per Servicemember per Year</h2><span class="pill">as-awarded (by contracting agency)</span></div>
+        <div class="bars">{QOL_BRANCH_BARS_HTML}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>QoL Spend per Servicemember per Year</h2><span class="pill">beneficiary-adjusted (floor correction)</span></div>
+        <div class="bars">{QOL_BRANCH_BARS_ADJUSTED_HTML}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>As-Awarded vs. Beneficiary-Adjusted, Side by Side</h2></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Branch</th><th class="num">As-Awarded Total</th><th class="num">As-Awarded $/Person/Yr</th><th class="num">Adjusted Total</th><th class="num">Adjusted $/Person/Yr</th></tr></thead>
+        <tbody>{QOL_COMPARE_TABLE_ROWS}</tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>QoL Category Breakdown by Branch (as-awarded)</h2></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Category</th><th class="num">Army</th><th class="num">Navy/USMC</th><th class="num">AF/USSF</th><th class="num">Defense-Wide</th><th class="num">Total</th></tr></thead>
+        <tbody>{QOL_CATEGORY_ROWS_HTML}</tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Quality-of-Life Award Detail</h2></div>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px">All {len(QOL["qol_awards"]):,} QoL-classified awards, filterable by branch and searchable by supplier, award ID, category, or description.</p>
+      <div class="cd-toolbar">
+        <select id="qol-branch-filter" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)">
+          <option value="">All Branches</option>
+          {QOL_BRANCH_OPTIONS_HTML}
+        </select>
+        <div class="cd-search" style="flex:1"><input type="text" id="qol-search" placeholder="Search supplier, award ID, category, description..."></div>
+        <div class="cd-count" id="qol-count"></div>
+        <button class="cd-download" id="qol-download">Download CSV</button>
+      </div>
+      <div class="table-scroll" style="max-height:640px">
+        <table id="qol-table">
+          <thead><tr>
+            <th>Award ID</th><th>Branch (as-awarded)</th><th>Branch (adjusted)</th><th>Category</th><th>Supplier</th>
+            <th class="num">Value</th><th>Date</th><th>Extent Competed</th><th>Description</th>
+          </tr></thead>
+          <tbody id="qol-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="methodology">
+      <h3>Quality-of-Life Methodology &amp; Caveats</h3>
+      <ul>
+        <li>Categories are identified by keyword matching against each award's description, PSC description, and NAICS description -- the same deterministic approach used elsewhere in this project. An award that funds quality of life without using one of these keywords (e.g. a generic "facility repair" that happens to be a gym) is not counted, so totals are a floor, not a comprehensive figure.</li>
+        <li><strong>Awarding agency &ne; beneficiary.</strong> The Army Corps of Engineers executes a large share of DoD-wide military construction, including barracks and child care centers built for Air Force or Marine Corps personnel. The "beneficiary-adjusted" view reassigns the {QOL_ADJ_NOTE["awards_reassigned"]} awards ({fmt_b(QOL_ADJ_NOTE["value_reassigned"])}) whose own description explicitly names a different service -- but most such awards don't name the beneficiary in free text, so this is a floor correction, not a full one. The true Air Force/Space Force figure is likely higher than either view shows here.</li>
+        <li>Per-servicemember figures divide a {QOL_META["years_covered"]:.1f}-year cumulative spend total by a single point-in-time headcount snapshot, not a matched annual budget. Treat as a rough comparative rate, not a precise per-person budget line.</li>
+        <li>Headcount source: {QOL_META["headcount_source"]}</li>
+        <li>"Air Force / Space Force" and "Navy / Marine Corps" are reported as combined pairs because FPDS's awarding-agency field doesn't separate them -- Space Force shares Air Force contracting infrastructure, and the Marine Corps is organizationally part of the Department of the Navy.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-risk">
+    <div class="callout">
+      <div class="callout-mark">i</div>
+      <div class="callout-body">
+        <p><strong>Sole-source pricing risk:</strong> {RISK["meta"]["sole_source_methodology"]}</p>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Not Competed + Cost-Type</div><div class="kpi-value">{fmt_b(RISK["high_risk_total"])}</div><div class="kpi-sub">{RISK["high_risk_count"]:,} awards, {RISK["high_risk_share_of_total_pct"]:.1f}% of all DoD spend</div></div>
+      <div class="kpi"><div class="kpi-label">Mega-Prime Awards (&ge;$500M)</div><div class="kpi-value">{fmt_b(RISK["high_risk_mega_total"])}</div><div class="kpi-sub">{RISK["high_risk_mega_count"]:,} awards &mdash; structurally sole-source</div></div>
+      <div class="kpi"><div class="kpi-label">Smaller / Actionable (&lt;$500M)</div><div class="kpi-value">{fmt_b(RISK["high_risk_sub_mega_total"])}</div><div class="kpi-sub">{RISK["high_risk_sub_mega_count"]:,} awards &mdash; the more useful oversight slice</div></div>
+      <div class="kpi"><div class="kpi-label">Share Below Threshold</div><div class="kpi-value">{RISK["high_risk_sub_mega_total"]/RISK["high_risk_total"]*100:.0f}%</div><div class="kpi-sub">of the not-competed + cost-type total</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Competition &times; Pricing Type Risk Matrix</h2></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Competed Status</th><th>Pricing Type</th><th class="num">Value</th><th class="num">Awards</th></tr></thead>
+        <tbody>{RISK_MATRIX_ROWS_HTML}</tbody>
+      </table></div>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>Why Sole-Sourced? (FAR Justification Codes)</h2><span class="pill">not-competed + cost-type awards</span></div>
+        <div class="bars">{JUSTIFICATION_BARS_HTML}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Top Suppliers</h2><span class="pill">smaller / actionable slice only</span></div>
+        <div class="bars">{SUB_MEGA_SUPPLIER_BARS_HTML}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Category Breakdown</h2><span class="pill">smaller / actionable slice only (&lt;$500M each)</span></div>
+      <div class="bars">{SUB_MEGA_CATEGORY_BARS_HTML}</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Sole-Source Pricing Risk &mdash; Award Detail</h2></div>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px">All {len(RISK["high_risk_awards"]):,} awards that are both not competed and cost-reimbursement/T&amp;M priced. Filter out the {RISK["high_risk_mega_count"]} mega-prime awards (&ge;$500M) to focus on the more actionable slice.</p>
+      <div class="cd-toolbar">
+        <select id="risk-mega-filter" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)">
+          <option value="">All Awards</option>
+          <option value="sub">Smaller / Actionable (&lt;$500M)</option>
+          <option value="mega">Mega-Prime Only (&ge;$500M)</option>
+        </select>
+        <div class="cd-search" style="flex:1"><input type="text" id="risk-search" placeholder="Search supplier, award ID, category, justification, description..."></div>
+        <div class="cd-count" id="risk-count"></div>
+        <button class="cd-download" id="risk-download">Download CSV</button>
+      </div>
+      <div class="table-scroll" style="max-height:640px">
+        <table id="risk-table">
+          <thead><tr>
+            <th>Award ID</th><th>Supplier</th><th>Category</th><th>Pricing Type</th><th>Justification</th>
+            <th class="num">Value</th><th>Date</th><th>Sub-Agency</th><th>Description</th>
+          </tr></thead>
+          <tbody id="risk-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:6px">
+      <div class="callout-mark">i</div>
+      <div class="callout-body">
+        <p><strong>Foreign vendor &amp; overseas spend:</strong> {RISK["meta"]["foreign_vendor_methodology"]}</p>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Domestic Vendor Spend</div><div class="kpi-value">{fmt_b(RISK["domestic_summary"]["total"])}</div><div class="kpi-sub">{RISK["domestic_summary"]["not_competed_pct"]:.1f}% not competed</div></div>
+      <div class="kpi"><div class="kpi-label">Foreign Vendor Spend</div><div class="kpi-value">{fmt_b(RISK["foreign_summary"]["total"])}</div><div class="kpi-sub">{RISK["foreign_summary"]["not_competed_pct"]:.1f}% not competed</div></div>
+      <div class="kpi"><div class="kpi-label">Foreign Share of Total</div><div class="kpi-value">{RISK["foreign_summary"]["total"]/(RISK["domestic_summary"]["total"]+RISK["foreign_summary"]["total"])*100:.2f}%</div><div class="kpi-sub">{RISK["foreign_summary"]["count"]:,} awards to {len(RISK["country_breakdown"])} countries</div></div>
+      <div class="kpi"><div class="kpi-label">Foreign + Not Competed</div><div class="kpi-value">{fmt_b(RISK["foreign_not_competed_total"])}</div><div class="kpi-sub">{RISK["foreign_not_competed_count"]:,} awards</div></div>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>Top Countries by Foreign Vendor Spend</h2></div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Country</th><th class="num">Value</th><th class="num">Awards</th><th class="num">Not Competed</th></tr></thead>
+          <tbody>{COUNTRY_ROWS_HTML}</tbody>
+        </table></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Foreign Spend by Category</h2></div>
+        <div class="bars">{FOREIGN_CATEGORY_BARS_HTML}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Foreign Vendor Award Detail</h2></div>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px">All {len(RISK["foreign_awards"]):,} awards to non-U.S.-registered vendors.</p>
+      <div class="cd-toolbar">
+        <select id="foreign-competed-filter" style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)">
+          <option value="">All</option>
+          <option value="Competed">Competed</option>
+          <option value="Not Competed">Not Competed</option>
+        </select>
+        <div class="cd-search" style="flex:1"><input type="text" id="foreign-search" placeholder="Search supplier, award ID, country, category, description..."></div>
+        <div class="cd-count" id="foreign-count"></div>
+        <button class="cd-download" id="foreign-download">Download CSV</button>
+      </div>
+      <div class="table-scroll" style="max-height:640px">
+        <table id="foreign-table">
+          <thead><tr>
+            <th>Award ID</th><th>Supplier</th><th>Country</th><th>Category</th><th>Competed Status</th>
+            <th class="num">Value</th><th>Date</th><th>PoP Country</th><th>Description</th>
+          </tr></thead>
+          <tbody id="foreign-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:6px">
+      <div class="callout-mark">i</div>
+      <div class="callout-body">
+        <p><strong>Concentrated vendor niches (generalized "Fat Leonard" screen):</strong> {RISK["meta"]["niche_methodology"]}</p>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Flagged Niches</div><div class="kpi-value">{len(RISK["flagged_niches"])}</div><div class="kpi-sub">country &times; category combinations</div></div>
+      <div class="kpi"><div class="kpi-label">Total Value</div><div class="kpi-value">{fmt_b(sum(n["total"] for n in RISK["flagged_niches"]))}</div><div class="kpi-sub">{len(RISK["niche_awards"]):,} awards</div></div>
+      <div class="kpi"><div class="kpi-label">Structurally Explained</div><div class="kpi-value">{len(RISK["flagged_niches"]) - NICHE_UNVERIFIED_COUNT}</div><div class="kpi-sub">independently identifiable, disclosed reason</div></div>
+      <div class="kpi"><div class="kpi-label">Unverified</div><div class="kpi-value">{NICHE_UNVERIFIED_COUNT}</div><div class="kpi-sub">no confirmed reason on file &mdash; worth review</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Flagged Niches</h2><span class="pill">min $2M &middot; &ge;60% share &middot; &ge;3 awards &middot; &ge;50% uncompeted</span></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Country</th><th>Category</th><th>Top Vendor</th><th class="num">Total</th>
+          <th class="num">Vendor Share</th><th class="num">Awards</th><th class="num">Uncompeted</th><th>Note</th></tr></thead>
+        <tbody>{NICHE_ROWS_HTML}</tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Award Detail Within Flagged Niches</h2></div>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px">All {len(RISK["niche_awards"]):,} awards belonging to the 13 flagged niches above.</p>
+      <div class="cd-toolbar">
+        <div class="cd-search" style="flex:1"><input type="text" id="niche-search" placeholder="Search supplier, award ID, country, category, description..."></div>
+        <div class="cd-count" id="niche-count"></div>
+        <button class="cd-download" id="niche-download">Download CSV</button>
+      </div>
+      <div class="table-scroll" style="max-height:640px">
+        <table id="niche-table">
+          <thead><tr>
+            <th>Award ID</th><th>Supplier</th><th>Country</th><th>Category</th><th>Competed Status</th>
+            <th class="num">Value</th><th>Date</th><th>Sub-Agency</th><th>Description</th>
+          </tr></thead>
+          <tbody id="niche-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <footer style="text-align:center;font-size:11px;color:var(--ink-faint);padding:20px 0">
     Generated {GENERATED_AT} &middot; Source: USAspending.gov bulk award-download API &middot; Unofficial educational project, not affiliated with or endorsed by the Department of Defense.
   </footer>
@@ -452,38 +850,38 @@ head_html = f"""<title>DoD Procurement Intelligence Dashboard (v2)</title>
 @font-face {{ font-family:'IBM Plex Serif'; font-weight:600; font-style:normal; font-display:swap; src:url(data:font/woff2;base64,{SERIF600}) format('woff2'); }}
 
 :root {{
-  --bg:#eef2f2; --bg-grid:rgba(20,36,51,.05); --surface:#fff; --surface-2:#e3e9ea;
-  --ink:#142433; --ink-muted:#4c6070; --ink-faint:#7c8e9a;
-  --accent:#0f8aa3; --accent-strong:#0a5c6c; --accent-soft:rgba(15,138,163,.13);
-  --flag:#8a3fd1; --flag-strong:#6a24ac; --flag-soft:rgba(138,63,209,.12);
-  --warn:#b3261e; --warn-soft:rgba(179,38,30,.10);
-  --line:rgba(20,36,51,.13); --line-strong:rgba(20,36,51,.24);
-  --shadow:0 1px 2px rgba(20,36,51,.07),0 10px 28px -16px rgba(20,36,51,.28);
+  --bg:#e4eaed; --bg-grid:rgba(13,26,36,.05); --surface:#fff; --surface-2:#d6dfe4;
+  --ink:#0f1e28; --ink-muted:#425c6b; --ink-faint:#6d8794;
+  --accent:#35677d; --accent-strong:#1c4150; --accent-soft:rgba(53,103,125,.14);
+  --flag:#6b7548; --flag-strong:#4a5232; --flag-soft:rgba(107,117,72,.15);
+  --warn:#a83a2e; --warn-soft:rgba(168,58,46,.10);
+  --line:rgba(13,26,36,.13); --line-strong:rgba(13,26,36,.24);
+  --shadow:0 1px 2px rgba(13,26,36,.07),0 10px 28px -16px rgba(13,26,36,.28);
   color-scheme:light;
 }}
 @media (prefers-color-scheme:dark) {{
-  :root {{ --bg:#0c1a24; --bg-grid:rgba(234,241,242,.05); --surface:#132633; --surface-2:#1a3140;
-    --ink:#eaf1f2; --ink-muted:#92a8b6; --ink-faint:#5f7986;
-    --accent:#1f96b3; --accent-strong:#6fd2e8; --accent-soft:rgba(31,150,179,.20);
-    --flag:#9c5fe0; --flag-strong:#c8a4ee; --flag-soft:rgba(156,95,224,.22);
-    --warn:#e2645c; --warn-soft:rgba(226,100,92,.14);
-    --line:rgba(234,241,242,.14); --line-strong:rgba(234,241,242,.26);
+  :root {{ --bg:#0a141c; --bg-grid:rgba(220,232,238,.05); --surface:#101f29; --surface-2:#16303e;
+    --ink:#e3edf1; --ink-muted:#8aa2b0; --ink-faint:#5a7482;
+    --accent:#4a8aa3; --accent-strong:#8fd0e6; --accent-soft:rgba(74,138,163,.20);
+    --flag:#a8b478; --flag-strong:#cddb9e; --flag-soft:rgba(168,180,120,.18);
+    --warn:#d97a6a; --warn-soft:rgba(217,122,106,.14);
+    --line:rgba(220,232,238,.14); --line-strong:rgba(220,232,238,.26);
     --shadow:0 1px 2px rgba(0,0,0,.35),0 14px 32px -16px rgba(0,0,0,.6); color-scheme:dark; }}
 }}
-:root[data-theme="dark"] {{ --bg:#0c1a24; --bg-grid:rgba(234,241,242,.05); --surface:#132633; --surface-2:#1a3140;
-  --ink:#eaf1f2; --ink-muted:#92a8b6; --ink-faint:#5f7986;
-  --accent:#1f96b3; --accent-strong:#6fd2e8; --accent-soft:rgba(31,150,179,.20);
-  --flag:#9c5fe0; --flag-strong:#c8a4ee; --flag-soft:rgba(156,95,224,.22);
-  --warn:#e2645c; --warn-soft:rgba(226,100,92,.14);
-  --line:rgba(234,241,242,.14); --line-strong:rgba(234,241,242,.26);
+:root[data-theme="dark"] {{ --bg:#0a141c; --bg-grid:rgba(220,232,238,.05); --surface:#101f29; --surface-2:#16303e;
+  --ink:#e3edf1; --ink-muted:#8aa2b0; --ink-faint:#5a7482;
+  --accent:#4a8aa3; --accent-strong:#8fd0e6; --accent-soft:rgba(74,138,163,.20);
+  --flag:#a8b478; --flag-strong:#cddb9e; --flag-soft:rgba(168,180,120,.18);
+  --warn:#d97a6a; --warn-soft:rgba(217,122,106,.14);
+  --line:rgba(220,232,238,.14); --line-strong:rgba(220,232,238,.26);
   --shadow:0 1px 2px rgba(0,0,0,.35),0 14px 32px -16px rgba(0,0,0,.6); color-scheme:dark; }}
-:root[data-theme="light"] {{ --bg:#eef2f2; --bg-grid:rgba(20,36,51,.05); --surface:#fff; --surface-2:#e3e9ea;
-  --ink:#142433; --ink-muted:#4c6070; --ink-faint:#7c8e9a;
-  --accent:#0f8aa3; --accent-strong:#0a5c6c; --accent-soft:rgba(15,138,163,.13);
-  --flag:#8a3fd1; --flag-strong:#6a24ac; --flag-soft:rgba(138,63,209,.12);
-  --warn:#b3261e; --warn-soft:rgba(179,38,30,.10);
-  --line:rgba(20,36,51,.13); --line-strong:rgba(20,36,51,.24);
-  --shadow:0 1px 2px rgba(20,36,51,.07),0 10px 28px -16px rgba(20,36,51,.28); color-scheme:light; }}
+:root[data-theme="light"] {{ --bg:#e4eaed; --bg-grid:rgba(13,26,36,.05); --surface:#fff; --surface-2:#d6dfe4;
+  --ink:#0f1e28; --ink-muted:#425c6b; --ink-faint:#6d8794;
+  --accent:#35677d; --accent-strong:#1c4150; --accent-soft:rgba(53,103,125,.14);
+  --flag:#6b7548; --flag-strong:#4a5232; --flag-soft:rgba(107,117,72,.15);
+  --warn:#a83a2e; --warn-soft:rgba(168,58,46,.10);
+  --line:rgba(13,26,36,.13); --line-strong:rgba(13,26,36,.24);
+  --shadow:0 1px 2px rgba(13,26,36,.07),0 10px 28px -16px rgba(13,26,36,.28); color-scheme:light; }}
 
 * {{ box-sizing:border-box; }}
 html,body {{ margin:0; padding:0; }}
@@ -492,12 +890,15 @@ body {{ background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',syst
 
 .masthead {{ position:relative; border:1px solid var(--line-strong); border-radius:6px;
   background:linear-gradient(var(--bg-grid) 1px,transparent 1px),linear-gradient(90deg,var(--bg-grid) 1px,transparent 1px),var(--surface);
-  background-size:28px 28px,28px 28px,auto; padding:30px 30px 26px; overflow:hidden; }}
+  background-size:28px 28px,28px 28px,auto; padding:26px 30px 26px; overflow:hidden; }}
+.masthead-top {{ display:flex; align-items:center; gap:16px; padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid var(--line-strong); }}
+.masthead-badge {{ flex-shrink:0; width:52px; height:52px; color:var(--accent-strong); }}
+.masthead-badge svg {{ width:100%; height:100%; display:block; }}
+.wordmark-primary {{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:16px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink); }}
+.wordmark-secondary {{ font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.05em; color:var(--ink-faint); margin-top:3px; text-transform:uppercase; }}
 .eyebrow {{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:500; letter-spacing:.09em; color:var(--accent-strong); text-transform:uppercase; margin-bottom:12px; }}
 h1 {{ font-family:'IBM Plex Serif',Georgia,serif; font-weight:600; font-size:30px; letter-spacing:-.01em; margin:0 0 8px; text-wrap:balance; }}
 .dek {{ margin:0; max-width:78ch; color:var(--ink-muted); font-size:14px; line-height:1.6; }}
-.scope-banner {{ margin-top:14px; padding:12px 16px; border:1px solid var(--warn); background:var(--warn-soft); border-radius:6px; font-size:12.5px; color:var(--ink); line-height:1.6; }}
-.scope-banner b {{ color:var(--warn); }}
 
 .tabnav {{ display:flex; gap:2px; border-bottom:1px solid var(--line-strong); padding:0 2px; overflow-x:auto; }}
 .tab-btn {{ appearance:none; border:none; background:transparent; font-family:'IBM Plex Sans',sans-serif; font-weight:500; font-size:12.5px; color:var(--ink-muted); padding:11px 12px 10px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }}
@@ -583,6 +984,10 @@ script_html = f"""
 const PAYLOAD = {payload_json};
 const EXPLORER_ROWS = {explorer_json};
 const NOBID_DETAIL = {nobid_detail_json};
+const QOL_AWARDS = {qol_awards_json};
+const HIGH_RISK_AWARDS = {high_risk_awards_json};
+const FOREIGN_AWARDS = {foreign_awards_json};
+const NICHE_AWARDS = {niche_awards_json};
 
 // ---------- Tabs ----------
 document.querySelectorAll(".tab-btn").forEach(btn => {{
@@ -741,6 +1146,154 @@ document.getElementById("nobid-download").addEventListener("click", () => {{
     filtered.map(r => [r.award_id, r.vendor, r.vendor_uei, r.amount, r.branch_short, r.extent_competed, r.type_of_contract_pricing, r.award_date, r.psc_description, r.naics_description, r.description]));
 }});
 renderNobid();
+
+// ---------- Quality of Life Award Detail ----------
+const qolBody = document.getElementById("qol-tbody");
+const qolSearch = document.getElementById("qol-search");
+const qolBranchFilter = document.getElementById("qol-branch-filter");
+const qolCount = document.getElementById("qol-count");
+
+function filterQol() {{
+  const q = qolSearch.value.trim().toLowerCase();
+  const branch = qolBranchFilter.value;
+  return QOL_AWARDS.filter(r => {{
+    if (branch && r.branch !== branch) return false;
+    if (!q) return true;
+    return (r.supplier||"").toLowerCase().includes(q) ||
+      (r.award_id||"").toLowerCase().includes(q) ||
+      (r.category||"").toLowerCase().includes(q) ||
+      (r.description||"").toLowerCase().includes(q);
+  }});
+}}
+function renderQol() {{
+  const filtered = filterQol();
+  qolCount.textContent = filtered.length.toLocaleString() + " of " + QOL_AWARDS.length.toLocaleString();
+  qolBody.innerHTML = filtered.slice(0, 500).map(r => (
+    "<tr><td>" + esc(r.award_id) + "</td><td>" + esc(r.branch) + "</td><td>" + esc(r.branch_adjusted) +
+    "</td><td>" + esc(r.category) + "</td><td>" + esc(r.supplier) + "</td><td class='num'>" + fmtB(r.amount) +
+    "</td><td>" + esc(r.date) + "</td><td>" + esc(r.extent_competed) + "</td><td>" + esc((r.description||"").slice(0,140)) + "</td></tr>"
+  )).join("");
+}}
+qolSearch.addEventListener("input", renderQol);
+qolBranchFilter.addEventListener("change", renderQol);
+document.getElementById("qol-download").addEventListener("click", () => {{
+  const filtered = filterQol();
+  downloadCsv("dod_quality_of_life_awards.csv",
+    ["award_id","branch_as_awarded","branch_adjusted","category","supplier","amount","date","extent_competed","awarding_sub_agency","description"],
+    filtered.map(r => [r.award_id, r.branch, r.branch_adjusted, r.category, r.supplier, r.amount, r.date, r.extent_competed, r.awarding_sub_agency, r.description]));
+}});
+renderQol();
+
+// ---------- Sole-Source Pricing Risk Detail ----------
+const riskBody = document.getElementById("risk-tbody");
+const riskSearch = document.getElementById("risk-search");
+const riskMegaFilter = document.getElementById("risk-mega-filter");
+const riskCount = document.getElementById("risk-count");
+
+function filterRisk() {{
+  const q = riskSearch.value.trim().toLowerCase();
+  const mega = riskMegaFilter.value;
+  return HIGH_RISK_AWARDS.filter(r => {{
+    if (mega === "sub" && r.is_mega) return false;
+    if (mega === "mega" && !r.is_mega) return false;
+    if (!q) return true;
+    return (r.supplier||"").toLowerCase().includes(q) ||
+      (r.award_id||"").toLowerCase().includes(q) ||
+      (r.category||"").toLowerCase().includes(q) ||
+      (r.justification||"").toLowerCase().includes(q) ||
+      (r.description||"").toLowerCase().includes(q);
+  }});
+}}
+function renderRisk() {{
+  const filtered = filterRisk();
+  riskCount.textContent = filtered.length.toLocaleString() + " of " + HIGH_RISK_AWARDS.length.toLocaleString();
+  riskBody.innerHTML = filtered.slice(0, 500).map(r => (
+    "<tr><td>" + esc(r.award_id) + "</td><td>" + esc(r.supplier) + "</td><td>" + esc(r.category) +
+    "</td><td>" + esc(r.pricing_type) + "</td><td>" + esc(r.justification) + "</td><td class='num'>" + fmtB(r.amount) +
+    "</td><td>" + esc(r.date) + "</td><td>" + esc(r.awarding_sub_agency) + "</td><td>" + esc((r.description||"").slice(0,140)) + "</td></tr>"
+  )).join("");
+}}
+riskSearch.addEventListener("input", renderRisk);
+riskMegaFilter.addEventListener("change", renderRisk);
+document.getElementById("risk-download").addEventListener("click", () => {{
+  const filtered = filterRisk();
+  downloadCsv("dod_sole_source_pricing_risk.csv",
+    ["award_id","supplier","category","pricing_type","justification","amount","is_mega","date","awarding_sub_agency","description"],
+    filtered.map(r => [r.award_id, r.supplier, r.category, r.pricing_type, r.justification, r.amount, r.is_mega, r.date, r.awarding_sub_agency, r.description]));
+}});
+renderRisk();
+
+// ---------- Foreign Vendor Award Detail ----------
+const foreignBody = document.getElementById("foreign-tbody");
+const foreignSearch = document.getElementById("foreign-search");
+const foreignCompetedFilter = document.getElementById("foreign-competed-filter");
+const foreignCount = document.getElementById("foreign-count");
+
+function filterForeign() {{
+  const q = foreignSearch.value.trim().toLowerCase();
+  const competed = foreignCompetedFilter.value;
+  return FOREIGN_AWARDS.filter(r => {{
+    if (competed && r.competed_bucket !== competed) return false;
+    if (!q) return true;
+    return (r.supplier||"").toLowerCase().includes(q) ||
+      (r.award_id||"").toLowerCase().includes(q) ||
+      (r.country||"").toLowerCase().includes(q) ||
+      (r.category||"").toLowerCase().includes(q) ||
+      (r.description||"").toLowerCase().includes(q);
+  }});
+}}
+function renderForeign() {{
+  const filtered = filterForeign();
+  foreignCount.textContent = filtered.length.toLocaleString() + " of " + FOREIGN_AWARDS.length.toLocaleString();
+  foreignBody.innerHTML = filtered.slice(0, 500).map(r => (
+    "<tr><td>" + esc(r.award_id) + "</td><td>" + esc(r.supplier) + "</td><td>" + esc(r.country) +
+    "</td><td>" + esc(r.category) + "</td><td>" + esc(r.competed_bucket) + "</td><td class='num'>" + fmtB(r.amount) +
+    "</td><td>" + esc(r.date) + "</td><td>" + esc(r.pop_country) + "</td><td>" + esc((r.description||"").slice(0,140)) + "</td></tr>"
+  )).join("");
+}}
+foreignSearch.addEventListener("input", renderForeign);
+foreignCompetedFilter.addEventListener("change", renderForeign);
+document.getElementById("foreign-download").addEventListener("click", () => {{
+  const filtered = filterForeign();
+  downloadCsv("dod_foreign_vendor_awards.csv",
+    ["award_id","supplier","country","category","competed_status","extent_competed","amount","date","pop_country","awarding_sub_agency","description"],
+    filtered.map(r => [r.award_id, r.supplier, r.country, r.category, r.competed_bucket, r.extent_competed, r.amount, r.date, r.pop_country, r.awarding_sub_agency, r.description]));
+}});
+renderForeign();
+
+// ---------- Concentrated Vendor Niche Award Detail ----------
+const nicheBody = document.getElementById("niche-tbody");
+const nicheSearch = document.getElementById("niche-search");
+const nicheCount = document.getElementById("niche-count");
+
+function filterNiche() {{
+  const q = nicheSearch.value.trim().toLowerCase();
+  if (!q) return NICHE_AWARDS;
+  return NICHE_AWARDS.filter(r =>
+    (r.supplier||"").toLowerCase().includes(q) ||
+    (r.award_id||"").toLowerCase().includes(q) ||
+    (r.country||"").toLowerCase().includes(q) ||
+    (r.category||"").toLowerCase().includes(q) ||
+    (r.description||"").toLowerCase().includes(q)
+  );
+}}
+function renderNiche() {{
+  const filtered = filterNiche();
+  nicheCount.textContent = filtered.length.toLocaleString() + " of " + NICHE_AWARDS.length.toLocaleString();
+  nicheBody.innerHTML = filtered.slice(0, 500).map(r => (
+    "<tr><td>" + esc(r.award_id) + "</td><td>" + esc(r.supplier) + "</td><td>" + esc(r.country) +
+    "</td><td>" + esc(r.category) + "</td><td>" + esc(r.competed_bucket) + "</td><td class='num'>" + fmtB(r.amount) +
+    "</td><td>" + esc(r.date) + "</td><td>" + esc(r.awarding_sub_agency) + "</td><td>" + esc((r.description||"").slice(0,140)) + "</td></tr>"
+  )).join("");
+}}
+nicheSearch.addEventListener("input", renderNiche);
+document.getElementById("niche-download").addEventListener("click", () => {{
+  const filtered = filterNiche();
+  downloadCsv("dod_concentrated_vendor_niches.csv",
+    ["award_id","supplier","country","category","competed_status","extent_competed","amount","date","awarding_sub_agency","description"],
+    filtered.map(r => [r.award_id, r.supplier, r.country, r.category, r.competed_bucket, r.extent_competed, r.amount, r.date, r.awarding_sub_agency, r.description]));
+}});
+renderNiche();
 </script>
 """
 print("Script HTML built:", len(script_html), "chars")
