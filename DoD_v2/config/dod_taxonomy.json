@@ -1,0 +1,117 @@
+{
+  "version": "1.0.0-dod",
+  "description": "Two-level DoD procurement spend taxonomy, adapted from the FY2020-FY2026 YTD NAICS-based category mapping built earlier in this project. NAICS-code-primary (not PSC-prefix-primary, unlike the NASA taxonomy this is adapted from) since NAICS coverage was independently validated against ~92% of DoD spend across 6.5 years. Not an official government crosswalk; unmatched records fall to 'Other or Unclassified'.",
+  "categories": {
+    "Aircraft & Aviation Systems": {
+      "subcategories": {
+        "Aircraft Manufacturing": {"naics_codes": ["336411"], "keywords": ["aircraft manufactur"]},
+        "Aircraft Engines & Parts": {"naics_codes": ["336412", "336413"], "keywords": ["aircraft engine", "aircraft parts"]},
+        "Air Transport Support": {"naics_codes": ["488190", "481212", "481211", "611512"], "keywords": ["air transport", "flight training", "chartered"]}
+      }
+    },
+    "R&D and Engineering Services": {
+      "subcategories": {
+        "Research & Development": {"naics_codes": ["541715", "541712", "541714"], "keywords": ["research and development", "r&d"]},
+        "Engineering Services": {"naics_codes": ["541330"], "keywords": ["engineering services"]}
+      }
+    },
+    "Construction & Facilities Infrastructure": {
+      "subcategories": {
+        "Building Construction": {"naics_codes": ["236220", "236210"], "keywords": ["building construction"]},
+        "Heavy & Civil Engineering": {"naics_codes": ["237990", "237130", "237120", "237110"], "keywords": ["civil engineering", "heavy construction"]},
+        "Facilities Support": {"naics_codes": ["561210"], "keywords": ["facilities support"]},
+        "Specialty Trade": {"naics_codes": ["238220", "238990"], "keywords": ["plumbing", "hvac", "specialty trade"]},
+        "Utilities Infrastructure": {"naics_codes": ["221310", "221122"], "keywords": ["water supply", "electric power distribution"]}
+      }
+    },
+    "Missiles, Space & Satellite Systems": {
+      "subcategories": {
+        "Missile & Space Vehicle Manufacturing": {"naics_codes": ["336414", "336419", "336415"], "keywords": ["guided missile", "space vehicle"]},
+        "Satellite Communications": {"naics_codes": ["517410"], "keywords": ["satellite telecommunications"]}
+      }
+    },
+    "Shipbuilding & Maritime": {
+      "subcategories": {
+        "Shipbuilding & Repair": {"naics_codes": ["336611"], "keywords": ["ship building", "ship repair"]},
+        "Maritime Transport": {"naics_codes": ["483111"], "keywords": ["deep sea freight"]}
+      }
+    },
+    "IT, Software & Computing Services": {
+      "subcategories": {
+        "Software & Custom Programming": {"naics_codes": ["541511", "541519", "511210", "513210"], "keywords": ["software", "computer programming"]},
+        "Computer Systems Design": {"naics_codes": ["541512", "541513"], "keywords": ["computer systems design", "computer facilities management"]},
+        "IT Infrastructure & Networking": {"naics_codes": ["518210", "517110", "517111"], "keywords": ["data processing", "wired telecom", "computing infrastructure"]},
+        "Security Systems": {"naics_codes": ["561621"], "keywords": ["security systems"]}
+      }
+    },
+    "Electronics, Sensors & Guidance/Comm Systems": {
+      "subcategories": {
+        "Navigation & Guidance Instruments": {"naics_codes": ["334511"], "keywords": ["navigation", "guidance", "detection"]},
+        "Communications Equipment": {"naics_codes": ["334220", "334290"], "keywords": ["communications equipment", "radio", "broadcasting"]},
+        "Computer & Electronic Component Mfg": {"naics_codes": ["334111", "334419", "334412", "335999", "334519", "334515", "332510"], "keywords": ["electronic component", "circuit board", "hardware manufactur"]}
+      }
+    },
+    "Healthcare & Medical": {
+      "subcategories": {
+        "Health Insurance Administration": {"naics_codes": ["524114"], "keywords": ["health insurance", "medical insurance"]},
+        "Pharmaceuticals": {"naics_codes": ["325411", "424210"], "keywords": ["pharmaceutical", "drug wholesal", "medicinal"]},
+        "Medical Equipment & Hospitals": {"naics_codes": ["423450", "622110"], "keywords": ["medical equipment", "hospital"]}
+      }
+    },
+    "Professional, Management & Consulting Services": {
+      "subcategories": {
+        "Management Consulting": {"naics_codes": ["541611", "541614"], "keywords": ["management consulting", "logistics consulting"]},
+        "Other Professional Services": {"naics_codes": ["541990", "541690", "541211", "541219", "561611", "611430", "541810"], "keywords": ["professional services", "scientific consulting", "accounting", "advertising"]},
+        "Support Services": {"naics_codes": ["561990"], "keywords": ["support services"]}
+      }
+    },
+    "Weapons, Ammunition & Ordnance": {
+      "subcategories": {
+        "Ammunition Manufacturing": {"naics_codes": ["332993", "332992"], "keywords": ["ammunition"]},
+        "Small Arms & Explosives": {"naics_codes": ["332994", "325920"], "keywords": ["small arms", "explosives", "ordnance"]}
+      }
+    },
+    "Ground Vehicles & Combat Equipment": {
+      "subcategories": {
+        "Armored & Tactical Vehicles": {"naics_codes": ["336992", "336212"], "keywords": ["armored vehicle", "tank", "tactical vehicle"]},
+        "Construction Machinery": {"naics_codes": ["333120"], "keywords": ["construction machinery"]}
+      }
+    },
+    "Industrial Supplies, Equipment & MRO": {
+      "subcategories": {
+        "Equipment Wholesaling": {"naics_codes": ["423850", "423610"], "keywords": ["equipment wholesal", "electrical apparatus"]},
+        "Machinery Manufacturing & Repair": {"naics_codes": ["339999", "332410", "811219", "333310", "333618", "811210", "811310", "332999", "333999", "333613"], "keywords": ["machinery manufactur", "equipment repair", "maintenance"]}
+      }
+    },
+    "Fuel, Energy & Petroleum": {
+      "subcategories": {
+        "Petroleum Refining": {"naics_codes": ["324110"], "keywords": ["petroleum refin", "fuel"]}
+      }
+    },
+    "Environmental & Waste Management": {
+      "subcategories": {
+        "Waste & Remediation Services": {"naics_codes": ["562119", "562910", "562211"], "keywords": ["waste collection", "remediation", "hazardous waste"]}
+      }
+    },
+    "Food & Subsistence": {
+      "subcategories": {
+        "Food Service & Manufacturing": {"naics_codes": ["722310", "311812", "311999", "311991", "311421"], "keywords": ["food service", "bakery", "food manufactur"]}
+      }
+    },
+    "Base Support Services": {
+      "subcategories": {
+        "Janitorial, Landscaping & Security": {"naics_codes": ["561720", "561730", "561612"], "keywords": ["janitorial", "landscaping", "security guard"]}
+      }
+    },
+    "Transportation & Logistics/Warehousing": {
+      "subcategories": {
+        "Warehousing & Courier Services": {"naics_codes": ["493190", "493110", "492110"], "keywords": ["warehousing", "courier", "express delivery"]}
+      }
+    },
+    "Apparel & Textiles": {
+      "subcategories": {
+        "Apparel Manufacturing": {"naics_codes": ["315210", "315990"], "keywords": ["apparel", "textile"]}
+      }
+    }
+  }
+}
