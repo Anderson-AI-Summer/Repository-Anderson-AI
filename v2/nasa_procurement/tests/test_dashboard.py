@@ -80,6 +80,7 @@ def test_rebuild_from_cached_processed_data(make_txn, tmp_path, monkeypatch):
     enriched_csv = tmp_path / "enriched_transactions_latest.csv"
     manifest_json = tmp_path / "refresh_manifest_latest.json"
     dashboard_html = tmp_path / "nasa_procurement_dashboard.html"
+    snapshot_json = tmp_path / "standouts_snapshot.json"
 
     stats = AgentRunStats()
     txns = [make_txn(transaction_id="1", transaction_obligated_amount=500.0)]
@@ -90,9 +91,55 @@ def test_rebuild_from_cached_processed_data(make_txn, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "ENRICHED_LATEST", enriched_csv)
     monkeypatch.setattr(pipeline, "MANIFEST_LATEST", manifest_json)
     monkeypatch.setattr(pipeline, "DASHBOARD_PATH", dashboard_html)
+    monkeypatch.setattr(pipeline, "STANDOUTS_SNAPSHOT", snapshot_json)
 
     result = pipeline.run_pipeline(mode="rebuild")
 
     assert result["status"] == "ok"
     assert dashboard_html.exists()
     assert result["row_counts"]["enriched_transactions"] == 1
+
+
+def test_snapshot_marks_nothing_new_on_first_run(tmp_path, monkeypatch):
+    import src.pipeline as pipeline
+
+    monkeypatch.setattr(pipeline, "STANDOUTS_SNAPSHOT", tmp_path / "standouts_snapshot.json")
+    payload = {
+        "standout_suppliers": [{"supplier": "Acme Corp"}],
+        "standout_awards": [{"award_id": "AWD1"}],
+        "consolidation_opportunities": [{"category": "IT"}],
+        "duplicate_purchase_candidates": [{"pair_id": "AWD1::AWD2"}],
+    }
+    had_previous = pipeline._mark_new_since_last_run(payload)
+    assert had_previous is False
+    assert payload["standout_suppliers"][0]["is_new"] is False
+    assert payload["standout_awards"][0]["is_new"] is False
+
+
+def test_snapshot_marks_genuinely_new_items_across_runs(tmp_path, monkeypatch):
+    import src.pipeline as pipeline
+
+    monkeypatch.setattr(pipeline, "STANDOUTS_SNAPSHOT", tmp_path / "standouts_snapshot.json")
+
+    first_payload = {
+        "standout_suppliers": [{"supplier": "Acme Corp"}],
+        "standout_awards": [],
+        "consolidation_opportunities": [],
+        "duplicate_purchase_candidates": [],
+    }
+    pipeline._mark_new_since_last_run(first_payload)
+    pipeline._save_snapshot(first_payload)
+
+    second_payload = {
+        "standout_suppliers": [{"supplier": "Acme Corp"}, {"supplier": "Globex LLC"}],
+        "standout_awards": [{"award_id": "AWD1"}],
+        "consolidation_opportunities": [],
+        "duplicate_purchase_candidates": [],
+    }
+    had_previous = pipeline._mark_new_since_last_run(second_payload)
+
+    assert had_previous is True
+    suppliers_by_name = {s["supplier"]: s["is_new"] for s in second_payload["standout_suppliers"]}
+    assert suppliers_by_name["Acme Corp"] is False  # present last run too
+    assert suppliers_by_name["Globex LLC"] is True  # genuinely new
+    assert second_payload["standout_awards"][0]["is_new"] is True

@@ -36,6 +36,50 @@ logger = logging.getLogger("pipeline")
 CLEAN_LATEST = PROCESSED_DIR / "clean_transactions_latest.csv"
 ENRICHED_LATEST = PROCESSED_DIR / "enriched_transactions_latest.csv"
 MANIFEST_LATEST = PROCESSED_DIR / "refresh_manifest_latest.json"
+STANDOUTS_SNAPSHOT = PROCESSED_DIR / "standouts_snapshot.json"
+
+_SNAPSHOT_LIST_KEYS = {
+    "standout_suppliers": "supplier",
+    "standout_awards": "award_id",
+    "consolidation_opportunities": "category",
+    "duplicate_purchase_candidates": "pair_id",
+}
+
+
+def _load_snapshot() -> dict:
+    """Empty snapshot (nothing marked new) if this is the first run ever, or
+    the file is missing/unreadable -- fails soft, never blocks a refresh."""
+    if not STANDOUTS_SNAPSHOT.exists():
+        return {}
+    try:
+        return json.loads(STANDOUTS_SNAPSHOT.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _mark_new_since_last_run(payload: dict) -> bool:
+    """Tags each standout/opportunity/candidate item with is_new: True if it
+    was not present in the previous run's snapshot -- the "autonomous
+    monitoring" angle from the professor's review: a static one-shot report
+    re-surfaces the same handful of items every time, so this distinguishes
+    "still true" from "just appeared." Returns whether a previous snapshot
+    existed at all (the UI treats "first run" differently from "nothing new").
+    """
+    previous = _load_snapshot()
+    had_previous = bool(previous)
+    for list_key, id_field in _SNAPSHOT_LIST_KEYS.items():
+        previous_ids = set(previous.get(list_key, []))
+        for item in payload.get(list_key, []):
+            item["is_new"] = had_previous and item[id_field] not in previous_ids
+    return had_previous
+
+
+def _save_snapshot(payload: dict) -> None:
+    snapshot = {"generated_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+    for list_key, id_field in _SNAPSHOT_LIST_KEYS.items():
+        snapshot[list_key] = [item[id_field] for item in payload.get(list_key, [])]
+    STANDOUTS_SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
+    STANDOUTS_SNAPSHOT.write_text(json.dumps(snapshot, indent=2))
 
 
 def _save_processed(clean: list[CleanTransaction], enriched: list[EnrichedTransaction]) -> None:
@@ -220,6 +264,7 @@ def run_pipeline(
     insights_dicts = [f.model_dump() for f in insights.findings]
 
     payload = build_payload(enriched, analytics, insights_dicts, manifest, processing_mode, today=today)
+    payload["meta"]["has_previous_snapshot"] = _mark_new_since_last_run(payload)
 
     refresh_manifest = RefreshManifest(
         run_id=run_id,
@@ -250,6 +295,7 @@ def run_pipeline(
         }
 
     tmp_out.replace(DASHBOARD_PATH)
+    _save_snapshot(payload)
 
     return {
         "run_id": run_id, "status": "ok", "dashboard_path": str(DASHBOARD_PATH),

@@ -247,6 +247,17 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
 }
 .reason-tag.high_value { background: rgba(34,211,238,0.1); color: var(--nasa-blue); border-color: rgba(34,211,238,0.3); }
 .reason-tag.cost_growth { background: rgba(255,176,32,0.1); color: var(--warn); border-color: rgba(255,176,32,0.3); }
+
+/* "New since last run" -- snapshot-diffed items get a small badge next to
+   the amount so a repeat viewer can tell what changed without re-reading
+   every card. */
+.new-badge {
+  display: inline-block; background: var(--ok); color: #fff; font-size: 9.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.4px; border-radius: 3px; padding: 1px 6px;
+  margin-left: 6px; vertical-align: middle; box-shadow: var(--glow-green);
+}
+.duplicate-pair-row { display: flex; gap: 10px; font-size: 11.5px; color: var(--text); margin: 4px 0; }
+.duplicate-pair-row .code-text { display: block; }
 </style>
 </head>
 <body>
@@ -337,6 +348,7 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
 
   <!-- ================= TAB 1B: HIGHLIGHTS (Standout Suppliers & Contracts) ================= -->
   <section id="tab-highlights" class="tab-panel">
+    <div id="snapshot-status" class="small-note" style="margin-bottom:10px;"></div>
     <div class="grid-2-even">
       <div class="panel">
         <h2>Standout Suppliers</h2>
@@ -358,6 +370,26 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
           </div>
         </div>
         <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
+      </div>
+    </div>
+    <div class="grid-2-even" style="margin-top:16px;">
+      <div class="panel">
+        <h2>Consolidation Opportunities</h2>
+        <div class="small-note">
+          Categories where spend is split across several suppliers with no dominant one --
+          a fragmentation signal, not a recommended vendor and not a savings estimate (no
+          per-vendor unit-price data available to compute one).
+        </div>
+        <div class="standout-grid" id="consolidation-opportunities" style="margin-top:10px;"></div>
+      </div>
+      <div class="panel">
+        <h2>Possible Duplicate Purchases</h2>
+        <div class="small-note">
+          Pairs of separate awards -- same supplier, same category, similar dollar amount,
+          close together in time -- that might reflect one need bought twice rather than
+          consolidated once. Not evidence of waste on its own.
+        </div>
+        <div class="standout-grid" id="duplicate-candidates" style="margin-top:10px;"></div>
       </div>
     </div>
   </section>

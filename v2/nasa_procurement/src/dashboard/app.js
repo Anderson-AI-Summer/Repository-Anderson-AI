@@ -336,6 +336,23 @@
     return { btn, wrap };
   }
 
+  // "New since last run" -- see pipeline._mark_new_since_last_run. Absent/
+  // false on a first-ever run (nothing to compare against) or in direct
+  // build_payload() calls that don't go through the snapshot step.
+  function newBadge(isNew) {
+    return isNew ? el("span", { class: "new-badge" }, ["New"]) : null;
+  }
+
+  function renderSnapshotStatus() {
+    const el_ = document.getElementById("snapshot-status");
+    if (!el_) return;
+    if (!DATA.meta.has_previous_snapshot) {
+      el_.textContent = "First run on record for this dataset -- nothing is marked \"New\" yet; the next run will compare against this one.";
+    } else {
+      el_.textContent = "Comparing against the previous run -- items marked \"New\" below did not appear last time.";
+    }
+  }
+
   function renderStandoutSuppliers() {
     const container = document.getElementById("standout-suppliers");
     const list = DATA.standout_suppliers || [];
@@ -373,7 +390,7 @@
 
       const card = el("div", { class: "standout-card" }, [
         el("div", { class: "sc-head" }, [
-          el("div", { class: "sc-name" }, [s.supplier]),
+          el("div", { class: "sc-name" }, [s.supplier, newBadge(s.is_new)].filter(Boolean)),
           el("div", { class: "sc-amount" }, [fmtMoney(s.net_obligations)]),
         ]),
         el("div", { class: "sc-sub" }, [`${fmtNum(s.transaction_count)} transactions · ${fmtNum(s.unique_awards)} awards · ${s.concentration_pct.toFixed(1)}% of total`]),
@@ -465,7 +482,7 @@
         el("div", { class: "award-head-row" }, [
           el("div", { class: "award-icon", html: categoryIcon(a.category) }),
           el("div", { class: "award-head-text" }, [
-            el("div", { class: "sc-name" }, [a.supplier]),
+            el("div", { class: "sc-name" }, [a.supplier, newBadge(a.is_new)].filter(Boolean)),
             el("div", { class: "award-category" }, [a.category]),
             el("div", { class: "award-id code-text" }, [a.award_id]),
           ]),
@@ -477,6 +494,122 @@
         detailsBtn,
         detailsWrap,
         el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
+      ]);
+      container.appendChild(card);
+    });
+  }
+
+  function renderConsolidationOpportunities() {
+    const container = document.getElementById("consolidation-opportunities");
+    const list = DATA.consolidation_opportunities || [];
+    if (!container) return;
+    if (!list.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["No category met the fragmentation criteria for this dataset."]));
+      return;
+    }
+    const flags = getReviewFlags();
+
+    list.forEach(c => {
+      const key = "consolidation:" + c.category;
+      const { btn: detailsBtn, wrap: detailsWrap } = detailsToggle([
+        el("div", { class: "sc-reason-detail" }, [c.detail]),
+        el("div", { class: "small-note" }, ["Leading suppliers in this category: " +
+          c.leading_suppliers.map(s => `${s.supplier} (${fmtMoney(s.net_obligations)})`).join(", ")]),
+      ]);
+
+      const flagBtn = el("button", { class: "flag-btn" + (flags[key] ? " marked" : "") },
+        [flags[key] ? "★ Marked for review" : "Mark for review"]);
+      flagBtn.title = "Saved locally in this browser only -- does not notify or send anything to anyone.";
+      flagBtn.addEventListener("click", () => {
+        const nowMarked = toggleReviewFlag(key);
+        flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
+        flagBtn.classList.toggle("marked", nowMarked);
+      });
+
+      const viewBtn = el("button", { class: "primary" }, ["View category ↗"]);
+      viewBtn.title = "Jump to this category in Categories & Opportunities.";
+      viewBtn.addEventListener("click", () => jumpToCategory(c.category));
+
+      const exportBtn = el("button", {}, ["Export category CSV"]);
+      exportBtn.addEventListener("click", () => {
+        const rows = DATA.explorer_rows.filter(r => r.ai_spend_category === c.category);
+        const safeName = c.category.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
+        downloadCsv(`nasa_category_${safeName}.csv`, rowsToCsv(rows));
+      });
+
+      const card = el("div", { class: "standout-card" }, [
+        el("div", { class: "sc-head" }, [
+          el("div", { class: "sc-name" }, [c.category, newBadge(c.is_new)].filter(Boolean)),
+          el("div", { class: "sc-amount" }, [fmtMoney(c.total_net_obligations)]),
+        ]),
+        el("div", { class: "sc-sub" }, [
+          `${fmtNum(c.unique_suppliers)} suppliers · HHI ${c.concentration_hhi.toFixed(0)} · top supplier ${c.top_supplier_share_pct.toFixed(0)}% share`,
+        ]),
+        el("div", {}, [el("span", { class: "reason-tag deobligation_flag" }, ["Fragmented spend"])]),
+        detailsBtn,
+        detailsWrap,
+        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
+      ]);
+      container.appendChild(card);
+    });
+  }
+
+  function renderDuplicateCandidates() {
+    const container = document.getElementById("duplicate-candidates");
+    const list = DATA.duplicate_purchase_candidates || [];
+    if (!container) return;
+    if (!list.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["No pair of awards met the possible-duplicate criteria for this dataset."]));
+      return;
+    }
+    const flags = getReviewFlags();
+
+    list.forEach(d => {
+      const key = "duplicate:" + d.pair_id;
+      const { btn: detailsBtn, wrap: detailsWrap } = detailsToggle([
+        el("div", { class: "sc-reason-detail" }, [d.detail]),
+      ]);
+
+      const rowA = el("div", { class: "duplicate-pair-row" }, [
+        el("span", { class: "code-text" }, [d.award_id_a]),
+        el("span", {}, [fmtMoney(d.amount_a) + " on " + d.date_a]),
+      ]);
+      const rowB = el("div", { class: "duplicate-pair-row" }, [
+        el("span", { class: "code-text" }, [d.award_id_b]),
+        el("span", {}, [fmtMoney(d.amount_b) + " on " + d.date_b]),
+      ]);
+      rowA.style.cursor = rowB.style.cursor = "pointer";
+      rowA.title = rowB.title = "Jump to this award";
+      rowA.addEventListener("click", () => jumpToAward(d.award_id_a));
+      rowB.addEventListener("click", () => jumpToAward(d.award_id_b));
+
+      const flagBtn = el("button", { class: "flag-btn" + (flags[key] ? " marked" : "") },
+        [flags[key] ? "★ Marked for review" : "Mark for review"]);
+      flagBtn.title = "Saved locally in this browser only -- does not notify or send anything to anyone.";
+      flagBtn.addEventListener("click", () => {
+        const nowMarked = toggleReviewFlag(key);
+        flagBtn.textContent = nowMarked ? "★ Marked for review" : "Mark for review";
+        flagBtn.classList.toggle("marked", nowMarked);
+      });
+
+      const exportBtn = el("button", { class: "primary" }, ["Export both awards' CSV"]);
+      exportBtn.addEventListener("click", () => {
+        const rows = DATA.explorer_rows.filter(r => r.award_id_piid === d.award_id_a || r.award_id_piid === d.award_id_b);
+        const safeId = d.pair_id.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 60);
+        downloadCsv(`nasa_duplicate_pair_${safeId}.csv`, rowsToCsv(rows));
+      });
+
+      const card = el("div", { class: "standout-card" }, [
+        el("div", { class: "sc-head" }, [
+          el("div", { class: "sc-name" }, [d.supplier, newBadge(d.is_new)].filter(Boolean)),
+          el("div", { class: "sc-amount" }, [fmtMoney(d.combined_value)]),
+        ]),
+        el("div", { class: "sc-sub" }, [`${d.category} · ${fmtNum(d.days_apart)} day(s) apart`]),
+        rowA, rowB,
+        el("div", {}, [el("span", { class: "reason-tag cost_growth" }, ["Possible duplicate"])]),
+        detailsBtn,
+        detailsWrap,
+        el("div", { class: "sc-actions" }, [exportBtn, flagBtn]),
       ]);
       container.appendChild(card);
     });
@@ -788,8 +921,11 @@
   renderHeader();
   setupTabs();
   renderOverview();
+  renderSnapshotStatus();
   renderStandoutSuppliers();
   renderStandoutAwards();
+  renderConsolidationOpportunities();
+  renderDuplicateCandidates();
   renderYoY();
   renderExplorer();
   renderSupplierTab();

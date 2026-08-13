@@ -249,6 +249,48 @@ $15.78B net obligations, 20,354 deduplicated transactions, 2,867 normalized
 suppliers. `outputs/nasa_procurement_dashboard_presentation.html` (the
 originally frozen live-API pull) is left untouched.
 
+## Three more signals, from the professor's assignment review
+
+Added directly in response to recorded class feedback (see
+`PROJECT_SUMMARY.md` for the full discussion of each). All three follow the
+same rule as the rest of the dashboard: disclosed, evidence-cited, never a
+claim the data can't back.
+
+- **Consolidation Opportunities** (`_consolidation_opportunities` in
+  `src/dashboard/data_prep.py`). *"Within a category they're spending with
+  various vendors -- opportunity to reach a volume-based discount if they
+  stick with one preferred supplier."* Surfaces categories where spend is
+  split across 3+ suppliers with no dominant one (HHI < 2500, DOJ/FTC's own
+  "unconcentrated/moderate" cutoff). Deliberately does **not** name a
+  replacement vendor or estimate a dollar savings -- there's no per-vendor
+  unit-price or contract-tier data available to back either claim.
+- **"New since last run"** (`_mark_new_since_last_run` in `src/pipeline.py`,
+  a small JSON snapshot at `data/processed/standouts_snapshot.json`,
+  regenerable/gitignored like the rest of that folder). *"We only catch
+  about 10% [of financial malfeasance] -- the deterrence is the goal...
+  agents autonomously monitoring is a huge deterrence boost."* Every prior
+  version of this dashboard re-surfaced the same handful of flagged items
+  on every run with no memory of the last one. Now each standout supplier,
+  contract, consolidation opportunity, and duplicate-purchase candidate
+  carries an `is_new` flag, and the dashboard shows a green "New" badge for
+  anything that wasn't flagged last time -- the beginning of an actual
+  monitoring workflow instead of a static snapshot. First-ever run marks
+  nothing as new (nothing to compare against yet); this is disclosed in a
+  banner at the top of the Standouts tab.
+- **Possible Duplicate Purchases** (`_duplicate_purchase_candidates`). The
+  "school chair pass" story -- budget rules driving a second, separate
+  purchase instead of one consolidated one. Flags pairs of *separate*
+  awards (contract modifications on the same award are already covered by
+  the existing "grew via modifications" signal) to the same supplier, same
+  category, similar dollar amount (within 30%), close together in time
+  (within 120 days). Capped between $5K and $2M per award on purpose: above
+  that, two same-supplier awards close together are more likely parallel
+  program funding to a major prime (observed directly on the real NASA
+  data -- Boeing/Caltech-JPL routinely have multiple large, legitimately
+  distinct awards close together) than an administrative duplicate; this
+  signal targets the smaller, more mundane purchase pattern the professor
+  described, not big-program contracting.
+
 ## Environment / secrets
 
 Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY` to enable

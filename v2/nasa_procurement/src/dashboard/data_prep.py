@@ -188,6 +188,8 @@ def _award_rows(df: pd.DataFrame) -> list[dict]:
         gross = float(g.loc[g["transaction_obligation_signed"] > 0, "transaction_obligation_signed"].sum())
         deob = float(-g.loc[g["transaction_obligation_signed"] < 0, "transaction_obligation_signed"].sum())
         initial_amount = float(g_sorted.iloc[0]["transaction_obligation_signed"])
+        first_date = g_sorted.iloc[0]["action_date"]
+        first_date = first_date.date().isoformat() if pd.notna(first_date) else None
         mod_count = int(g["modification_number"].nunique())
 
         # Longest description is usually the most informative one on record.
@@ -205,6 +207,7 @@ def _award_rows(df: pd.DataFrame) -> list[dict]:
             "gross_positive_obligations": gross,
             "deobligations": deob,
             "initial_amount": initial_amount,
+            "first_date": first_date,
             "transaction_count": int(len(g)),
             "modification_count": mod_count,
             "description": description[:400],
@@ -310,6 +313,116 @@ def _standout_awards(rows: list[dict], max_results: int = 5) -> list[dict]:
     return standout[:max_results]
 
 
+def _consolidation_opportunities(categories_detail: dict, max_results: int = 5) -> list[dict]:
+    """Feature requested by the professor's review: proactively surface
+    categories where spend is split across many suppliers with no dominant
+    one, rather than only reacting when a *designated* preferred supplier is
+    bypassed (supplier_check.py's job, in the general spend_agent engine).
+    This is a fragmentation signal only -- it names no specific replacement
+    vendor and computes no savings estimate, since we have no per-vendor
+    unit-price or contract-tier data to back one. See PROJECT_SUMMARY.md.
+    """
+    MIN_CATEGORY_SPEND = 100_000
+    MIN_SUPPLIERS = 3
+    HHI_FRAGMENTED_THRESHOLD = 2500  # below this, no single supplier dominates (DOJ/FTC HHI convention: <1500 unconcentrated, 1500-2500 moderate, >2500 concentrated)
+
+    candidates = []
+    for category, d in categories_detail.items():
+        total = sum(r["net_obligations"] for r in d["leading_suppliers"])
+        if total < MIN_CATEGORY_SPEND or d["unique_suppliers"] < MIN_SUPPLIERS:
+            continue
+        if d["concentration_hhi"] >= HHI_FRAGMENTED_THRESHOLD:
+            continue
+        top = d["leading_suppliers"][0] if d["leading_suppliers"] else None
+        top_share = (top["net_obligations"] / total) if (top and total) else 0.0
+        candidates.append({
+            "category": category,
+            "total_net_obligations": total,
+            "unique_suppliers": d["unique_suppliers"],
+            "concentration_hhi": d["concentration_hhi"],
+            "top_supplier": top["supplier"] if top else None,
+            "top_supplier_share_pct": top_share * 100,
+            "leading_suppliers": d["leading_suppliers"][:5],
+            "detail": (
+                f"${total:,.0f} in this category is split across {d['unique_suppliers']} suppliers; "
+                f"the largest ({top['supplier'] if top else 'n/a'}) accounts for only {top_share * 100:.0f}% "
+                f"(HHI={d['concentration_hhi']:.0f}, more fragmented than a concentrated category). "
+                "Consolidating routine purchases onto fewer suppliers may create leverage for "
+                "volume-based pricing -- this is a fragmentation signal, not a recommendation for "
+                "a specific vendor, and not a savings estimate (no per-vendor unit-price data available)."
+            ),
+        })
+
+    candidates.sort(key=lambda c: -c["total_net_obligations"])
+    return candidates[:max_results]
+
+
+def _duplicate_purchase_candidates(rows: list[dict], max_results: int = 5) -> list[dict]:
+    """Feature requested by the professor's review, from the "school chair
+    pass" example: budget rules sometimes drive a second, separate purchase
+    instead of one consolidated one. Flags pairs of *separate* awards
+    (contract modifications on the same award are already covered by the
+    "grew via modifications" signal in _standout_awards) to the same
+    supplier, same category, similar dollar amount, close in time --
+    plausible incremental/duplicate procurement, never asserted as waste.
+    """
+    AMOUNT_TOLERANCE = 0.30  # within 30% of each other
+    MIN_AMOUNT = 5_000
+    # Above this, two same-supplier awards close together are more likely
+    # parallel program funding to a major prime than an administrative
+    # duplicate -- this signal is aimed at the "school chair pass" pattern
+    # (mundane, repeated small purchases), not billion-dollar contracts.
+    MAX_AMOUNT = 2_000_000
+    MAX_DAYS_APART = 120
+
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for r in rows:
+        if not r["first_date"] or not (MIN_AMOUNT <= abs(r["net_obligations"]) <= MAX_AMOUNT):
+            continue
+        groups.setdefault((r["supplier"], r["category"]), []).append(r)
+
+    candidates = []
+    seen_awards: set[str] = set()
+    for (supplier, category), awards in groups.items():
+        if len(awards) < 2:
+            continue
+        awards = sorted(awards, key=lambda r: r["first_date"])
+        for i in range(len(awards)):
+            for j in range(i + 1, len(awards)):
+                a, b = awards[i], awards[j]
+                if a["award_id"] in seen_awards or b["award_id"] in seen_awards:
+                    continue
+                days_apart = (dt.date.fromisoformat(b["first_date"]) - dt.date.fromisoformat(a["first_date"])).days
+                if days_apart > MAX_DAYS_APART:
+                    continue
+                bigger, smaller = max(a["net_obligations"], b["net_obligations"]), min(a["net_obligations"], b["net_obligations"])
+                if bigger <= 0 or (bigger - smaller) / bigger > AMOUNT_TOLERANCE:
+                    continue
+                candidates.append({
+                    "pair_id": "::".join(sorted([a["award_id"], b["award_id"]])),
+                    "supplier": supplier,
+                    "category": category,
+                    "award_id_a": a["award_id"], "award_id_b": b["award_id"],
+                    "amount_a": a["net_obligations"], "amount_b": b["net_obligations"],
+                    "date_a": a["first_date"], "date_b": b["first_date"],
+                    "days_apart": days_apart,
+                    "combined_value": a["net_obligations"] + b["net_obligations"],
+                    "detail": (
+                        f"Two separate awards to {supplier} in {category}, {days_apart} day(s) apart, "
+                        f"for similar amounts (${a['net_obligations']:,.0f} on {a['first_date']} and "
+                        f"${b['net_obligations']:,.0f} on {b['first_date']}) -- worth checking whether this "
+                        "reflects one need that could have been a single consolidated purchase (e.g. a "
+                        "budget-cycle-driven incremental buy) rather than genuinely separate needs. Not "
+                        "evidence of wasteful spending on its own."
+                    ),
+                })
+                seen_awards.add(a["award_id"])
+                seen_awards.add(b["award_id"])
+
+    candidates.sort(key=lambda c: -c["combined_value"])
+    return candidates[:max_results]
+
+
 def build_payload(
     transactions: list[EnrichedTransaction],
     analytics: dict,
@@ -369,5 +482,7 @@ def build_payload(
         "standout_suppliers": _standout_suppliers(suppliers_detail),
         "standout_awards": _standout_awards(award_rows),
         "awards_summary": _award_summary(award_rows),
+        "consolidation_opportunities": _consolidation_opportunities(categories_detail),
+        "duplicate_purchase_candidates": _duplicate_purchase_candidates(award_rows),
     }
     return payload

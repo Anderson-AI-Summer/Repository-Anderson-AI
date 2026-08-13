@@ -107,6 +107,40 @@ generated. The browser only filters, sorts, and re-renders what it is given;
 it never recomputes the analytical model. This is also why the Insights
 Agent is instructed never to perform its own arithmetic.
 
+## Three signals added from class review
+
+The professor's recorded feedback on this assignment mapped onto three
+concrete, buildable gaps, added directly (see `README.md` "Three more
+signals" for the mechanics of each):
+
+1. **Consolidation opportunities.** The professor described finding
+   categories split across many vendors as an opening to negotiate
+   volume-based pricing with one preferred supplier. The pipeline already
+   flags when a *designated* preferred supplier is bypassed; it had no way
+   to proactively surface categories that don't have one yet because spend
+   is fragmented. `_consolidation_opportunities` closes that gap using the
+   category-level HHI already computed in `categories_detail` -- no new
+   data pass required. It intentionally stops short of naming a specific
+   replacement vendor or a savings number, since neither is backed by data
+   this pipeline has (no per-vendor unit pricing).
+2. **New-since-last-run flagging.** The professor's framing of deterrence
+   ("we only catch ~10%... agents autonomously monitoring is a huge
+   deterrence boost") implies something ongoing, not a fresh unrelated
+   snapshot every time. A small JSON file
+   (`data/processed/standouts_snapshot.json`, regenerable like the rest of
+   that folder) now persists what was flagged last run, and every
+   standout/opportunity/candidate list is diffed against it.
+3. **Possible duplicate purchases.** Directly from the "school chair pass"
+   anecdote -- budget rules causing a second purchase instead of one
+   consolidated one. Implemented as same-supplier, same-category award
+   pairs, similar amount, close in time. Calibration note: an unbounded
+   version of this signal was dominated by pairs of huge, genuinely
+   distinct NASA prime contracts (e.g. two $300M+ JPL awards nine days
+   apart) -- normal parallel program funding, not administrative
+   duplication. Capping it to $5K-$2M per award removed that noise and
+   left the smaller, more plausible candidates the professor's example
+   was actually describing.
+
 ## Limitations and future improvements
 
 See `README.md` "Limitations" for the full list (bulk-download endpoint
