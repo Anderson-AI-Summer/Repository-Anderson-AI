@@ -151,25 +151,21 @@ for cid, name, raw, pname in zip(df["cluster_id"], df["normalized_name"], df["re
     if pd.notna(pname) and pname:
         cluster_parent_name[cid] = pname
 
-# NOTE ON A KNOWN LIMITATION (tried and deliberately reverted a fix):
-# a handful of large companies split across two cluster_ids because SAM.gov
-# registration data itself is inconsistent for them (e.g. some Lockheed
-# Martin awards carry a parent UEI, others fall back to a different entity
-# UEI). A second-pass merge keyed on normalized recipient_parent_name was
-# tried to fold these back together, but recipient_parent_name turns out to
-# be populated even for small standalone businesses (frequently just their
-# own legal name), so the merge produced false positives -- e.g. "A & A CO
-# INC" and "A & A HOLDINGS CORPORATION" are two unrelated real companies
-# that both reduce to "A A" once generic suffix words (CO, HOLDINGS, INC,
-# CORPORATION) are stripped, and would have been wrongly combined. Some
-# legitimate-looking matches (e.g. "Ball Aerospace" clusters under both
-# "Ball Corp" and a BAE Systems-adjacent parent) also reflect real
-# acquisition history (BAE Systems acquired Ball Aerospace in 2024) that
-# shouldn't be silently collapsed either. Given the risk of quietly
-# combining unrelated companies outweighs the cosmetic benefit of not
-# splitting the few known large duplicates, this is left as UEI-primary
-# clustering with the split disclosed in the dashboard rather than "fixed"
-# by an unreliable heuristic.
+# NOTE ON A REJECTED APPROACH: a blanket second-pass merge keyed on
+# normalized recipient_parent_name was tried to fold split large companies
+# back together, but recipient_parent_name turns out to be populated even
+# for small standalone businesses (frequently just their own legal name),
+# so the merge produced false positives -- e.g. "A & A CO INC" and "A & A
+# HOLDINGS CORPORATION" are two unrelated real companies that both reduce
+# to "A A" once generic suffix words are stripped, and would have been
+# wrongly combined. That blanket approach was reverted.
+#
+# In its place: a small, individually-verified allow-list (below), applied
+# only to specific large suppliers that were manually inspected and
+# confirmed to be either (a) the exact same company differing only by a
+# corporate-suffix spelling (CORP vs CORPORATION, trailing period on INC),
+# or (b) a confirmed SAM.gov data error. Not applied broadly, so it carries
+# none of the false-positive risk of the reverted approach.
 
 def display_name(cid):
     if cid in cluster_parent_name:
@@ -178,6 +174,32 @@ def display_name(cid):
     return max(names, key=len) if names else cid
 
 df["normalized_supplier"] = df["cluster_id"].apply(display_name)
+
+# Individually-verified corrections (see note above). Each entry was
+# checked against its underlying raw recipient names before being added:
+SUPPLIER_NAME_OVERRIDES = {
+    # Same company, suffix-spelling variant only (confirmed: identical
+    # cluster of Lockheed Martin awards, just "CORP" vs "CORPORATION").
+    "LOCKHEED MARTIN CORPORATION": "LOCKHEED MARTIN CORP",
+    # Same company, trailing-period variant only ("INC" vs "INC.").
+    "L3HARRIS TECHNOLOGIES, INC.": "L3HARRIS TECHNOLOGIES, INC",
+    # Same company, suffix-spelling variant only.
+    "RTX CORPORATION": "RTX CORP",
+    # Confirmed SAM.gov data error: recipient_parent_name for 785 awards
+    # (338 raw-named "Raytheon Company", 258 "RTX BBN Technologies", 70
+    # "Rockwell Collins, Inc.", 17 "RTX Corporation", 16 "Goodrich
+    # Corporation", 8 "Hamilton Sundstrand Corporation", plus Pratt &
+    # Whitney and Simmonds Precision entities -- all RTX Corporation's own
+    # corporate family) is erroneously set to "Rockwell Collins Australia
+    # Pty Limited", a much smaller Australian subsidiary. A subsidiary
+    # cannot be its own parent's parent; this is a SAM.gov registration
+    # error, not a real corporate structure. Awards themselves are large,
+    # well-known RTX/Pratt & Whitney programs (F135 and F119 engine LRIP
+    # lots, the Adaptive Engine Transition Program, TOW missile CLS).
+    "ROCKWELL COLLINS AUSTRALIA PTY LIMITED": "RTX CORP",
+}
+df["normalized_supplier"] = df["normalized_supplier"].replace(SUPPLIER_NAME_OVERRIDES)
+
 n_suppliers = df["normalized_supplier"].nunique()
 n_raw_names = df["recipient_name_raw"].nunique()
 print(f"Resolved {n_raw_names:,} raw recipient names into {n_suppliers:,} suppliers (UEI-based clustering)")

@@ -319,13 +319,13 @@ duplicates = duplicate_purchase_candidates(award_rows)
 payload = {
     "meta": {
         "title": "DoD Procurement Intelligence Dashboard",
-        "disclosure": "Unofficial educational project, replicating the structure of the team's NASA procurement dashboard (v3) for DoD data. Not affiliated with or endorsed by the Department of Defense.",
+        "disclosure": "Unofficial educational project analyzing six-plus years of DoD contract award data. Not affiliated with or endorsed by the Department of Defense.",
         "data_period_start": "2019-10-01",
         "data_period_end": "2026-04-30",
         "transaction_count": len(df),
         "source": "USAspending.gov bulk award-download API (definitive contracts, award type D)",
         "current_fiscal_year": CURRENT_FY,
-        "note": "IMPORTANT SCOPE NOTE: unlike v3's NASA pipeline (true per-transaction signed obligations), this dataset is AWARD-LEVEL -- one row per contract award reflecting its current total value as of extraction, not a full modification-by-modification transaction history. There is no deobligation/negative-transaction data here. 'Transaction count' == award count.",
+        "note": "This dataset is AWARD-LEVEL -- one row per contract award reflecting its current total value as of extraction, not a full modification-by-modification transaction history. There is no deobligation/negative-transaction data here. 'Transaction count' == award count.",
     },
     "analytics": analytics,
     "suppliers_detail": suppliers_detail,

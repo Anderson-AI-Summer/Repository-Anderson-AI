@@ -93,19 +93,15 @@ insights.append({
 })
 
 insights.append({
-    "title": "Supplier resolution has one known gap: Lockheed Martin",
+    "title": "Supplier resolution: a few large-company splits were manually corrected",
     "finding": (
-        "This dataset's supplier identity resolution uses recipient_parent_uei as its primary key, "
-        "falling back to entity UEI or name -- a genuine improvement over facility-level UEI matching. "
-        "But it still shows Lockheed Martin split across two entries in the Top Suppliers list ('LOCKHEED "
-        "MARTIN CORP' and 'LOCKHEED MARTIN CORPORATION'), because some of its awards carry a registered "
-        "parent UEI and others don't, resolving to different clusters even though it's the same company. "
-        "A second pass that merged clusters by normalized company name was tried and reverted: it also "
-        "merged genuinely unrelated small businesses that happen to share generic name fragments once "
-        "corporate-suffix words are stripped (e.g. two different real companies both reducing to 'A A'), "
-        "and it risked mishandling real acquisition history for at least one supplier. Between a disclosed "
-        "split and an unreliable merge, this project keeps the split and discloses it here rather than risk "
-        "silently combining unrelated companies."
+        "recipient_parent_uei-based clustering occasionally splits one real company across two entries "
+        "(a suffix spelling difference, or in one case a confirmed SAM.gov data error attributing RTX "
+        "Corporation's own awards to a small Australian subsidiary). A blanket automated fix for this was "
+        "tried and reverted -- it merged unrelated small businesses that happened to share generic name "
+        "fragments. In its place, four individually-verified corrections (Lockheed Martin, RTX, L3Harris, "
+        "and the Rockwell Collins Australia mislabeling) are applied directly; the long tail of 24,000+ "
+        "smaller suppliers is left as-is rather than risk a false merge."
     ),
 })
 
