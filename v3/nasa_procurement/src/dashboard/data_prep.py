@@ -344,6 +344,39 @@ def _standout_awards(rows: list[dict], max_results: int = 5) -> list[dict]:
     return standout[:max_results]
 
 
+def _standout_by_range(df: pd.DataFrame, embedded_fiscal_years: list[int], max_results: int = 5) -> dict:
+    """Precomputes standout_suppliers/standout_awards for every contiguous
+    fiscal-year range among the embedded years (e.g. 7 embedded years ->
+    7*8/2 = 28 range combinations, keyed "{from_fy}-{to_fy}"), so the
+    dashboard's header Timeframe range control can look one up instantly
+    client-side -- no client-side recomputation of the signal-detection
+    logic, and no falling back to the all-time view when a narrower range
+    is selected. Each range's concentration % (used by the "high spend
+    concentration" signal) is computed against that range's own total net
+    obligations, not the dataset-wide total, so it reflects share-of-spend
+    within the selected window.
+    """
+    result: dict[str, dict] = {}
+    if df.empty or not embedded_fiscal_years:
+        return result
+    years = sorted(set(embedded_fiscal_years))
+    for i, from_fy in enumerate(years):
+        for to_fy in years[i:]:
+            key = f"{from_fy}-{to_fy}"
+            sub = df[(df["fiscal_year"] >= from_fy) & (df["fiscal_year"] <= to_fy)]
+            if sub.empty:
+                result[key] = {"standout_suppliers": [], "standout_awards": []}
+                continue
+            range_total_net = float(sub["transaction_obligation_signed"].sum())
+            range_suppliers_detail = _supplier_detail(sub, range_total_net)
+            range_award_rows = _award_rows(sub)
+            result[key] = {
+                "standout_suppliers": _standout_suppliers(range_suppliers_detail, max_results),
+                "standout_awards": _standout_awards(range_award_rows, max_results),
+            }
+    return result
+
+
 def _consolidation_opportunities(categories_detail: dict, max_results: int = 5) -> list[dict]:
     """Feature requested by the professor's review: proactively surface
     categories where spend is split across many suppliers with no dominant
@@ -484,6 +517,8 @@ def build_payload(
         categories_detail = _category_detail(df)
 
     award_rows = _award_rows(df)
+    embedded_fiscal_years = sorted({r["fiscal_year"] for r in analytics.get("annual", [])})
+    standout_by_range = _standout_by_range(df, embedded_fiscal_years)
 
     review_status_flag = analytics.get("current_fiscal_year")
     partial_year_warning = is_partial_fiscal_year(review_status_flag, today) if review_status_flag else False
@@ -512,6 +547,7 @@ def build_payload(
         "categories_detail": categories_detail,
         "standout_suppliers": _standout_suppliers(suppliers_detail),
         "standout_awards": _standout_awards(award_rows),
+        "standout_by_range": standout_by_range,
         "awards_summary": _award_summary(award_rows),
         "consolidation_opportunities": _consolidation_opportunities(categories_detail),
         "duplicate_purchase_candidates": _duplicate_purchase_candidates(award_rows),

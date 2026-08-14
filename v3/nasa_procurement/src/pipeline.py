@@ -64,13 +64,30 @@ def _mark_new_since_last_run(payload: dict) -> bool:
     re-surfaces the same handful of items every time, so this distinguishes
     "still true" from "just appeared." Returns whether a previous snapshot
     existed at all (the UI treats "first run" differently from "nothing new").
+
+    The same previous_ids sets are also applied to every fiscal-year-range
+    variant in standout_by_range (see data_prep._standout_by_range), so a
+    supplier/award's "New" badge stays consistent no matter which Timeframe
+    range surfaces it -- "new since last run" is a dataset-level fact about
+    that entity, not something that should flip depending on which range
+    happens to be selected.
     """
     previous = _load_snapshot()
     had_previous = bool(previous)
-    for list_key, id_field in _SNAPSHOT_LIST_KEYS.items():
-        previous_ids = set(previous.get(list_key, []))
-        for item in payload.get(list_key, []):
+    previous_ids_by_key = {list_key: set(previous.get(list_key, [])) for list_key in _SNAPSHOT_LIST_KEYS}
+
+    def _tag(items: list[dict], id_field: str, previous_ids: set) -> None:
+        for item in items:
             item["is_new"] = had_previous and item[id_field] not in previous_ids
+
+    for list_key, id_field in _SNAPSHOT_LIST_KEYS.items():
+        _tag(payload.get(list_key, []), id_field, previous_ids_by_key[list_key])
+
+    range_key_fields = {"standout_suppliers": "supplier", "standout_awards": "award_id"}
+    for range_data in payload.get("standout_by_range", {}).values():
+        for list_key, id_field in range_key_fields.items():
+            _tag(range_data.get(list_key, []), id_field, previous_ids_by_key[list_key])
+
     return had_previous
 
 

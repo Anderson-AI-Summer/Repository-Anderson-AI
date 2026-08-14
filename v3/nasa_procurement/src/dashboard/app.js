@@ -835,9 +835,32 @@
     }
   }
 
-  function renderStandoutSuppliers() {
+  // Every fiscal-year-range combination among the embedded years is
+  // precomputed server-side (see _standout_by_range() in data_prep.py), so
+  // switching the header's Timeframe range just looks this up -- no
+  // client-side recomputation, no lag.
+  function standoutRangeKey(fromFY, toFY) {
+    const embeddedFYs = A.annual.map(r => r.fiscal_year);
+    const lo = fromFY == null ? embeddedFYs[0] : fromFY;
+    const hi = toFY == null ? embeddedFYs[embeddedFYs.length - 1] : toFY;
+    return `${lo}-${hi}`;
+  }
+  function updateStandoutsScopeNote(fromFY, toFY) {
+    const note = document.getElementById("standouts-scope-note");
+    if (!note) return;
+    const isFullRange = fromFY == null && toFY == null;
+    note.textContent = isFullRange
+      ? "Showing standouts across the full dataset (all embedded years)."
+      : `Showing standouts for FY${fromFY == null ? A.annual[0].fiscal_year : fromFY}–FY${toFY == null ? A.annual[A.annual.length - 1].fiscal_year : toFY} only -- spend-concentration % is relative to that range's own total, not the dataset-wide total.`;
+  }
+
+  function renderStandoutSuppliers(fromFY, toFY) {
+    updateStandoutsScopeNote(fromFY, toFY);
     const container = document.getElementById("standout-suppliers");
-    const list = DATA.standout_suppliers || [];
+    container.innerHTML = "";
+    const key = standoutRangeKey(fromFY, toFY);
+    const rangeData = (DATA.standout_by_range || {})[key];
+    const list = (rangeData ? rangeData.standout_suppliers : DATA.standout_suppliers) || [];
     if (!list.length) {
       container.appendChild(el("div", { class: "small-note" }, ["No supplier met the standout criteria for this dataset."]));
       return;
@@ -909,18 +932,12 @@
   const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#64748b" stroke-width="1.3"/></svg>';
   function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
 
-  function renderStandoutAwards() {
-    const photoToggle = document.getElementById("award-photo-note-toggle");
-    const photoNote = document.getElementById("award-photo-note");
-    if (photoToggle && photoNote) {
-      photoToggle.addEventListener("click", () => {
-        const nowExpanded = photoNote.classList.toggle("expanded");
-        photoToggle.textContent = nowExpanded ? "Why no real photos? (hide)" : "Why no real photos?";
-      });
-    }
-
+  function renderStandoutAwards(fromFY, toFY) {
     const container = document.getElementById("standout-awards");
-    const list = DATA.standout_awards || [];
+    container.innerHTML = "";
+    const key = standoutRangeKey(fromFY, toFY);
+    const rangeData = (DATA.standout_by_range || {})[key];
+    const list = (rangeData ? rangeData.standout_awards : DATA.standout_awards) || [];
     if (!list.length) {
       container.appendChild(el("div", { class: "small-note" }, ["No contract award met the standout criteria for this dataset."]));
       return;
@@ -983,6 +1000,17 @@
       ]);
       container.appendChild(card);
     });
+  }
+
+  function setupStandoutAwardPhotoToggle() {
+    const photoToggle = document.getElementById("award-photo-note-toggle");
+    const photoNote = document.getElementById("award-photo-note");
+    if (photoToggle && photoNote) {
+      photoToggle.addEventListener("click", () => {
+        const nowExpanded = photoNote.classList.toggle("expanded");
+        photoToggle.textContent = nowExpanded ? "Why no real photos? (hide)" : "Why no real photos?";
+      });
+    }
   }
 
   function renderConsolidationOpportunities() {
@@ -1518,8 +1546,13 @@
   setupKpiModal();
   renderOverview();
   renderSnapshotStatus();
-  renderStandoutSuppliers();
-  renderStandoutAwards();
+  setupStandoutAwardPhotoToggle();
+  renderStandoutSuppliers(globalFromFY, globalToFY);
+  renderStandoutAwards(globalFromFY, globalToFY);
+  onGlobalTimeframeChange((fromFY, toFY) => {
+    renderStandoutSuppliers(fromFY, toFY);
+    renderStandoutAwards(fromFY, toFY);
+  });
   renderConsolidationOpportunities();
   renderDuplicateCandidates();
   renderYoY();
