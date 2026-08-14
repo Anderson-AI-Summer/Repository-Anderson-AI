@@ -629,7 +629,36 @@
     });
   }
 
+  // Which drill-down columns name something a workflow can attach to.
+  // Shared by the table (which rows are selectable) and the workflow starter
+  // (what the "Apply to" list contains) so the two can never disagree.
+  function kpiTargetIndices(spec) {
+    const cols = (spec.columns || []).map(c => String(c).toLowerCase());
+    return {
+      supIdx: cols.findIndex(c => c.includes("supplier")),
+      awdIdx: cols.findIndex(c => c.includes("award")),
+    };
+  }
+
+  // Installed by renderKpiModalWorkflowStarter, called by the table's row
+  // clicks. The table is built first, but only ever clicked afterwards, so
+  // the ordering is safe.
+  let kpiModalApplyTarget = null;
+
+  function highlightKpiModalRows(key) {
+    const wrap = document.getElementById("kpi-modal-table-wrap");
+    if (!wrap) return null;
+    let first = null;
+    wrap.querySelectorAll("tbody tr").forEach(tr => {
+      const hit = !!key && (tr.dataset.supKey === key || tr.dataset.awdKey === key);
+      tr.classList.toggle("kpi-row-selected", hit);
+      if (hit && !first) first = tr;
+    });
+    return first;
+  }
+
   function openKpiModal(spec) {
+    kpiModalApplyTarget = null;
     document.getElementById("kpi-modal-title").textContent = spec.title;
     document.getElementById("kpi-modal-formula").textContent = spec.formula;
     const noteEl = document.getElementById("kpi-modal-note");
@@ -639,10 +668,43 @@
     const wrap = document.getElementById("kpi-modal-table-wrap");
     wrap.innerHTML = "";
     if (spec.rows && spec.rows.length) {
+      const { supIdx, awdIdx } = kpiTargetIndices(spec);
       const tbl = el("table", { class: "data-table" });
       tbl.appendChild(el("thead", {}, [el("tr", {}, spec.columns.map(h => el("th", {}, [h])))]));
       const tbody = el("tbody");
-      spec.rows.forEach(r => tbody.appendChild(el("tr", {}, r.map(c => el("td", {}, [c])))));
+      let anyPickable = false;
+      spec.rows.forEach(r => {
+        const tr = el("tr", {}, r.map(c => el("td", {}, [c])));
+        const sup = supIdx >= 0 && r[supIdx] ? String(r[supIdx]) : null;
+        const awd = awdIdx >= 0 && r[awdIdx] ? String(r[awdIdx]) : null;
+        if (sup || awd) {
+          anyPickable = true;
+          tr.classList.add("kpi-row-pick");
+          if (sup) { tr.dataset.supKey = sup; tr.children[supIdx].classList.add("kpi-pick-cell"); }
+          if (awd) { tr.dataset.awdKey = "award:" + awd; tr.children[awdIdx].classList.add("kpi-pick-cell"); }
+          tr.addEventListener("click", ev => {
+            // A row usually names both a supplier and an award. Clicking
+            // either of those two cells picks that one specifically;
+            // clicking anywhere else falls back to the supplier, which is
+            // what most playbooks act on.
+            const td = ev.target && ev.target.closest ? ev.target.closest("td") : null;
+            const idx = td ? Array.prototype.indexOf.call(tr.children, td) : -1;
+            let pick;
+            if (idx === awdIdx && awd) pick = { key: "award:" + awd, label: awd, kind: "Award" };
+            else if (idx === supIdx && sup) pick = { key: sup, label: sup, kind: "Supplier" };
+            else if (sup) pick = { key: sup, label: sup, kind: "Supplier" };
+            else pick = { key: "award:" + awd, label: awd, kind: "Award" };
+            highlightKpiModalRows(pick.key);
+            if (kpiModalApplyTarget) kpiModalApplyTarget(pick);
+          });
+        }
+        tbody.appendChild(tr);
+      });
+      if (anyPickable) {
+        wrap.appendChild(el("div", { class: "kpi-modal-pick-hint" }, [
+          "Click a row to apply a workflow to it -- click the supplier or the award cell to pick that one specifically.",
+        ]));
+      }
       tbl.appendChild(tbody);
       wrap.appendChild(tbl);
     } else if (!spec.rows) {
@@ -667,9 +729,7 @@
     // Candidate targets pulled out of the drill-down table. Supplier and
     // award columns are the only ones a workflow can meaningfully attach to.
     const targets = [{ key: "kpi:" + spec.title, label: spec.title, kind: "This metric" }];
-    const cols = (spec.columns || []).map(c => String(c).toLowerCase());
-    const supIdx = cols.findIndex(c => c.includes("supplier"));
-    const awdIdx = cols.findIndex(c => c.includes("award"));
+    const { supIdx, awdIdx } = kpiTargetIndices(spec);
     const seen = new Set();
     (spec.rows || []).forEach(r => {
       if (supIdx >= 0 && r[supIdx]) {
@@ -693,6 +753,30 @@
       Object.entries(PLAYBOOKS).map(([id, pb]) => el("option", { value: id }, [pb.name])));
     const tgSel = el("select", { id: "kpi-modal-target" },
       targets.slice(0, 60).map(t => el("option", { value: t.key }, [`${t.kind}: ${t.label}`])));
+
+    // Selecting a row in the table above drives this dropdown. The list is
+    // capped at 60 options, so a click further down the table may name
+    // something that isn't in it yet -- add it rather than silently
+    // selecting nothing.
+    kpiModalApplyTarget = pick => {
+      let opt = Array.prototype.find.call(tgSel.options, o => o.value === pick.key);
+      if (!opt) {
+        opt = el("option", { value: pick.key }, [`${pick.kind}: ${pick.label}`]);
+        tgSel.appendChild(opt);
+        targets.push(pick);
+      }
+      tgSel.value = pick.key;
+      if (!details.classList.contains("expanded")) {
+        details.classList.add("expanded");
+        toggle.textContent = "▾ Start a workflow from this";
+      }
+    };
+    // ...and the reverse, so the two views never disagree about what is
+    // selected: choosing from the dropdown highlights the matching rows.
+    tgSel.addEventListener("change", () => {
+      const first = highlightKpiModalRows(tgSel.value);
+      if (first) first.scrollIntoView({ block: "nearest" });
+    });
 
     const startBtn = el("button", { class: "primary" }, ["Start workflow"]);
     startBtn.addEventListener("click", () => {
@@ -1133,6 +1217,7 @@
   // one-click jump straight to that entity's own tab.
   function openFindingModal(f) {
     const target = findingJumpTarget(f);
+    kpiModalApplyTarget = null;
     document.getElementById("kpi-modal-title").textContent = f.title;
     document.getElementById("kpi-modal-formula").textContent = f.description;
     const noteEl = document.getElementById("kpi-modal-note");
@@ -1165,6 +1250,16 @@
       jumpRow.appendChild(jumpBtn);
       wrap.appendChild(jumpRow);
     }
+    // This modal is shared with the KPI drill-downs, so its workflow starter
+    // has to be re-rendered for the finding -- otherwise the previous
+    // drill-down's target would still be sitting there. A finding that
+    // resolves to a supplier offers that supplier as a target; one that
+    // doesn't can still be tracked as the finding itself.
+    renderKpiModalWorkflowStarter({
+      title: f.title,
+      columns: target && target.type === "supplier" ? ["Supplier"] : [],
+      rows: target && target.type === "supplier" ? [[target.name]] : [],
+    });
     document.getElementById("kpi-modal-overlay").classList.add("open");
   }
 

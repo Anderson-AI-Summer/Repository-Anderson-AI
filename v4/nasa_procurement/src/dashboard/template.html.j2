@@ -489,6 +489,24 @@ tr.jump-row:focus-visible, .duplicate-pair-row:focus-visible {
 .kpi-modal-table-wrap { overflow-y: auto; padding: 8px 18px 18px 18px; flex: 1 1 auto; }
 .kpi-modal-workflow { padding: 10px 18px 14px 18px; border-top: 1px solid var(--border); flex: 0 0 auto; }
 .kpi-modal-table-wrap table.data-table td, .kpi-modal-table-wrap table.data-table th { font-size: 12px; }
+/* Rows naming a supplier or an award are selectable: clicking one sets the
+   workflow starter's "Apply to" below, so the entity you are looking at is
+   the entity the playbook attaches to -- no second hunt through a dropdown.
+   The two pickable cells are marked individually because a row often names
+   both, and which one you clicked decides which of the two is selected. */
+.kpi-modal-table-wrap tbody tr.kpi-row-pick { cursor: pointer; }
+.kpi-modal-table-wrap tbody tr.kpi-row-pick td.kpi-pick-cell {
+  text-decoration: underline dotted var(--border); text-underline-offset: 2px;
+}
+.kpi-modal-table-wrap tbody tr.kpi-row-pick:hover td.kpi-pick-cell { text-decoration-color: var(--blue); }
+.kpi-modal-table-wrap tbody tr.kpi-row-selected td {
+  background: rgba(8,145,178,0.12); color: var(--navy); font-weight: 600;
+}
+.kpi-modal-table-wrap tbody tr.kpi-row-selected td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+:root[data-theme="dark"] .kpi-modal-table-wrap tbody tr.kpi-row-selected td { background: rgba(34,211,238,0.16); }
+.kpi-modal-pick-hint {
+  font-size: 11px; color: var(--text-muted); margin: 0 0 6px 0;
+}
 
 /* ---------------- Action Center: mitigation-workflow tracker ----------------
    Demonstration-only: every bit of state here (which step a workflow is on,

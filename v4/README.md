@@ -116,6 +116,17 @@ on the same award. The old code broke those ties with pandas' default
 *unstable* quicksort, so its answer was not reproducible run to run; the new
 code sorts stably, so it is. No metric changed.
 
+**4. Drill-down rows drive the workflow starter.**
+In a KPI drill-down, clicking a row selects it and sets "Apply to" below, so a
+workflow attaches to the supplier or award you were already looking at instead
+of being re-found in a 60-entry dropdown. A row usually names both a supplier
+and an award, so the two cells are individually pickable (dotted underline);
+clicking anywhere else on the row falls back to the supplier, which is what
+most playbooks act on. Selection runs both ways -- choosing from the dropdown
+highlights the matching rows. Findings opened from the Overview share this
+modal and now re-render their own starter rather than inheriting whichever
+KPI was opened before them.
+
 ## Ideas parked for later
 
 - Per-range HHI and tail-spend, which would need the supplier distribution
