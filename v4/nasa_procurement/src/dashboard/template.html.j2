@@ -223,6 +223,18 @@ main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
    narrow for a 7-year axis with a legend; one full-width chart per row
    reads far better than two clipped ones. */
 @media (max-width: 1200px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+/* Grid *items* must be allowed to shrink below their content's intrinsic
+   width, or a 700px-wide chart pins its column open and the whole grid
+   overflows the page. This is the targeted form of `min-width: 0` -- applied
+   only to grid children, never universally: doing it to every element lets
+   flex items (tab labels, card dollar amounts) shrink under their own
+   `nowrap` text and overlap their neighbour. */
+.grid-2 > *, .grid-2-even > *, .grid-3 > * { min-width: 0; }
+/* A <select> sizes itself to its longest option, and supplier names run to
+   60+ characters -- without this the picker alone is wider than a tablet. */
+.controls select, .controls input { max-width: 100%; }
+.controls > div { max-width: 100%; }
+.controls > div[style*="min-width"] > select { width: 100%; }
 table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 table.data-table th {
   text-align: left; background: var(--panel-2); color: var(--blue); padding: 7px 8px;
