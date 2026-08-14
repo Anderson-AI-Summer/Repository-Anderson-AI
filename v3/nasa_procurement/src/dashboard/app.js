@@ -80,6 +80,316 @@
     localStorage.setItem(REVIEW_FLAG_KEY, JSON.stringify(flags));
     return flags[supplier];
   }
+
+  // ---------------- Action Center: mitigation-workflow playbooks ----------------
+  // Reference workflow templates this dashboard suggests for each disclosed
+  // signal type. Every step here is generic, common-sense contract/spend
+  // management practice -- not a real NASA procedure, not legal or
+  // contracting guidance, and not connected to any real system. Workflow
+  // *state* (which step you're on, notes, status) is a separate concern,
+  // stored purely in this browser's localStorage -- see WORKFLOW_KEY below.
+  const PLAYBOOKS = {
+    deobligation_mitigation: {
+      name: "Deobligation Mitigation",
+      trigger: "Notable deobligations",
+      summary: "Confirm the cause of a deobligation and line up an alternative funding path so program work doesn't stall.",
+      steps: [
+        "Flag for contracting officer review",
+        "Confirm cause: data correction, descope, or funding cut",
+        "Assess downstream budget & schedule impact",
+        "Evaluate alternative funding (budget reallocation, private investment / Other Transaction Authority partnership, phased scope)",
+        "Document mitigation decision and close out",
+      ],
+    },
+    rapid_decline_continuity: {
+      name: "Rapid Decline — Supplier Continuity Review",
+      trigger: "Rapid year-over-year decline",
+      summary: "Check whether a steep year-over-year drop threatens program continuity, and line up a backup path if it does.",
+      steps: [
+        "Confirm the decline against the award record (completion, non-renewal, performance issue)",
+        "Assess schedule risk to dependent program milestones",
+        "Identify qualified backup suppliers in this category",
+        "Decide: renew/extend, re-solicit, or accept planned wind-down",
+        "Document decision and notify affected program leads",
+      ],
+    },
+    rapid_growth_review: {
+      name: "Rapid Growth — Scope & Ceiling Review",
+      trigger: "Rapid year-over-year growth",
+      summary: "Confirm a steep spend increase reflects justified, in-scope work rather than uncontrolled scope creep.",
+      steps: [
+        "Compare current obligations against the award ceiling",
+        "Confirm modifications are within original scope",
+        "Check competition requirements weren't bypassed via improper sole-source growth",
+        "Flag for program-office sign-off if ceiling is at risk",
+        "Document review outcome",
+      ],
+    },
+    cost_growth_review: {
+      name: "Cost Growth via Modifications — Value Review",
+      trigger: "Grew via modifications",
+      summary: "A contract that grew substantially through modifications gets a second look at whether the added scope still represents good value.",
+      steps: [
+        "Pull modification history and stated justification for each",
+        "Confirm pricing basis (fixed-price change vs. cost-reimbursement growth)",
+        "Compare against market rates for comparable scope",
+        "Escalate to price/cost analysis if growth exceeds threshold",
+        "Document conclusion",
+      ],
+    },
+    concentration_diversification: {
+      name: "Spend Concentration — Market Diversification",
+      trigger: "High spend concentration",
+      summary: "Reduce single-supplier dependency risk by identifying alternate qualified sources before the next re-compete.",
+      steps: [
+        "Confirm this is a genuine single-point-of-failure risk (vs. a legitimately sole-source capability)",
+        "Identify alternate qualified suppliers in the market",
+        "Evaluate a set-aside or multi-award strategy for the next re-compete",
+        "Brief program leadership on diversification options",
+        "Track progress toward the next re-compete milestone",
+      ],
+    },
+    high_value_oversight: {
+      name: "High-Value Award — Enhanced Oversight",
+      trigger: "High contract value",
+      summary: "Route the largest contracts onto a higher oversight cadence, independent of any specific issue.",
+      steps: [
+        "Confirm current oversight tier matches contract value",
+        "Schedule a recurring program-review cadence",
+        "Verify earned-value / milestone reporting is current",
+        "Log the oversight assignment",
+      ],
+    },
+    consolidation_sourcing: {
+      name: "Category Consolidation — Strategic Sourcing Initiative",
+      trigger: "Fragmented spend",
+      summary: "Explore whether consolidating routine, fragmented category spend onto fewer suppliers could create pricing leverage.",
+      steps: [
+        "Confirm fragmentation isn't driven by legitimate specialization needs",
+        "Shortlist candidate suppliers for a consolidated vehicle",
+        "Model a volume-based pricing scenario (directional, not a savings commitment)",
+        "Brief the category manager / strategic sourcing lead",
+        "Decide: pursue a consolidated vehicle or maintain current mix",
+      ],
+    },
+    duplicate_dedup_audit: {
+      name: "Possible Duplicate Purchase — Procurement Dedup Audit",
+      trigger: "Possible duplicate",
+      summary: "Check whether two similar, closely-timed awards to the same supplier reflect one need bought twice.",
+      steps: [
+        "Compare both awards' stated requirements side by side",
+        "Confirm with the requesting office whether this was one need or two",
+        "If duplicate: document lessons learned for future consolidated buys",
+        "If not duplicate: document the distinguishing need",
+      ],
+    },
+    general_review: {
+      name: "General Review",
+      trigger: "Marked for review",
+      summary: "A generic starting workflow for anything flagged without a more specific signal.",
+      steps: [
+        "Confirm what prompted the flag",
+        "Gather supporting documentation",
+        "Decide on a course of action",
+        "Document the outcome",
+      ],
+    },
+  };
+  // Priority order when an item carries more than one reason -- the most
+  // consequential/negative signal picks the suggested playbook.
+  const REASON_PLAYBOOK_PRIORITY = [
+    ["deobligation_flag", "deobligation_mitigation"],
+    ["rapid_decline", "rapid_decline_continuity"],
+    ["cost_growth", "cost_growth_review"],
+    ["rapid_growth", "rapid_growth_review"],
+    ["high_concentration", "concentration_diversification"],
+    ["high_value", "high_value_oversight"],
+  ];
+  const NEGATIVE_PLAYBOOK_IDS = new Set(["deobligation_mitigation", "rapid_decline_continuity", "cost_growth_review"]);
+  function pickPlaybookForReasons(reasons) {
+    const types = new Set((reasons || []).map(r => r.type));
+    for (const [type, playbookId] of REASON_PLAYBOOK_PRIORITY) {
+      if (types.has(type)) return playbookId;
+    }
+    return null;
+  }
+
+  // ---------------- Action Center: local-only workflow state ----------------
+  // Same storage pattern as the review flags above -- a plain object in
+  // localStorage, never sent anywhere. Keyed the same way review-flag keys
+  // are (supplier name, "award:<id>", "consolidation:<category>",
+  // "duplicate:<pair_id>") so both features identify the same entity
+  // consistently without colliding (separate storage keys).
+  const WORKFLOW_KEY = "nasa_dashboard_workflows_v1";
+  function getWorkflows() {
+    try { return JSON.parse(localStorage.getItem(WORKFLOW_KEY) || "{}"); }
+    catch (e) { return {}; }
+  }
+  function saveWorkflows(all) { localStorage.setItem(WORKFLOW_KEY, JSON.stringify(all)); }
+  function getWorkflow(entityKey) { return getWorkflows()[entityKey] || null; }
+  function startWorkflow(entityKey, meta) {
+    const all = getWorkflows();
+    const now = new Date().toISOString();
+    all[entityKey] = Object.assign({ stepIndex: 0, status: "in_progress", notes: "", startedAt: now, updatedAt: now }, meta);
+    saveWorkflows(all);
+    return all[entityKey];
+  }
+  function advanceWorkflowStep(entityKey, delta) {
+    const all = getWorkflows();
+    const wf = all[entityKey];
+    if (!wf) return null;
+    const steps = PLAYBOOKS[wf.playbookId].steps;
+    wf.stepIndex = Math.max(0, Math.min(steps.length - 1, wf.stepIndex + delta));
+    if (wf.status !== "complete") wf.status = "in_progress";
+    wf.updatedAt = new Date().toISOString();
+    saveWorkflows(all);
+    return wf;
+  }
+  function completeWorkflow(entityKey) {
+    const all = getWorkflows();
+    const wf = all[entityKey];
+    if (!wf) return null;
+    wf.status = "complete";
+    wf.stepIndex = PLAYBOOKS[wf.playbookId].steps.length - 1;
+    wf.updatedAt = new Date().toISOString();
+    saveWorkflows(all);
+    return wf;
+  }
+  function resetWorkflow(entityKey) {
+    const all = getWorkflows();
+    delete all[entityKey];
+    saveWorkflows(all);
+  }
+  function setWorkflowNotes(entityKey, notes) {
+    const all = getWorkflows();
+    if (!all[entityKey]) return;
+    all[entityKey].notes = notes;
+    all[entityKey].updatedAt = new Date().toISOString();
+    saveWorkflows(all);
+  }
+
+  // Full labeled stepper (used in the workflow modal and the Playbook
+  // Library reference cards).
+  function buildStepper(steps, currentIndex, status) {
+    const wrap = el("div", { class: "wf-stepper" });
+    steps.forEach((label, i) => {
+      const state = status === "complete" || i < currentIndex ? "done" : i === currentIndex ? "active" : "pending";
+      wrap.appendChild(el("div", { class: "wf-step " + state }, [
+        el("div", { class: "wf-step-dot" }, [state === "done" ? "✓" : String(i + 1)]),
+        el("div", { class: "wf-step-label" }, [label]),
+      ]));
+      if (i < steps.length - 1) {
+        wrap.appendChild(el("div", { class: "wf-step-connector" + ((i < currentIndex || status === "complete") ? " done" : "") }));
+      }
+    });
+    return wrap;
+  }
+  // Compact dots-only stepper for cards/lists.
+  function buildMiniStepper(stepCount, currentIndex, status) {
+    const wrap = el("div", { class: "wf-mini-stepper" });
+    for (let i = 0; i < stepCount; i++) {
+      const state = status === "complete" || i < currentIndex ? "done" : i === currentIndex ? "active" : "";
+      wrap.appendChild(el("div", { class: "wf-mini-dot" + (state ? " " + state : "") }));
+    }
+    return wrap;
+  }
+  function workflowStatusBadge(status) {
+    const label = status === "complete" ? "Complete" : status === "in_progress" ? "In progress" : "Not started";
+    return el("span", { class: "wf-status-badge " + status }, [label]);
+  }
+
+  let workflowModalEntityKey = null;
+  function openWorkflowModal(entityKey, meta) {
+    workflowModalEntityKey = entityKey;
+    let wf = getWorkflow(entityKey);
+    if (!wf) wf = startWorkflow(entityKey, meta);
+    renderWorkflowModal();
+    document.getElementById("wf-modal-overlay").classList.add("open");
+  }
+  function renderWorkflowModal() {
+    const wf = getWorkflow(workflowModalEntityKey);
+    if (!wf) { document.getElementById("wf-modal-overlay").classList.remove("open"); return; }
+    const playbook = PLAYBOOKS[wf.playbookId];
+    document.getElementById("wf-modal-title").textContent = playbook.name;
+    const meta = document.getElementById("wf-modal-meta");
+    meta.innerHTML = "";
+    meta.appendChild(el("span", {}, [wf.label + " · "]));
+    meta.appendChild(workflowStatusBadge(wf.status));
+
+    const stepperWrap = document.getElementById("wf-modal-stepper");
+    stepperWrap.innerHTML = "";
+    stepperWrap.appendChild(buildStepper(playbook.steps, wf.stepIndex, wf.status));
+
+    document.getElementById("wf-modal-current-step").textContent =
+      `Step ${wf.stepIndex + 1} of ${playbook.steps.length}: ${playbook.steps[wf.stepIndex]}`;
+
+    const notesArea = document.getElementById("wf-modal-notes");
+    notesArea.value = wf.notes || "";
+
+    const actions = document.getElementById("wf-modal-actions");
+    actions.innerHTML = "";
+    const prevBtn = el("button", { class: "secondary" }, ["◀ Previous step"]);
+    prevBtn.disabled = wf.stepIndex === 0;
+    prevBtn.addEventListener("click", () => { advanceWorkflowStep(workflowModalEntityKey, -1); renderWorkflowModal(); refreshActionCenterIfOpen(); });
+    const nextBtn = el("button", {}, ["Next step ▶"]);
+    nextBtn.disabled = wf.stepIndex >= playbook.steps.length - 1;
+    nextBtn.addEventListener("click", () => { advanceWorkflowStep(workflowModalEntityKey, 1); renderWorkflowModal(); refreshActionCenterIfOpen(); });
+    const completeBtn = el("button", { class: "primary" }, ["✓ Mark complete"]);
+    completeBtn.disabled = wf.status === "complete";
+    completeBtn.addEventListener("click", () => {
+      completeWorkflow(workflowModalEntityKey);
+      showToast("Workflow marked complete (saved locally)");
+      renderWorkflowModal();
+      refreshActionCenterIfOpen();
+    });
+    const resetBtn = el("button", { class: "secondary" }, ["↺ Reset workflow"]);
+    resetBtn.addEventListener("click", () => {
+      resetWorkflow(workflowModalEntityKey);
+      showToast("Workflow reset (removed from Active Workflows)");
+      document.getElementById("wf-modal-overlay").classList.remove("open");
+      refreshActionCenterIfOpen();
+    });
+    actions.appendChild(prevBtn);
+    actions.appendChild(nextBtn);
+    actions.appendChild(completeBtn);
+    actions.appendChild(resetBtn);
+  }
+  function setupWorkflowModal() {
+    const overlay = document.getElementById("wf-modal-overlay");
+    if (!overlay) return;
+    const closeModal = () => overlay.classList.remove("open");
+    document.getElementById("wf-modal-close").addEventListener("click", closeModal);
+    overlay.addEventListener("click", ev => { if (ev.target === overlay) closeModal(); });
+    document.addEventListener("keydown", ev => {
+      if (ev.key === "Escape" && overlay.classList.contains("open")) closeModal();
+    });
+    let notesDebounce = null;
+    document.getElementById("wf-modal-notes").addEventListener("input", ev => {
+      clearTimeout(notesDebounce);
+      const val = ev.target.value;
+      notesDebounce = setTimeout(() => {
+        if (workflowModalEntityKey) { setWorkflowNotes(workflowModalEntityKey, val); refreshActionCenterIfOpen(); }
+      }, 400);
+    });
+  }
+  // Set by renderActionCenter() once the tab exists, so modal actions taken
+  // from a *different* tab's card (e.g. clicking "Take Action" on a
+  // Standout Supplier card) still refresh the Action Center in the
+  // background if it's already been drawn once.
+  let refreshActionCenterIfOpen = () => {};
+
+  // Builds a "Take Action" button for a card, wired to open the workflow
+  // modal for the given entity/playbook. Returns null if no reasons map to
+  // a known playbook (nothing forced -- most cards simply won't offer one).
+  function takeActionButton(entityKey, playbookId, label) {
+    if (!playbookId || !PLAYBOOKS[playbookId]) return null;
+    const wf = getWorkflow(entityKey);
+    const btn = el("button", { class: "wf-take-action" + (wf ? " secondary" : " primary") },
+      [wf ? `▶ Continue workflow (${wf.status === "complete" ? "complete" : `step ${wf.stepIndex + 1}/${PLAYBOOKS[wf.playbookId].steps.length}`})` : `▶ Take action: ${PLAYBOOKS[playbookId].name}`]);
+    btn.addEventListener("click", () => openWorkflowModal(entityKey, { playbookId, label }));
+    return btn;
+  }
+
   function el(tag, attrs, children) {
     const e = document.createElement(tag);
     if (attrs) for (const k in attrs) {
@@ -895,6 +1205,7 @@
         showToast(`Exported ${fmtNum(rows.length)} row(s) for ${s.supplier}`);
       });
 
+      const actionBtn = takeActionButton(s.supplier, pickPlaybookForReasons(s.reasons), s.supplier);
       const card = el("div", { class: "standout-card" }, [
         el("div", { class: "sc-head" }, [
           el("div", { class: "sc-name" }, [s.supplier, newBadge(s.is_new)].filter(Boolean)),
@@ -904,7 +1215,7 @@
         tagRow,
         detailsBtn,
         detailsWrap,
-        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
+        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn].concat(actionBtn ? [actionBtn] : [])),
       ]);
       container.appendChild(card);
     });
@@ -980,6 +1291,7 @@
         downloadCsv(`nasa_award_${safeId}.csv`, rowsToCsv(rows));
         showToast(`Exported ${fmtNum(rows.length)} row(s) for award ${a.award_id}`);
       });
+      const awardActionBtn = takeActionButton(key, pickPlaybookForReasons(a.reasons), `${a.supplier} — ${a.award_id}`);
 
       const card = el("div", { class: "standout-card award-card", "data-award-id": a.award_id }, [
         el("div", { class: "award-head-row" }, [
@@ -996,7 +1308,7 @@
         tagRow,
         detailsBtn,
         detailsWrap,
-        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
+        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn].concat(awardActionBtn ? [awardActionBtn] : [])),
       ]);
       container.appendChild(card);
     });
@@ -1052,6 +1364,7 @@
         downloadCsv(`nasa_category_${safeName}.csv`, rowsToCsv(rows));
         showToast(`Exported ${fmtNum(rows.length)} row(s) for ${c.category}`);
       });
+      const actionBtn = takeActionButton(key, "consolidation_sourcing", c.category);
 
       const card = el("div", { class: "standout-card" }, [
         el("div", { class: "sc-head" }, [
@@ -1064,7 +1377,7 @@
         el("div", {}, [el("span", { class: "reason-tag deobligation_flag" }, ["Fragmented spend"])]),
         detailsBtn,
         detailsWrap,
-        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn]),
+        el("div", { class: "sc-actions" }, [viewBtn, exportBtn, flagBtn, actionBtn]),
       ]);
       container.appendChild(card);
     });
@@ -1116,6 +1429,7 @@
         downloadCsv(`nasa_duplicate_pair_${safeId}.csv`, rowsToCsv(rows));
         showToast(`Exported ${fmtNum(rows.length)} row(s) for this pair`);
       });
+      const actionBtn = takeActionButton(key, "duplicate_dedup_audit", `${d.supplier} (${d.award_id_a} / ${d.award_id_b})`);
 
       const card = el("div", { class: "standout-card" }, [
         el("div", { class: "sc-head" }, [
@@ -1127,7 +1441,7 @@
         el("div", {}, [el("span", { class: "reason-tag cost_growth" }, ["Possible duplicate"])]),
         detailsBtn,
         detailsWrap,
-        el("div", { class: "sc-actions" }, [exportBtn, flagBtn]),
+        el("div", { class: "sc-actions" }, [exportBtn, flagBtn, actionBtn]),
       ]);
       container.appendChild(card);
     });
@@ -1539,11 +1853,143 @@
     if (names.length) { sel.value = names[0]; draw(globalFromFY, globalToFY); }
   }
 
+  // ---------------- Tab 6: Action Center ----------------
+  // Reference library (static -- rendered once) plus two live sections:
+  // Suggested Actions (flagged items with no workflow started yet, drawn
+  // from the currently-selected Timeframe range) and Active Workflows
+  // (everything with workflow state in localStorage, any range).
+  function renderPlaybookLibrary() {
+    const container = document.getElementById("playbook-library");
+    if (!container || container.dataset.rendered) return;
+    container.dataset.rendered = "1";
+    Object.values(PLAYBOOKS).forEach(pb => {
+      const card = el("div", { class: "panel" }, [
+        el("h3", { style: "margin:0 0 4px 0; font-size:13.5px; color:var(--navy); text-transform:none; letter-spacing:0;" }, [pb.name]),
+        el("div", { class: "small-note", style: "margin-bottom:4px;" }, [`Triggered by: ${pb.trigger}`]),
+        el("div", { class: "small-note", style: "margin-bottom:6px;" }, [pb.summary]),
+        buildStepper(pb.steps, -1, "not_started"),
+      ]);
+      container.appendChild(card);
+    });
+  }
+
+  function collectSuggestedActions(fromFY, toFY) {
+    const key = standoutRangeKey(fromFY, toFY);
+    const rangeData = (DATA.standout_by_range || {})[key];
+    const suppliers = (rangeData ? rangeData.standout_suppliers : DATA.standout_suppliers) || [];
+    const awards = (rangeData ? rangeData.standout_awards : DATA.standout_awards) || [];
+    const consolidations = DATA.consolidation_opportunities || [];
+    const duplicates = DATA.duplicate_purchase_candidates || [];
+
+    const items = [];
+    suppliers.forEach(s => {
+      const playbookId = pickPlaybookForReasons(s.reasons);
+      if (playbookId) items.push({ entityKey: s.supplier, label: s.supplier, sub: `Supplier · ${fmtMoney(s.net_obligations)}`, playbookId });
+    });
+    awards.forEach(a => {
+      const playbookId = pickPlaybookForReasons(a.reasons);
+      if (playbookId) items.push({ entityKey: "award:" + a.award_id, label: `${a.supplier} — ${a.award_id}`, sub: `Contract award · ${fmtMoney(a.net_obligations)}`, playbookId });
+    });
+    consolidations.forEach(c => {
+      items.push({ entityKey: "consolidation:" + c.category, label: c.category, sub: `Category · ${fmtMoney(c.total_net_obligations)}`, playbookId: "consolidation_sourcing" });
+    });
+    duplicates.forEach(d => {
+      items.push({ entityKey: "duplicate:" + d.pair_id, label: `${d.supplier} (possible duplicate)`, sub: `${d.category} · ${fmtMoney(d.combined_value)}`, playbookId: "duplicate_dedup_audit" });
+    });
+
+    // Only items with no workflow started yet -- "suggested", not "already
+    // being worked" (those show up in Active Workflows below instead).
+    const workflows = getWorkflows();
+    const pending = items.filter(it => !workflows[it.entityKey]);
+    // Negatively-outstanding signals (deobligations, rapid decline, cost
+    // growth) surface first, per the "especially the negatively outstanding
+    // ones" ask.
+    pending.sort((a, b) => (NEGATIVE_PLAYBOOK_IDS.has(a.playbookId) ? 0 : 1) - (NEGATIVE_PLAYBOOK_IDS.has(b.playbookId) ? 0 : 1));
+    return pending;
+  }
+
+  function renderSuggestedActions(fromFY, toFY) {
+    const container = document.getElementById("suggested-actions");
+    const note = document.getElementById("suggested-actions-note");
+    if (!container) return;
+    container.innerHTML = "";
+    const isFullRange = fromFY == null && toFY == null;
+    note.textContent = isFullRange
+      ? "Drawn from Standout Suppliers & Contracts (all years), Consolidation Opportunities, and Possible Duplicate Purchases. Negatively-flagged items (deobligations, rapid decline, cost growth) are listed first."
+      : `Drawn from Standout Suppliers & Contracts for the header's selected FY${fromFY}–FY${toFY} range; Consolidation Opportunities and Possible Duplicate Purchases stay all-time. Negatively-flagged items are listed first.`;
+
+    const items = collectSuggestedActions(fromFY, toFY);
+    if (!items.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["Nothing currently outstanding -- every flagged item already has a workflow started, or none met the signal criteria for this timeframe."]));
+      return;
+    }
+    items.forEach(it => {
+      const playbook = PLAYBOOKS[it.playbookId];
+      const negative = NEGATIVE_PLAYBOOK_IDS.has(it.playbookId);
+      const card = el("div", { class: "wf-action-card" + (negative ? " wf-priority-negative" : "") }, [
+        el("div", { class: "wf-head" }, [
+          el("div", {}, [
+            el("div", { class: "wf-name" }, [it.label]),
+            el("div", { class: "small-note" }, [it.sub]),
+            el("div", { class: "wf-playbook-name" }, [playbook.name]),
+          ]),
+          el("span", { class: "reason-tag " + (negative ? "deobligation_flag" : "high_concentration") }, [playbook.trigger]),
+        ]),
+      ]);
+      const startBtn = el("button", { class: "primary" }, [`▶ Start: ${playbook.name}`]);
+      startBtn.addEventListener("click", () => {
+        openWorkflowModal(it.entityKey, { playbookId: it.playbookId, label: it.label });
+        renderActionCenter(globalFromFY, globalToFY);
+      });
+      card.appendChild(startBtn);
+      container.appendChild(card);
+    });
+  }
+
+  function renderActiveWorkflows() {
+    const container = document.getElementById("active-workflows");
+    if (!container) return;
+    container.innerHTML = "";
+    const filterSel = document.getElementById("wf-status-filter");
+    const filterVal = filterSel ? filterSel.value : "";
+    const all = getWorkflows();
+    const entries = Object.entries(all).filter(([, wf]) => !filterVal || wf.status === filterVal);
+    if (!entries.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["No active workflows yet -- start one from Suggested Actions above, or from a \"Take action\" button on a flagged item elsewhere in the dashboard."]));
+      return;
+    }
+    entries.sort((a, b) => new Date(b[1].updatedAt) - new Date(a[1].updatedAt));
+    entries.forEach(([entityKey, wf]) => {
+      const playbook = PLAYBOOKS[wf.playbookId];
+      const card = el("div", { class: "wf-action-card" }, [
+        el("div", { class: "wf-head" }, [
+          el("div", {}, [
+            el("div", { class: "wf-name" }, [wf.label]),
+            el("div", { class: "wf-playbook-name" }, [playbook.name]),
+          ]),
+          workflowStatusBadge(wf.status),
+        ]),
+        buildMiniStepper(playbook.steps.length, wf.stepIndex, wf.status),
+        el("div", { class: "small-note" }, [`Step ${wf.stepIndex + 1} of ${playbook.steps.length}: ${playbook.steps[wf.stepIndex]}`]),
+      ]);
+      card.style.cursor = "pointer";
+      card.addEventListener("click", () => openWorkflowModal(entityKey, { playbookId: wf.playbookId, label: wf.label }));
+      container.appendChild(card);
+    });
+  }
+
+  function renderActionCenter(fromFY, toFY) {
+    renderPlaybookLibrary();
+    renderSuggestedActions(fromFY, toFY);
+    renderActiveWorkflows();
+  }
+
   renderHeader();
   setupTabs();
   setupThemeToggle();
   setupCommandPalette();
   setupKpiModal();
+  setupWorkflowModal();
   renderOverview();
   renderSnapshotStatus();
   setupStandoutAwardPhotoToggle();
@@ -1559,6 +2005,11 @@
   renderExplorer();
   renderSupplierTab();
   renderCategoriesTab();
+  renderActionCenter(globalFromFY, globalToFY);
+  onGlobalTimeframeChange(renderActionCenter);
+  refreshActionCenterIfOpen = () => renderActionCenter(globalFromFY, globalToFY);
+  const wfStatusFilter = document.getElementById("wf-status-filter");
+  if (wfStatusFilter) wfStatusFilter.addEventListener("change", renderActiveWorkflows);
 
   // Global Timeframe control (header FY-from/FY-to range) -- wired up last,
   // after every tab above has registered its onGlobalTimeframeChange()

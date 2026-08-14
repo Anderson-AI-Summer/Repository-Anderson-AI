@@ -445,6 +445,74 @@ tr.jump-row:focus-visible, .duplicate-pair-row:focus-visible {
 .kpi-modal-table-wrap { overflow-y: auto; padding: 8px 18px 18px 18px; flex: 1 1 auto; }
 .kpi-modal-table-wrap table.data-table td, .kpi-modal-table-wrap table.data-table th { font-size: 12px; }
 
+/* ---------------- Action Center: mitigation-workflow tracker ----------------
+   Demonstration-only: every bit of state here (which step a workflow is on,
+   its notes, its status) lives in this browser's localStorage. Nothing is
+   sent anywhere, and nothing here executes a real contracting action --
+   it's a visual model of what a workflow tracker for these signals could
+   look like, not a connection to one. */
+.wf-disclosure {
+  font-size: 12px; color: var(--text-muted); background: rgba(217,119,6,0.06);
+  border: 1px solid rgba(217,119,6,0.3); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; line-height: 1.5;
+}
+.wf-stepper { display: flex; align-items: flex-start; overflow-x: auto; padding: 6px 2px 14px 2px; }
+.wf-step { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; width: 132px; text-align: center; }
+.wf-step-dot {
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; border: 2px solid var(--border); color: var(--text-muted); background: var(--panel);
+  flex: 0 0 auto;
+}
+.wf-step.active .wf-step-dot { border-color: var(--blue); color: var(--blue); box-shadow: var(--glow-blue); }
+.wf-step.done .wf-step-dot { border-color: #16a34a; background: #16a34a; color: #fff; }
+.wf-step-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; line-height: 1.3; padding: 0 4px; }
+.wf-step.active .wf-step-label { color: var(--navy); font-weight: 700; }
+.wf-step.done .wf-step-label { color: #16a34a; }
+.wf-step-connector { flex: 1 1 auto; height: 2px; background: var(--border); margin: 13px -4px 0 -4px; min-width: 20px; }
+.wf-step-connector.done { background: #16a34a; }
+/* Compact variant for list/card contexts -- dots only, no labels. */
+.wf-mini-stepper { display: flex; align-items: center; gap: 3px; margin: 6px 0; }
+.wf-mini-stepper .wf-mini-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); flex: 0 0 auto; }
+.wf-mini-stepper .wf-mini-dot.done { background: #16a34a; }
+.wf-mini-stepper .wf-mini-dot.active { background: var(--blue); box-shadow: 0 0 0 3px rgba(8,145,178,0.18); }
+.wf-status-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  border-radius: 3px; padding: 2px 8px;
+}
+.wf-status-badge.not_started { background: rgba(100,116,139,0.12); color: var(--text-muted); }
+.wf-status-badge.in_progress { background: rgba(8,145,178,0.12); color: var(--blue); }
+.wf-status-badge.complete { background: rgba(22,163,74,0.12); color: #16a34a; }
+.wf-action-card {
+  border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; background: var(--panel);
+  box-shadow: 0 3px 12px rgba(15,30,51,0.06); margin-bottom: 12px;
+}
+.wf-action-card .wf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+.wf-action-card .wf-name { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.wf-action-card .wf-playbook-name { font-size: 12px; color: var(--blue); font-weight: 600; margin-top: 2px; }
+.wf-priority-negative { border-left: 3px solid var(--nasa-red); }
+.wf-modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(5,7,12,0.55); z-index: 220;
+  align-items: flex-start; justify-content: center; padding-top: 6vh;
+}
+.wf-modal-overlay.open { display: flex; }
+.wf-modal-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: min(720px, 94vw);
+  max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.4); overflow: hidden;
+}
+.wf-modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+.wf-modal-header h3 { margin: 0 0 3px 0; font-size: 15px; color: var(--navy); text-transform: uppercase; letter-spacing: 0.4px; }
+.wf-modal-meta { font-size: 12px; color: var(--text-muted); }
+.wf-modal-body { overflow-y: auto; padding: 6px 18px 18px 18px; flex: 1 1 auto; }
+.wf-current-step {
+  background: rgba(8,145,178,0.06); border: 1px solid rgba(8,145,178,0.25); border-radius: 6px;
+  padding: 12px 14px; font-size: 13px; color: var(--navy); margin: 8px 0 14px 0; line-height: 1.5;
+}
+.wf-modal-body textarea {
+  width: 100%; min-height: 70px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+  font-family: inherit; font-size: 12.5px; resize: vertical; color: var(--text); background: var(--panel);
+}
+.wf-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.wf-tab-note { font-size: 11.5px; color: var(--text-muted); margin: -4px 0 12px 0; }
+
 /* Toast notifications */
 #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
 .toast {
@@ -530,6 +598,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
   <button data-tab="explorer">Transaction Explorer</button>
   <button data-tab="supplier">Supplier Analysis</button>
   <button data-tab="categories">Categories &amp; Opportunities</button>
+  <button data-tab="actions">🎯 Action Center</button>
 </nav>
 
 <main>
@@ -727,8 +796,53 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
     </div>
   </section>
 
+  <!-- ================= TAB 6: ACTION CENTER ================= -->
+  <section id="tab-actions" class="tab-panel">
+    <div class="wf-disclosure">
+      ⚠ <strong>Demonstration workflow tracker.</strong> Everything below (which step a workflow is on, its notes,
+      its status) is saved to this browser's localStorage only. Nothing is sent to NASA, a contracting system, or
+      any external service, and nothing here executes a real contracting action -- this models what a
+      mitigation-tracking tool for these signals could look like, for demonstration purposes.
+    </div>
+    <div class="panel">
+      <h2>Playbook Library</h2>
+      <div class="small-note" style="margin-bottom:10px;">Reference workflows this dashboard suggests for each disclosed signal type -- click a card to see its full step sequence.</div>
+      <div id="playbook-library" class="grid-2-even"></div>
+    </div>
+    <div class="panel">
+      <h2>Suggested Actions</h2>
+      <div class="small-note" id="suggested-actions-note" style="margin-bottom:10px;"></div>
+      <div id="suggested-actions"></div>
+    </div>
+    <div class="panel">
+      <h2>Active Workflows</h2>
+      <div class="controls" style="margin-bottom:6px;">
+        <div><label>Status</label><select id="wf-status-filter"><option value="">All</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select></div>
+      </div>
+      <div id="active-workflows"></div>
+    </div>
+  </section>
 
 </main>
+
+<div class="wf-modal-overlay" id="wf-modal-overlay">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header">
+      <div>
+        <h3 id="wf-modal-title"></h3>
+        <div class="wf-modal-meta" id="wf-modal-meta"></div>
+      </div>
+      <button class="kpi-modal-close" id="wf-modal-close">✕ Close</button>
+    </div>
+    <div class="wf-modal-body">
+      <div id="wf-modal-stepper"></div>
+      <div class="wf-current-step" id="wf-modal-current-step"></div>
+      <label class="small-note" for="wf-modal-notes" style="display:block; margin-bottom:4px;">Notes (saved locally)</label>
+      <textarea id="wf-modal-notes" placeholder="Optional notes about this workflow..."></textarea>
+      <div class="wf-modal-actions" id="wf-modal-actions"></div>
+    </div>
+  </div>
+</div>
 
 <footer>
   NASA Procurement Intelligence Dashboard — unofficial educational project, not affiliated with or endorsed by NASA.
