@@ -69,7 +69,13 @@
 :root[data-theme="dark"] .sc-actions button { background: rgba(255,255,255,0.04); }
 :root[data-theme="dark"] .sc-actions button:hover { filter: brightness(1.25); }
 :root[data-theme="dark"] .panel, :root[data-theme="dark"] .standout-card { box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
-* { box-sizing: border-box; min-width: 0; }
+* { box-sizing: border-box; }
+/* Page itself never scrolls sideways; anything genuinely wider than the
+   viewport (wide tables, the workflow stepper, the tab bar) scrolls inside
+   its own container instead. Deliberately NOT paired with a universal
+   `min-width: 0` -- that lets flex items shrink below their own text, which
+   makes `white-space: nowrap` content (tab labels, dollar amounts) spill
+   out of its box and overlap its neighbour. */
 html, body { max-width: 100%; overflow-x: hidden; }
 html { scrollbar-color: var(--border) var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -155,6 +161,8 @@ nav.tabs button {
   text-transform: uppercase; letter-spacing: 0.6px; border-radius: 6px 6px 0 0;
   cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent;
   white-space: nowrap; font-weight: 700; transition: background 0.15s ease, color 0.15s ease;
+  /* Never shrink below the label's own width -- the row scrolls instead. */
+  flex: 0 0 auto;
 }
 nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); text-shadow: var(--glow-blue); background: rgba(34,211,238,0.07); }
 nav.tabs button:hover { color: var(--navy); background: rgba(34,211,238,0.04); }
@@ -260,11 +268,16 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 }
 .standout-card:hover { box-shadow: 0 5px 18px rgba(15,30,51,0.1); }
 .standout-card .sc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
-.standout-card .sc-name { font-weight: 700; color: var(--navy); font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+/* The name is the only part allowed to give way (it wraps); the amount
+   keeps its full width so it can't be squeezed out over the card edge. */
+.standout-card .sc-name {
+  font-weight: 700; color: var(--navy); font-size: 13.5px; display: flex; align-items: center; gap: 8px;
+  flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;
+}
 
 .standout-card .sc-amount {
   font-family: ui-monospace, "SF Mono", Consolas, monospace; font-weight: 700; color: var(--blue);
-  font-size: 13px; white-space: nowrap; text-shadow: var(--glow-blue);
+  font-size: 13px; white-space: nowrap; text-shadow: var(--glow-blue); flex: 0 0 auto;
 }
 .standout-card .sc-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
 .reason-tag {
@@ -495,6 +508,8 @@ tr.jump-row:focus-visible, .duplicate-pair-row:focus-visible {
   box-shadow: 0 3px 12px rgba(15,30,51,0.06); margin-bottom: 12px;
 }
 .wf-action-card .wf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+.wf-action-card .wf-head > div:first-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.wf-action-card .wf-head > .reason-tag, .wf-action-card .wf-head > .wf-status-badge { flex: 0 0 auto; }
 .wf-action-card .wf-name { font-weight: 700; color: var(--navy); font-size: 13.5px; }
 .wf-action-card .wf-playbook-name { font-size: 12px; color: var(--blue); font-weight: 600; margin-top: 2px; }
 .wf-priority-negative { border-left: 3px solid var(--nasa-red); }

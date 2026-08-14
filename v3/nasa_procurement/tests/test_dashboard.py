@@ -202,7 +202,14 @@ def test_bid_competition_review_flags_concentrated_low_competition_supplier(make
     assert suppliers["ACME CORP"]["sub_threshold_award_count"] == 3
     assert suppliers["ACME CORP"]["low_competition_award_count"] == 3
     assert suppliers["ACME CORP"]["low_competition_share"] == 1.0
-    assert suppliers["ACME CORP"]["sample_awards"][0]["set_aside"] == "8(A) SOLE SOURCE"
+    # Total contract count is over every award in the dataset, not just the
+    # ones with competition detail fetched.
+    assert suppliers["ACME CORP"]["total_award_count"] == 3
+    assert suppliers["ACME CORP"]["awards"][0]["set_aside"] == "8(A) SOLE SOURCE"
+    # Every sub-threshold award is embedded (flagged or not) so the UI's
+    # threshold control can recompute the ratio exactly.
+    assert all(a["low_competition"] for a in suppliers["ACME CORP"]["awards"])
+    assert suppliers["ACME CORP"]["awards_truncated"] is False
 
 
 def test_bid_competition_review_unavailable_without_award_detail(make_txn):

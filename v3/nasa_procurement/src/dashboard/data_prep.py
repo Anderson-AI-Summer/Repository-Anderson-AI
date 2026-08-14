@@ -490,7 +490,12 @@ def _duplicate_purchase_candidates(rows: list[dict], max_results: int = 5) -> li
 _NOT_COMPETED_MARKERS = ("NOT COMPETED", "NOT AVAILABLE FOR COMPETITION")
 
 
-def _bid_competition_review(df: pd.DataFrame, threshold: float = 350_000.0, max_suppliers: int = 25) -> dict:
+def _bid_competition_review(
+    df: pd.DataFrame,
+    threshold: float = 350_000.0,
+    max_suppliers: int = 25,
+    max_awards_per_supplier: int = 60,
+) -> dict:
     """Surfaces suppliers whose awards *below* `threshold` are concentrated
     in single-offer or non-competed procurements -- a "structuring" signal
     reviewers watch for (splitting one larger need into several
@@ -550,28 +555,42 @@ def _bid_competition_review(df: pd.DataFrame, threshold: float = 350_000.0, max_
     by_supplier: dict[str, list[dict]] = {}
     for a in sub_threshold:
         by_supplier.setdefault(a["supplier"], []).append(a)
-    total_awards_by_supplier: dict[str, int] = {}
+
+    # "How many contracts is this supplier engaged in overall" -- counted over
+    # every award in the dataset, not just the ones with competition detail
+    # fetched, so the context column isn't silently narrowed to whatever the
+    # award-detail backfill happened to cover.
+    total_awards_by_supplier = df.groupby("normalized_supplier")["award_id_piid"].nunique().to_dict()
+    detailed_awards_by_supplier: dict[str, int] = {}
     for a in detailed:
-        total_awards_by_supplier[a["supplier"]] = total_awards_by_supplier.get(a["supplier"], 0) + 1
+        detailed_awards_by_supplier[a["supplier"]] = detailed_awards_by_supplier.get(a["supplier"], 0) + 1
 
     suppliers = []
     for supplier, supplier_awards in by_supplier.items():
         low_comp = [a for a in supplier_awards if is_low_competition(a)]
         if not low_comp:
             continue
+        # Every sub-threshold award is embedded (capped), not just the
+        # low-competition ones, so the dashboard's threshold control can
+        # recompute both the numerator and the denominator exactly for any
+        # threshold at or below this one rather than guessing from a sample.
+        ranked = sorted(supplier_awards, key=lambda x: -x["award_value"])
         suppliers.append({
             "supplier": supplier,
             "sub_threshold_award_count": len(supplier_awards),
             "low_competition_award_count": len(low_comp),
             "low_competition_share": len(low_comp) / len(supplier_awards),
             "total_sub_threshold_value": sum(a["award_value"] for a in supplier_awards),
-            "total_awards_with_detail": total_awards_by_supplier.get(supplier, len(supplier_awards)),
-            "sample_awards": [
+            "total_award_count": int(total_awards_by_supplier.get(supplier, len(supplier_awards))),
+            "awards_with_detail": detailed_awards_by_supplier.get(supplier, len(supplier_awards)),
+            "awards_truncated": len(ranked) > max_awards_per_supplier,
+            "awards": [
                 {
                     "award_id": a["award_id"], "value": a["award_value"], "num_offers": a["num_offers"],
                     "extent_competed": a["extent_competed"], "set_aside": a["set_aside"],
+                    "low_competition": is_low_competition(a),
                 }
-                for a in sorted(low_comp, key=lambda x: -x["award_value"])[:5]
+                for a in ranked[:max_awards_per_supplier]
             ],
         })
 

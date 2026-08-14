@@ -1886,6 +1886,7 @@
     if (!thresholdInput.dataset.wired) {
       thresholdInput.dataset.wired = "1";
       thresholdInput.value = review.threshold;
+      thresholdInput.max = review.threshold;
       let debounce = null;
       thresholdInput.addEventListener("input", () => {
         clearTimeout(debounce);
@@ -1902,18 +1903,42 @@
     drawMisuseTable();
 
     function drawMisuseTable() {
-      // Re-filtering client-side by the user-entered threshold against the
-      // server-precomputed suppliers list (whose sample_awards already
-      // carry each award's own value) -- swapping the threshold doesn't
-      // need a server round-trip since every candidate award's value and
-      // competition data is already embedded.
-      const threshold = parseFloat(thresholdInput.value) || review.threshold;
+      // Every sub-threshold award (competed and not) is embedded per
+      // supplier, so lowering the threshold recomputes both the numerator
+      // and the denominator exactly -- no server round-trip, no guessing
+      // from a partial sample. Raising it above the payload's own threshold
+      // isn't possible (the input is capped), since awards above it were
+      // never fetched.
+      const threshold = Math.min(parseFloat(thresholdInput.value) || review.threshold, review.threshold);
       const tbl = document.getElementById("table-misuse-suppliers");
       tbl.innerHTML = "";
+      const atDefault = threshold >= review.threshold;
       const filtered = review.suppliers
         .map(s => {
-          const matchingAwards = s.sample_awards.filter(a => a.value < threshold);
-          return matchingAwards.length ? Object.assign({}, s, { matchingAwards }) : null;
+          if (atDefault) {
+            return Object.assign({}, s, {
+              matchingAwards: s.awards.filter(a => a.low_competition),
+              shownSubThreshold: s.sub_threshold_award_count,
+              shownLowComp: s.low_competition_award_count,
+              shownShare: s.low_competition_share,
+              shownValue: s.total_sub_threshold_value,
+              approximate: false,
+            });
+          }
+          const inRange = s.awards.filter(a => a.value < threshold);
+          const lowComp = inRange.filter(a => a.low_competition);
+          if (!lowComp.length) return null;
+          return Object.assign({}, s, {
+            matchingAwards: lowComp,
+            shownSubThreshold: inRange.length,
+            shownLowComp: lowComp.length,
+            shownShare: lowComp.length / inRange.length,
+            shownValue: inRange.reduce((sum, a) => sum + a.value, 0),
+            // Only the largest N awards per supplier are embedded; if that
+            // cap was hit, a lowered threshold may exclude awards we never
+            // shipped, so the recomputed counts are a floor, not exact.
+            approximate: s.awards_truncated,
+          });
         })
         .filter(Boolean);
       if (!filtered.length) {
@@ -1922,29 +1947,34 @@
         ])])]));
         return;
       }
+      filtered.sort((a, b) => (b.shownShare - a.shownShare) || (b.shownSubThreshold - a.shownSubThreshold));
       tbl.appendChild(el("thead", {}, [el("tr", {}, [
-        "Supplier", "Below-Threshold Awards", "Low-Competition Awards", "Concentration", "Below-Threshold Value", "Total Awards (context)",
+        "Supplier", "Below-Threshold Awards", "Low-Competition Awards", "Concentration", "Below-Threshold Value", "Total Contracts (all values)",
       ].map(h => el("th", {}, [h])))]));
       const tbody = el("tbody");
       filtered.forEach(s => {
+        const approxMark = s.approximate ? "≥" : "";
         const row = el("tr", { class: "jump-row" }, [
           el("td", {}, [s.supplier]),
-          el("td", {}, [fmtNum(s.sub_threshold_award_count)]),
-          el("td", {}, [fmtNum(s.low_competition_award_count)]),
-          el("td", {}, [fmtPct(s.low_competition_share)]),
-          el("td", {}, [fmtMoney(s.total_sub_threshold_value)]),
-          el("td", {}, [fmtNum(s.total_awards_with_detail)]),
+          el("td", {}, [approxMark + fmtNum(s.shownSubThreshold)]),
+          el("td", {}, [approxMark + fmtNum(s.shownLowComp)]),
+          el("td", {}, [fmtPct(s.shownShare)]),
+          el("td", {}, [fmtMoney(s.shownValue)]),
+          el("td", {}, [fmtNum(s.total_award_count)]),
         ]);
-        row.title = "Click to see sample awards";
+        row.title = s.approximate
+          ? "Click to see the flagged awards. Counts are a floor -- only this supplier's largest awards are embedded."
+          : "Click to see the flagged awards";
         row.addEventListener("click", () => {
           const existing = row.nextElementSibling;
           if (existing && existing.classList.contains("misuse-detail-row")) { existing.remove(); return; }
+          const shown = s.matchingAwards.slice(0, 25);
           const detail = el("tr", { class: "misuse-detail-row" }, [
             el("td", { colspan: "6" }, [
               el("div", { class: "table-wrap" }, [
                 el("table", { class: "data-table" }, [
                   el("thead", {}, [el("tr", {}, ["Award", "Value", "Offers Received", "Extent Competed", "Set-Aside"].map(h => el("th", {}, [h])))]),
-                  el("tbody", {}, s.matchingAwards.map(a => el("tr", {}, [
+                  el("tbody", {}, shown.map(a => el("tr", {}, [
                     el("td", { class: "code-text" }, [a.award_id]),
                     el("td", {}, [fmtMoney(a.value)]),
                     el("td", {}, [a.num_offers == null ? "—" : fmtNum(a.num_offers)]),
@@ -1953,7 +1983,10 @@
                   ]))),
                 ]),
               ]),
-            ]),
+              s.matchingAwards.length > shown.length
+                ? el("div", { class: "small-note" }, [`Showing the ${shown.length} largest of ${fmtNum(s.matchingAwards.length)} flagged awards.`])
+                : null,
+            ].filter(Boolean)),
           ]);
           row.after(detail);
         });
