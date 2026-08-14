@@ -62,6 +62,16 @@ publishing a built dashboard and the disclaimers that must travel with it.
   have it, and the tab will correctly report itself unavailable.
 - **`REVIEW_V3.md`** is kept as the historical record of the v3 review and
   still refers to `v3/` paths on purpose.
+- **"View on USAspending.gov" deep-links, not searches.** The standout
+  supplier/award cards open the recipient's or award's actual profile page
+  (`/recipient/<hash>/latest`, `/award/<generated_id>`), not a keyword
+  search — the live search page doesn't read `?keyword=` from the URL, so
+  that button used to open a blank generic search screen. The award id is
+  free (already in every transaction); the recipient hash only comes from
+  the award-detail endpoint and was backfilled via
+  `tools/backfill_recipient_hash.py` (100% of 41,420 awards resolved). A
+  dataset ingested without award-detail enrichment falls back to the old
+  keyword search rather than linking nowhere.
 
 ## Implemented in v4
 

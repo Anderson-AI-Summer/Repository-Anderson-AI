@@ -55,6 +55,11 @@ class CleanTransaction(BaseModel):
     recipient_name_raw: str
     recipient_uei: Optional[str] = None
     recipient_duns: Optional[str] = None
+    # USAspending's opaque per-recipient identifier -- the exact id its own
+    # frontend uses for a recipient's profile page (.../recipient/<hash>/latest).
+    # Only available from the award-detail endpoint, so it is None for any
+    # award that hasn't had detail enrichment run (see award_detail_available).
+    recipient_hash: Optional[str] = None
     parent_recipient_name: Optional[str] = None
     parent_recipient_uei: Optional[str] = None
     parent_recipient_duns: Optional[str] = None

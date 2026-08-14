@@ -118,6 +118,7 @@ def clean_transaction(raw_txn: dict, award_detail: dict | None) -> tuple[CleanTr
         recipient_name_raw=recipient_name,
         recipient_uei=_clean_str(raw_txn.get("Recipient UEI")) or _clean_str(recipient_detail.get("recipient_uei")),
         recipient_duns=_clean_str(recipient_detail.get("recipient_unique_id")),
+        recipient_hash=_clean_str(recipient_detail.get("recipient_hash")),
         parent_recipient_name=_clean_str(recipient_detail.get("parent_recipient_name")),
         parent_recipient_uei=_clean_str(recipient_detail.get("parent_recipient_uei")),
         parent_recipient_duns=_clean_str(recipient_detail.get("parent_recipient_unique_id")),

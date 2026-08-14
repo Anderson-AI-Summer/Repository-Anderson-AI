@@ -1285,8 +1285,28 @@
   }
 
   // ---------------- Standout Suppliers (Executive Overview) ----------------
+  // The plain keyword-search link this used to build isn't a real deep link
+  // -- usaspending.gov's search page doesn't read `?keyword=` from the URL,
+  // so it opened a blank generic search screen. Its own award-detail API
+  // returns two ids built exactly for direct linking: generated_unique_award_id
+  // for /award/<id> and recipient.recipient_hash for /recipient/<hash>/latest
+  // (see _standout_by_range / _supplier_detail / _award_rows in
+  // data_prep.py, and tools/backfill_recipient_hash.py for how the latter
+  // was backfilled). Both ids are only available where award-detail
+  // enrichment ran, so a plain keyword search stays as the fallback for a
+  // dataset ingested without it (e.g. a raw repo CSV).
   function usaspendingSearchUrl(supplier) {
     return "https://www.usaspending.gov/search/?keyword=" + encodeURIComponent(supplier);
+  }
+  function usaspendingAwardUrl(generatedAwardId, fallbackAwardId) {
+    return generatedAwardId
+      ? "https://www.usaspending.gov/award/" + encodeURIComponent(generatedAwardId)
+      : usaspendingSearchUrl(fallbackAwardId);
+  }
+  function usaspendingRecipientUrl(recipientHash, fallbackSupplierName) {
+    return recipientHash
+      ? "https://www.usaspending.gov/recipient/" + encodeURIComponent(recipientHash) + "/latest"
+      : usaspendingSearchUrl(fallbackSupplierName);
   }
 
   // A collapsed-by-default wrapper for the longer evidence text, so cards
@@ -1368,8 +1388,10 @@
       });
 
       const viewBtn = el("button", { class: "primary" }, ["View on USAspending.gov ↗"]);
-      viewBtn.title = "Opens the official public search on usaspending.gov in a new tab.";
-      viewBtn.addEventListener("click", () => window.open(usaspendingSearchUrl(s.supplier), "_blank", "noopener"));
+      viewBtn.title = s.recipient_hash
+        ? "Opens this supplier's official recipient profile on usaspending.gov in a new tab."
+        : "Opens the official public search on usaspending.gov in a new tab (no direct recipient link available for this dataset).";
+      viewBtn.addEventListener("click", () => window.open(usaspendingRecipientUrl(s.recipient_hash, s.supplier), "_blank", "noopener"));
 
       const exportBtn = el("button", {}, ["Export supplier CSV"]);
       exportBtn.addEventListener("click", () => {
@@ -1455,8 +1477,10 @@
       });
 
       const viewBtn = el("button", { class: "primary" }, ["View award on USAspending.gov ↗"]);
-      viewBtn.title = "Opens the official public search on usaspending.gov in a new tab.";
-      viewBtn.addEventListener("click", () => window.open(usaspendingSearchUrl(a.award_id), "_blank", "noopener"));
+      viewBtn.title = a.generated_award_id
+        ? "Opens this award's official profile page on usaspending.gov in a new tab."
+        : "Opens the official public search on usaspending.gov in a new tab (no direct award link available for this dataset).";
+      viewBtn.addEventListener("click", () => window.open(usaspendingAwardUrl(a.generated_award_id, a.award_id), "_blank", "noopener"));
 
       const exportBtn = el("button", {}, ["Export contract CSV"]);
       exportBtn.addEventListener("click", () => {

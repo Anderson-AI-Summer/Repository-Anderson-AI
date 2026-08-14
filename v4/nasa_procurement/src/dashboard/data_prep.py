@@ -82,6 +82,14 @@ def _supplier_detail(df: pd.DataFrame, total_net: float) -> dict:
         cat_by_supplier.setdefault(supplier, []).append({"category": category, "net_obligations": float(v)})
 
     offices = d.dropna(subset=["awarding_office"]).groupby("normalized_supplier")["awarding_office"].unique()
+    # USAspending's own per-recipient id, for a direct link to that
+    # recipient's page on usaspending.gov -- see _standout_suppliers. Only
+    # present on datasets that ran award-detail enrichment (see
+    # award_detail_available); absent entirely on a repo-CSV ingest.
+    recipient_hash_by_supplier = (
+        d.dropna(subset=["recipient_hash"]).groupby("normalized_supplier")["recipient_hash"].first()
+        if "recipient_hash" in d.columns else pd.Series(dtype=object)
+    )
     variants = d.groupby("normalized_supplier")["recipient_name_raw"].unique()
     evidence = d.groupby("normalized_supplier")["supplier_resolution_evidence"].unique()
     flags = d.groupby("normalized_supplier")["data_quality_flags"].agg(
@@ -104,6 +112,7 @@ def _supplier_detail(df: pd.DataFrame, total_net: float) -> dict:
             "resolution_confidence": float(r.resolution_confidence),
             "resolution_evidence": sorted(set(evidence[supplier].tolist()))[:5] if supplier in evidence.index else [],
             "flags": flags[supplier] if supplier in flags.index else [],
+            "recipient_hash": recipient_hash_by_supplier.get(supplier),
         }
     return detail
 
@@ -232,6 +241,7 @@ def _standout_suppliers(suppliers_detail: dict, max_results: int = 5) -> list[di
             "concentration_pct": d["share_of_agency_obligations"] * 100,
             "transaction_count": d["transaction_count"],
             "unique_awards": d["unique_awards"],
+            "recipient_hash": d.get("recipient_hash"),
             "reasons": reasons,
         })
 
@@ -322,6 +332,7 @@ def _award_rows(df: pd.DataFrame) -> list[dict]:
         first_date=("action_date", "first"),
         transaction_count=("transaction_obligation_signed", "size"),
         modification_count=("modification_number", "nunique"),
+        generated_award_id=("generated_award_id", "first"),
     )
 
     agg["description"] = longest_desc.reindex(agg.index).fillna("")
@@ -343,6 +354,7 @@ def _award_rows(df: pd.DataFrame) -> list[dict]:
             "transaction_count": int(r.transaction_count),
             "modification_count": int(r.modification_count),
             "description": str(r.description)[:400],
+            "generated_award_id": (str(r.generated_award_id) if pd.notna(r.generated_award_id) else None),
         }
         for (award_id, r), fd in zip(agg.iterrows(), first_dates)
     ]
@@ -421,6 +433,7 @@ def _standout_awards(rows: list[dict], max_results: int = 5) -> list[dict]:
             "transaction_count": r["transaction_count"],
             "modification_count": mod_count,
             "description": r["description"],
+            "generated_award_id": r.get("generated_award_id"),
             "reasons": reasons,
         })
 
