@@ -12,13 +12,13 @@ browser with no network access required.
 ## Quickstart
 
 ```bash
-cd "Lindsay Work"
+cd v3/nasa_procurement
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 python -m src.cli setup       # environment check
 python -m src.cli sample      # fast real-data pull (default: 300 txns) -> outputs/nasa_procurement_dashboard.html
-python -m pytest              # 54 tests, all offline/deterministic
+python -m pytest              # 65 tests, all offline/deterministic
 ```
 
 Open `outputs/nasa_procurement_dashboard.html` directly in a browser -- no
@@ -260,49 +260,84 @@ enrichment call is the pipeline's known bottleneck at this volume; see
 "Limitations" below), so it carries the same `award_detail_unavailable`
 caveat the FY2025 CSV pull above does. The Fiscal Year selector on Executive
 Overview, Transaction Explorer, and Year-over-Year Trends is data-driven, so
-opening this file automatically treats FY2020-FY2026 as embedded/analyzed
-and only years outside that range fall back to the Live Lookup handoff.
+opening this file automatically treats FY2020-FY2026 as embedded/analyzed.
+Competition fields (extent competed, offers received) were later backfilled
+for the 34,413 sub-threshold awards the Misuse Protection tab examines, so
+28,085 of 41,411 awards now carry them; see "Misuse Protection" below.
 
-## Live Lookup mode (added in v3)
+## Global Timeframe control (replaced Live Lookup)
 
-`outputs/nasa_live_dashboard.html` (Harrison) is a second, independent
-dashboard mode: it queries `api.usaspending.gov` directly from the browser
--- no server, no embedded data -- for any fiscal year back to FY2008,
-including the in-progress current year. A fiscal-year selector re-fetches
-the monthly trend, award-type breakdown, and top-20-recipients panels, and
-a transaction register is live-paginated (50 rows/page) against the API with
-debounced keyword search, an award-type filter, and sortable columns, so it
-stays fast regardless of a fiscal year's volume rather than trying to hold
-every transaction in memory. It's cross-linked with the main analysis
-dashboard ("🛰 Live Lookup (any year)" in the header / "← Deep Analysis
-Dashboard" in its own masthead) and carries the same "Unofficial ·
-Not NASA-affiliated" disclosure as the rest of this project.
+The header carries an `FY ... to FY ...` range picker that scopes Executive
+Overview, Year-over-Year Trends, Transaction Explorer, Standout Suppliers &
+Contracts, and the Action Center simultaneously, entirely from the embedded
+dataset -- no network call, so it works regardless of the viewer's
+connectivity. Supplier Analysis and Categories & Opportunities highlight the
+selected range in their annual charts but keep their KPI tiles all-time,
+because only `net_obligations` is broken out per fiscal year for those two;
+summing the rest per year would overcount anything active in more than one
+year, and the tabs say so rather than quietly doing it.
 
-**Why this is a second page instead of a live mode for the existing
-dashboard.** The Executive Overview / Standout Suppliers / Categories tabs
-above depend on this project's own Python pipeline -- UEI/DUNS supplier
-resolution, PSC/NAICS taxonomy classification, HHI concentration, tail
-spend, deobligation flagging, the standout/consolidation/duplicate-purchase
-signals -- none of which exist as a live API endpoint to call. Reproducing
-that logic in the browser would mean re-implementing a tested Python
-pipeline in client-side JS against a much larger pull (a full fiscal year
-of transactions, not the ~300-row page a human browses), with no way to
-verify correctness the way the 61-test suite does today. Instead, Live
-Lookup surfaces exactly what the raw API returns -- **raw, unnormalized
-recipient names, no spend-category taxonomy, no supplier resolution, no
-standout signals** -- and says so explicitly in its own masthead, so it's
-never confused with the analyzed numbers above it.
+Standout Suppliers & Contracts is precomputed server-side for all 28
+contiguous fiscal-year range combinations (`_standout_by_range` in
+`src/dashboard/data_prep.py`), each with concentration recomputed against
+that range's own total, so switching the range is an instant lookup rather
+than a client-side re-run of the signal logic.
 
-**Why this needed no change to this project's "self-contained, offline"
-design principle.** The rest of this README (and the note under "No
-web-fetched product/mission photography" above) explains that *this build
-environment's* outbound network access is blocked at the connection level.
-That constraint is about where the HTML is *generated* -- it has no bearing
-on Live Lookup, whose `fetch()` calls run in whoever's browser has the page
-open, not in this build environment. The analysis dashboard stays exactly
-as self-contained as before; Live Lookup is opt-in, one click away, and
-degrades to a clear per-panel error message (not a crash) if the viewer's
-own connection can't reach `api.usaspending.gov`.
+This replaced an earlier "Live Lookup" second page that queried
+`api.usaspending.gov` from the browser for any year back to FY2008. It was
+removed because it depended on the viewer's own outbound network access and
+therefore could not be relied on for the one thing it was there for --
+demonstrating the dashboard. `outputs/nasa_live_dashboard.html` (Harrison)
+remains in the repo as a standalone artifact but is no longer linked from,
+or required by, the main dashboard.
+
+## Action Center (mitigation workflows)
+
+Turns flagged items into something actionable instead of leaving "Mark for
+review" as a dead end. Nine reference playbooks (deobligation mitigation --
+including evaluating budget reallocation or private-investment/Other
+Transaction Authority partnerships as alternative funding; supplier-continuity
+review; scope/ceiling review; cost-growth value review; market
+diversification; enhanced oversight; strategic sourcing; duplicate-purchase
+dedup audit; general review), each rendered as a visual step tracker. Every
+flagged supplier, award, category, and duplicate pair gets a "Take action"
+button that opens the playbook matching its most consequential signal.
+
+**This is a demonstration surface.** Workflow state (current step, notes,
+status) is stored in the viewer's own `localStorage`, the same mechanism the
+existing "Mark for review" flags use. Nothing is transmitted, nothing reaches
+a contracting system, and no real contracting action is executed. The tab
+carries a banner saying exactly that.
+
+## Misuse Protection (sub-threshold single-bid screen)
+
+Surfaces suppliers whose awards below a threshold (default $350,000,
+adjustable in the UI) are concentrated in single-offer or non-competed
+procurements -- the pattern a reviewer would check for award-splitting
+("structuring" one larger need into several below-threshold awards to avoid
+the competition requirements that apply above it). It also reports how many
+contracts each supplier holds overall, so a reader can see whether the
+flagged awards are their whole book of business or a sliver of it.
+
+Competition data (`extent_competed_description`, `number_of_offers_received`)
+exists **only** on USASpending's per-award detail endpoint -- verified: both
+`spending_by_award` and `spending_by_transaction` return null for those
+fields -- so it has to be fetched award by award. The FY2020-2026 refresh ran
+with `--skip-award-details`, so those fields were backfilled afterwards for
+the 34,413 sub-threshold awards this screen examines (28,085 of 41,411 awards
+now carry competition detail). Builds without that data, such as the FY2025
+repo-CSV pull, report the tab as unavailable rather than showing an empty or
+misleadingly confident table.
+
+**This flags legitimate contracts by design, and says so.** The top results
+are proprietary engineering-software vendors (COMSOL, ANSYS, Siemens, DS
+Government Solutions) at 100% single-bid, which is correct for sole-source
+software licensing -- nobody else sells those licenses. The tab leads with
+"Disclosed signal, not a finding," notes that Simplified Acquisition
+Procedures exist for exactly this dollar range and that 8(a) sole-source
+set-asides are lawful by design, and shows each award's set-aside
+justification alongside the raw numbers. It is a screen that produces
+candidates for human review, not conclusions.
 
 ## Three more signals, from the professor's assignment review
 
