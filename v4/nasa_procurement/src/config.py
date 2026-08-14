@@ -43,7 +43,6 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5").strip()
 
 DASHBOARD_PATH = OUTPUTS_DIR / "nasa_procurement_dashboard.html"
-PRESENTATION_DASHBOARD_PATH = OUTPUTS_DIR / "nasa_procurement_dashboard_presentation.html"
 
 # Row cap for records embedded directly in the Transaction Explorer table.
 # The full processed dataset always lives in data/processed/ regardless of

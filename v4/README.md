@@ -137,6 +137,30 @@ highlights the matching rows. Findings opened from the Overview share this
 modal and now re-render their own starter rather than inheriting whichever
 KPI was opened before them.
 
+**5. "View on USAspending.gov" opens in Edge, and reads cleanly.**
+The button was a `<button>` calling `window.open()` from a click handler --
+Edge's popup blocker can silently swallow that even on a genuine click,
+especially for a page opened from a local file, so the button appeared to do
+nothing. Replaced with a real `<a href target="_blank" rel="noopener
+noreferrer">`: a link click is ordinary navigation, not a script-triggered
+popup, so it isn't blockable. Also dropped the illustrative category icon
+next to each "Top Contracts & Awards" card (read as a logo placeholder at a
+glance) and fixed the "New" badge wrapping onto separate lines next to a
+long supplier/award name (`flex-shrink: 0; white-space: nowrap` -- the flex
+row had nothing stopping the badge itself from being squeezed once the name
+had no more room to give).
+
+## Publish status
+
+v4 is feature-complete for this round. **`outputs/nasa_procurement_dashboard_web.html`**
+is the current, tested, ready-to-publish build -- see
+`nasa_procurement/outputs/README.md` for the exact publishing steps and the
+disclaimers that must travel with it. 68 tests pass; verified with a
+headless-browser sweep across all 8 tabs at 1400/1024/768px (no page-level
+horizontal scroll, no console errors) and against the real USAspending.gov
+API/site (the two "View on ...gov" link formats resolve and match the
+correct entity).
+
 ## Ideas parked for later
 
 - Per-range HHI and tail-spend, which would need the supplier distribution

@@ -49,7 +49,7 @@ Real prime-contract transaction data pulled from the public
 ### Tabs
 
 - **Executive Overview** — headline KPIs, annual obligation trend, category composition, top suppliers/contracts, key findings. Every KPI has a click-to-explain "HOW?" breakdown showing the underlying arithmetic and contributing transactions.
-- **Standout Suppliers & Contracts** — up to 5 suppliers and 5 awards surfaced by disclosed signals (spend concentration, deobligations, year-over-year swings, growth via modifications). Precomputed for all 28 fiscal-year range combinations, so it updates instantly with the Timeframe control.
+- **Standout Suppliers & Contracts** — up to 5 suppliers and 5 awards surfaced by disclosed signals (spend concentration, deobligations, year-over-year swings, growth via modifications). Precomputed for all 28 fiscal-year range combinations, so it updates instantly with the Timeframe control. Each card's "View on USAspending.gov" opens that exact supplier's or award's real profile page on the live site — a direct link, not a keyword search, and works as a real `<a>` link so it isn't caught by a browser's popup blocker (confirmed in Edge).
 - **Year-over-Year Trends** — obligations, deobligations, supplier/award counts, and concentration (HHI, top-5 share) across the selected range.
 - **Transaction Explorer** — filterable/sortable transaction table with CSV export.
 - **Supplier Analysis** — per-supplier drill-down: annual spend, category mix, consolidated name variants, awarding offices, data-quality flags.
@@ -107,10 +107,12 @@ clear or escalate.
 
 | File | Size | Use |
 |---|---|---|
-| `nasa_procurement_dashboard_web.html` | 14.6 MB | **Publish this one.** Full analytics, 1,500 Explorer rows. Regenerate with `python3 tools/make_web_build.py`. |
-| `nasa_fy2019_present_realdata_dashboard.html` | 19.7 MB | Same data, 8,000 Explorer rows. Better for local review, too large to host or publish as an Artifact. |
-| `nasa_fy2025_realdata_dashboard.html` | 13.6 MB | FY2025 only, from the repo CSV. Misuse Protection is unavailable here (that CSV has no award IDs to look competition data up with) and the tab says so. |
-| `nasa_procurement_dashboard.html` | 5.4 MB | 200-transaction sample from a fast dev pull. Not for presenting. |
+| `nasa_procurement_dashboard_web.html` | 15.1 MB | **Publish this one.** Full analytics, 1,500 Explorer rows, under the 16 MB Artifact limit. Regenerate with `python3 tools/make_web_build.py`. |
+| `nasa_fy2019_present_realdata_dashboard.html` | 20.2 MB | Same data and analytics, 8,000 Explorer rows instead of 1,500. Better for local review; too large to host as an Artifact. Regenerate with `python -m src.cli build` (writes to `nasa_procurement_dashboard.html`, the two are kept as identical copies under this more descriptive name). |
+| `nasa_procurement_dashboard.html` | 20.2 MB | The direct, unrenamed output of `python -m src.cli build` -- identical content to the file above. |
+| `nasa_fy2025_realdata_dashboard.html` | 13.6 MB | Historical: FY2025 only, from a teammate's repo CSV pull rather than the live API. Misuse Protection is unavailable here (that CSV has no award IDs to look competition data up with) and the tab says so. Left as a frozen, point-in-time build -- not part of the current regeneration flow. |
+| `nasa_procurement_dashboard_presentation.html` | 7.7 MB | Historical: the originally frozen live-API pull, kept untouched as a baseline. |
+| `nasa_live_dashboard.html` | 0.3 MB | A teammate's separate live-lookup dashboard, from before the header's Timeframe control replaced that page. Kept as a standalone artifact, no longer linked from the main dashboard. |
 
 Even the recommended file is ~15 MB, so first load takes a few seconds on a
 normal connection — worth knowing before you demo it live. It renders
