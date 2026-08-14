@@ -5,85 +5,6 @@
   const NAVY = "#0f1e33", BLUE = "#0891b2", RED = "#dc2626", GREY = "#64748b", GOLD = "#d97706";
   const CHART_MUTED = "#64748b", CHART_GRID = "rgba(15,30,51,0.08)", CHART_LINE = "rgba(15,30,51,0.2)";
 
-  // ---------------- Live USAspending.gov fetch (Executive Overview only) ----------------
-  // Same API this project's Live Lookup page (nasa_live_dashboard.html) uses,
-  // scoped down to what an Overview-style summary needs: monthly net
-  // obligations, an award-type breakdown, and top recipients. Runs entirely
-  // in the viewer's own browser -- see nasa_procurement/README.md "Live
-  // Lookup mode" for why this can't reproduce the full supplier-resolution /
-  // taxonomy-classification analysis the embedded FY2025 data has.
-  const LIVE_API = "https://api.usaspending.gov/api/v2";
-  const LIVE_AWARD_TYPE_CODES = ["A", "B", "C", "D"];
-  const LIVE_AWARD_TYPE_NAMES = { A: "BPA Call", B: "Purchase Order", C: "Delivery Order", D: "Definitive Contract" };
-  const LIVE_AGENCY_FILTER = { type: "awarding", tier: "toptier", name: "National Aeronautics and Space Administration" };
-
-  async function liveApiPost(path, body) {
-    const res = await fetch(LIVE_API + path, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
-    return res.json();
-  }
-  function liveFyDateRange(fy) { return { start_date: `${fy - 1}-10-01`, end_date: `${fy}-09-30` }; }
-  function liveBaseFilters(fy, extra) {
-    const { start_date, end_date } = liveFyDateRange(fy);
-    return Object.assign({ award_type_codes: LIVE_AWARD_TYPE_CODES, agencies: [LIVE_AGENCY_FILTER], time_period: [{ start_date, end_date }] }, extra || {});
-  }
-  // spending_over_time's "month" is a *fiscal* month (1 = October), not calendar month.
-  function liveMonthLabel(fy, fiscalMonth) {
-    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const fm = parseInt(fiscalMonth, 10);
-    const calMonthIdx = ((fm + 8) % 12) + 1;
-    const calYear = fm <= 3 ? parseInt(fy, 10) - 1 : parseInt(fy, 10);
-    return names[calMonthIdx - 1] + " '" + String(calYear).slice(2);
-  }
-  // Fetches everything a live year-summary needs (monthly trend, award-type
-  // breakdown, top recipients) in parallel. Shared by Executive Overview's
-  // inline live panel and the dedicated Live Lookup tab so the fetch logic
-  // exists in exactly one place.
-  async function fetchLiveSummary(fy) {
-    const filters = liveBaseFilters(fy);
-    const monthPromise = liveApiPost("/search/spending_over_time/", { group: "month", filters });
-    const recipientPromise = liveApiPost("/search/spending_by_category/recipient/", { category: "recipient", filters, limit: 20, page: 1 });
-    const typePromises = LIVE_AWARD_TYPE_CODES.map(code => Promise.all([
-      liveApiPost("/search/spending_over_time/", { group: "fiscal_year", filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
-      liveApiPost("/search/spending_by_transaction_count/", { filters: liveBaseFilters(fy, { award_type_codes: [code] }) }),
-    ]).then(([amtRes, countRes]) => ({
-      name: LIVE_AWARD_TYPE_NAMES[code],
-      amount: (amtRes.results || []).reduce((s, r) => s + (r.aggregated_amount || 0), 0),
-      count: countRes.results ? countRes.results.contracts : 0,
-    })));
-    const [monthRes, recipientRes, typeRes] = await Promise.allSettled([monthPromise, recipientPromise, Promise.all(typePromises)]);
-    return { monthRes, recipientRes, typeRes };
-  }
-  // Renders the monthly trend chart into `containerId` and returns the total
-  // net obligations summed across months (0 on failure, with an inline error).
-  function renderLiveMonthChart(containerId, monthRes) {
-    if (monthRes.status !== "fulfilled") {
-      document.getElementById(containerId).innerHTML = `<div class="live-error">Couldn't load monthly trend: ${monthRes.reason}</div>`;
-      return 0;
-    }
-    const months = monthRes.value.results.map(r => ({ label: liveMonthLabel(r.time_period.fiscal_year, r.time_period.month), amount: r.aggregated_amount }));
-    Plotly.newPlot(containerId, [{
-      x: months.map(m => m.label), y: months.map(m => m.amount), type: "bar", marker: { color: BLUE },
-    }], darkLayout({ margin: { t: 10, r: 10, l: 60, b: 40 }, yaxis: darkAxis({ tickformat: "~s" }), xaxis: darkAxis({}) }),
-      { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
-    return months.reduce((s, m) => s + m.amount, 0);
-  }
-  // Renders the award-type breakdown chart into `containerId` and returns the
-  // total transaction count across types (0 on failure, with an inline error).
-  function renderLiveTypeChart(containerId, typeRes) {
-    if (typeRes.status !== "fulfilled") {
-      document.getElementById(containerId).innerHTML = `<div class="live-error">Couldn't load award-type breakdown: ${typeRes.reason}</div>`;
-      return 0;
-    }
-    const types = typeRes.value.filter(t => t.count > 0).sort((a, b) => b.amount - a.amount);
-    Plotly.newPlot(containerId, [{
-      x: types.map(t => t.amount), y: types.map(t => t.name), type: "bar", orientation: "h", marker: { color: BLUE },
-    }], darkLayout({ margin: { t: 10, r: 10, l: 110, b: 40 }, xaxis: darkAxis({ tickformat: "~s" }), yaxis: darkAxis({}) }),
-      { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
-    return typeRes.value.reduce((s, t) => s + t.count, 0);
-  }
   // Shared theme base merged into every Plotly layout: transparent canvas
   // (so the panel background shows through) plus muted axis/legend text so
   // charts match the surrounding mission-control theme instead of Plotly's
@@ -457,24 +378,18 @@
     document.getElementById("tab-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // Jumps to the in-dashboard Live Lookup tab, optionally pre-selecting a
-  // fiscal year. Kept as one function so every "open Live Lookup for FYxxxx"
-  // link in the dashboard goes through the same path -- no separate file,
-  // no risk of it going missing if this HTML file gets shared on its own.
-  // Set by renderLiveLookupTab() once the tab is wired up; calling it is how
-  // every jump-in triggers a (re)load for a specific year without relying on
-  // dispatched DOM events to land in the right order.
-  let liveLookupLoadFn = null;
-  // Set inside renderOverview() once drawEmbeddedOverview() exists, so the
-  // Fiscal Year selector's change handler (defined earlier in the same
-  // function, before the draw function itself) can call it.
-  let liveDrawEmbeddedOverviewFn = null;
-  function jumpToLiveLookup(fy) {
-    switchTab("live");
-    const sel = document.getElementById("live-fy");
-    if (fy && sel) sel.value = String(fy);
-    if (liveLookupLoadFn) liveLookupLoadFn();
-    document.getElementById("tab-live").scrollIntoView({ behavior: "smooth", block: "start" });
+  // Global Timeframe control (header select) -- the one control that scopes
+  // the whole dashboard to a single embedded fiscal year, or back to "All
+  // Years". Every tab that can meaningfully react to a timeframe registers a
+  // listener here; setGlobalTimeframe() (wired to the header <select>) fires
+  // them all. Runs entirely against the embedded dataset -- no network call,
+  // so it always works regardless of the viewer's own connectivity.
+  let globalTimeframeFY = null;
+  const globalTimeframeListeners = [];
+  function onGlobalTimeframeChange(fn) { globalTimeframeListeners.push(fn); }
+  function setGlobalTimeframe(fy) {
+    globalTimeframeFY = fy;
+    globalTimeframeListeners.forEach(fn => fn(fy));
   }
 
   // `drilldown` is a zero-arg function returning { title, formula, note,
@@ -505,105 +420,11 @@
       ]));
     }
 
-    // Fiscal-year picker. "All Years" (default) and any individual embedded
-    // year redraw the KPIs/charts below from the embedded payload -- no
-    // network call. Any other year live-fetches a raw summary from
-    // api.usaspending.gov, right here in this tab -- no separate page.
-    const overviewFYSel = document.getElementById("overview-fy");
-    const embeddedFYs = A.annual.map(r => r.fiscal_year);
-    overviewFYSel.appendChild(el("option", { value: "all" }, [`All Years (${embeddedFYs.map(y => "FY" + y).join(", ")})`]));
-    embeddedFYs.forEach(fy => overviewFYSel.appendChild(el("option", { value: fy }, ["FY" + fy + " (embedded)"])));
-    overviewFYSel.value = "all";
-    const nowDate = new Date();
-    const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
-    const embeddedFYSet = new Set(embeddedFYs.map(String));
-    const liveYears = [];
-    for (let fy = currentLiveFY; fy >= 2008; fy--) if (!embeddedFYSet.has(String(fy))) liveYears.push(fy);
-    if (liveYears.length) {
-      overviewFYSel.appendChild(el("option", { disabled: "disabled" }, ["── other years (live) ──"]));
-      liveYears.forEach(fy => overviewFYSel.appendChild(el("option", { value: "live:" + fy }, ["FY" + fy + " (live →)"])));
-    }
-    let overviewLiveToken = 0;
-    overviewFYSel.addEventListener("change", () => {
-      const notice = document.getElementById("overview-live-notice");
-      const liveContent = document.getElementById("overview-live-content");
-      const embeddedContent = document.getElementById("overview-embedded-content");
-      notice.innerHTML = "";
-      const v = overviewFYSel.value;
-      if (typeof v === "string" && v.startsWith("live:")) {
-        const fyNum = parseInt(v.slice(5), 10);
-        const calloutBox = el("div", { class: "other-callout" }, [
-          `🛰 Showing live raw USAspending.gov figures for FY${fyNum} below -- not run through this project's supplier-resolution or spend-classification pipeline (that only exists for ${embeddedFYs.map(y => "FY" + y).join(", ")}). `,
-          el("strong", {}, ["Open the full Live Lookup tab"]), " for a searchable transaction register on this year →",
-        ]);
-        calloutBox.addEventListener("click", () => jumpToLiveLookup(fyNum));
-        notice.appendChild(calloutBox);
-        embeddedContent.style.display = "none";
-        liveContent.style.display = "";
-        loadLiveOverview(fyNum, ++overviewLiveToken);
-      } else {
-        overviewLiveToken++; // invalidate any in-flight live fetch
-        embeddedContent.style.display = "";
-        liveContent.style.display = "none";
-        if (liveDrawEmbeddedOverviewFn) liveDrawEmbeddedOverviewFn(v === "all" ? null : parseInt(v, 10));
-      }
-    });
-
-    async function loadLiveOverview(fy, myToken) {
-      const panel = document.getElementById("overview-live-content");
-      panel.innerHTML = "";
-      panel.appendChild(el("div", { class: "small-note" }, [`Loading live USAspending.gov data for FY${fy}…`]));
-      panel.appendChild(el("div", { class: "live-loading-bar" }));
-
-      const { monthRes, recipientRes, typeRes } = await fetchLiveSummary(fy);
-      if (myToken !== overviewLiveToken) return; // superseded by a newer selection
-
-      panel.innerHTML = "";
-
-      let topRecipient = "—";
-      if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) topRecipient = recipientRes.value.results[0].name;
-
-      const kpis = el("div", { class: "kpi-row" });
-      const monthPlaceholder = el("div", { id: "live-chart-month", style: "height:264px;" });
-      const typePlaceholder = el("div", { id: "live-chart-types", style: "height:264px;" });
-      const netTile = kpiTile("Net Obligations (live)", "—");
-      const txnTile = kpiTile("Transactions (live)", "—");
-      kpis.appendChild(netTile);
-      kpis.appendChild(txnTile);
-      kpis.appendChild(kpiTile("Top Recipient (live)", topRecipient));
-      panel.appendChild(kpis);
-      const detailLink = el("div", { class: "live-panel-note" }, [
-        "Gross Positive Obligations, Deobligations, Unique Awards, and Normalized Suppliers aren't shown for live years -- each would require pulling and summing every individual transaction rather than the aggregate totals loaded here. ",
-        el("strong", {}, ["Open the full Live Lookup tab"]), " for a searchable transaction register with that level of detail.",
-      ]);
-      detailLink.style.cursor = "pointer";
-      detailLink.addEventListener("click", () => jumpToLiveLookup(fy));
-      panel.appendChild(detailLink);
-
-      const grid = el("div", { class: "grid-2" });
-      grid.appendChild(el("div", { class: "panel" }, [el("h2", {}, ["Monthly Net Obligations (live)"]), monthPlaceholder]));
-      grid.appendChild(el("div", { class: "panel" }, [el("h2", {}, ["Spend by Award Type (live)"]), typePlaceholder]));
-      panel.appendChild(grid);
-
-      const totalAmount = renderLiveMonthChart("live-chart-month", monthRes);
-      const totalTxns = renderLiveTypeChart("live-chart-types", typeRes);
-      netTile.querySelector(".value").textContent = monthRes.status === "fulfilled" ? fmtMoney(totalAmount) : "—";
-      txnTile.querySelector(".value").textContent = typeRes.status === "fulfilled" ? fmtNum(totalTxns) : "—";
-
-      const recipPanel = el("div", { class: "panel" }, [el("h2", {}, ["Top Recipients (live, raw names)"])]);
-      if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) {
-        const tbl = el("table", { class: "data-table" });
-        tbl.appendChild(el("thead", {}, [el("tr", {}, ["Recipient", "Amount"].map(h => el("th", {}, [h])))]));
-        const tbody = el("tbody");
-        recipientRes.value.results.forEach(r => tbody.appendChild(el("tr", {}, [el("td", {}, [r.name]), el("td", {}, [fmtMoney(r.amount)])])));
-        tbl.appendChild(tbody);
-        recipPanel.appendChild(el("div", { class: "table-wrap", style: "max-height:300px;" }, [tbl]));
-      } else {
-        recipPanel.appendChild(el("div", { class: "live-error" }, [`Couldn't load recipients: ${recipientRes.status === "rejected" ? recipientRes.reason : "no results"}`]));
-      }
-      panel.appendChild(recipPanel);
-    }
-
+    // Timeframe scoping lives in the header's global Timeframe control now
+    // (see setGlobalTimeframe()/onGlobalTimeframeChange() near the top of
+    // this file) -- drawEmbeddedOverview() below is registered as a listener
+    // so changing it redraws this tab's KPIs/charts from the embedded
+    // payload. No network call, no separate "live" year option.
     const standoutSupplierCount = (DATA.standout_suppliers || []).length;
     const standoutAwardCount = (DATA.standout_awards || []).length;
     const cta = document.getElementById("overview-jump-cta");
@@ -774,8 +595,8 @@
       }
     }
 
-    drawEmbeddedOverview(null);
-    liveDrawEmbeddedOverviewFn = drawEmbeddedOverview;
+    drawEmbeddedOverview(globalTimeframeFY);
+    onGlobalTimeframeChange(drawEmbeddedOverview);
 
     drawTopSuppliers();
     drawTopContracts();
@@ -1256,7 +1077,6 @@
   // ---------------- Tab 2: YoY ----------------
   function renderYoY() {
     const allAnnual = A.annual;
-    const embeddedFYs = new Set(allAnnual.map(r => String(r.fiscal_year)));
     if (DATA.meta.current_fiscal_year_is_partial) {
       document.getElementById("yoy-warning").appendChild(el("div", { class: "warning-banner" }, [
         `⚠ FY${DATA.meta.current_fiscal_year} is partial (in progress). Use the "Comparable year-to-date" view to compare fairly against prior years.`
@@ -1267,43 +1087,14 @@
       fyFrom.appendChild(el("option", { value: r.fiscal_year }, ["FY" + r.fiscal_year]));
       fyTo.appendChild(el("option", { value: r.fiscal_year }, ["FY" + r.fiscal_year]));
     });
-    // Other fiscal years aren't part of this dashboard's precomputed analysis
-    // (no HHI/tail-spend/category trend for them) -- offer them anyway, but
-    // selecting one hands off to the live USAspending.gov lookup instead of
-    // pretending to chart data that was never embedded.
-    const nowDate = new Date();
-    const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
-    const liveYears = [];
-    for (let fy = currentLiveFY; fy >= 2008; fy--) if (!embeddedFYs.has(String(fy))) liveYears.push(fy);
-    if (liveYears.length) {
-      [fyFrom, fyTo].forEach(sel => {
-        sel.appendChild(el("option", { disabled: "disabled" }, ["── other years (live lookup) ──"]));
-        liveYears.forEach(fy => sel.appendChild(el("option", { value: "live:" + fy }, ["FY" + fy + " (live →)"])));
-      });
-    }
     if (allAnnual.length >= 1) {
       fyFrom.value = allAnnual[0].fiscal_year;
       fyTo.value = allAnnual[allAnnual.length - 1].fiscal_year;
     }
 
-    function isLiveFY(v) { return typeof v === "string" && v.startsWith("live:"); }
-
     function draw() {
-      const notice = document.getElementById("yoy-live-notice");
-      notice.innerHTML = "";
-      const fromV = fyFrom.value, toV = fyTo.value;
-      if (isLiveFY(fromV) || isLiveFY(toV)) {
-        const liveFYs = [fromV, toV].filter(isLiveFY).map(v => "FY" + v.slice(5));
-        const box = el("div", { class: "other-callout" }, [
-          `🛰 ${liveFYs.join(" / ")} isn't part of this dashboard's precomputed analysis (embedded data covers ${[...embeddedFYs].map(y => "FY" + y).join(", ")} only -- no HHI, tail-spend, or category trend for other years). `,
-          el("strong", {}, ["Open Live Lookup"]), " to browse raw obligations for that year instead →",
-        ]);
-        const targetFY = [fromV, toV].filter(isLiveFY)[0].slice(5);
-        box.addEventListener("click", () => jumpToLiveLookup(parseInt(targetFY, 10)));
-        notice.appendChild(box);
-      }
-      const fromNum = isLiveFY(fromV) ? -Infinity : parseInt(fromV, 10);
-      const toNum = isLiveFY(toV) ? Infinity : parseInt(toV, 10);
+      const fromNum = parseInt(fyFrom.value, 10);
+      const toNum = parseInt(fyTo.value, 10);
       const lo = Math.min(fromNum, toNum), hi = Math.max(fromNum, toNum);
       const inRange = fy => fy >= lo && fy <= hi;
       const annual = allAnnual.filter(r => inRange(r.fiscal_year));
@@ -1369,6 +1160,19 @@
     fyFrom.addEventListener("change", draw);
     fyTo.addEventListener("change", draw);
     draw();
+
+    // Global Timeframe control: a specific fiscal year narrows the compare
+    // range down to that single year; "All Years" restores the full range.
+    onGlobalTimeframeChange(fy => {
+      if (fy) {
+        fyFrom.value = fy;
+        fyTo.value = fy;
+      } else if (allAnnual.length >= 1) {
+        fyFrom.value = allAnnual[0].fiscal_year;
+        fyTo.value = allAnnual[allAnnual.length - 1].fiscal_year;
+      }
+      draw();
+    });
   }
 
   // ---------------- Tab 3: Transaction Explorer ----------------
@@ -1382,20 +1186,7 @@
     const rows = DATA.explorer_rows;
     const fySel = document.getElementById("ex-fy"), supSel = document.getElementById("ex-supplier"), catSel = document.getElementById("ex-category");
     const fys = [...new Set(rows.map(r => r.fiscal_year))].sort();
-    const embeddedFYs = new Set(fys.map(String));
     fys.forEach(fy => fySel.appendChild(el("option", { value: fy }, ["FY" + fy])));
-    // Other fiscal years aren't part of this dashboard's precomputed analysis
-    // (no supplier resolution / classification / HHI for them) -- offer them
-    // anyway, but selecting one hands off to the live USAspending.gov lookup
-    // instead of pretending to filter data that was never embedded.
-    const nowDate = new Date();
-    const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
-    const liveYears = [];
-    for (let fy = currentLiveFY; fy >= 2008; fy--) if (!embeddedFYs.has(String(fy))) liveYears.push(fy);
-    if (liveYears.length) {
-      fySel.appendChild(el("option", { disabled: "disabled" }, ["── other years (live lookup) ──"]));
-      liveYears.forEach(fy => fySel.appendChild(el("option", { value: "live:" + fy }, ["FY" + fy + " (live →)"])));
-    }
     const suppliers = [...new Set(rows.map(r => r.normalized_supplier))].sort();
     suppliers.forEach(s => supSel.appendChild(el("option", { value: s }, [s])));
     const cats = [...new Set(rows.map(r => r.ai_spend_category))].sort();
@@ -1430,25 +1221,7 @@
       ["classification_confidence", "Class. Confidence"], ["review_status", "Review"], ["flags", "Flags"],
     ];
 
-    function isLiveFY(v) { return typeof v === "string" && v.startsWith("live:"); }
-
     function draw() {
-      const liveNotice = document.getElementById("explorer-live-notice");
-      liveNotice.innerHTML = "";
-      const tbl0 = document.getElementById("table-explorer");
-      if (isLiveFY(fySel.value)) {
-        const fyNum = fySel.value.slice(5);
-        tbl0.innerHTML = "";
-        document.getElementById("explorer-count").textContent = "";
-        const box = el("div", { class: "other-callout" }, [
-          `🛰 FY${fyNum} isn't part of this dashboard's precomputed analysis (embedded data covers ${[...embeddedFYs].map(y => "FY" + y).join(", ")} only -- no supplier resolution, classification, or review-status for other years). `,
-          el("strong", {}, [`Open Live Lookup for FY${fyNum}`]), " to browse raw USAspending.gov transactions for that year instead →",
-        ]);
-        box.addEventListener("click", () => jumpToLiveLookup(parseInt(fyNum, 10)));
-        liveNotice.appendChild(box);
-        return [];
-      }
-
       let filtered = currentFiltered();
       filtered.sort((a, b) => {
         const c = explorerSort.col;
@@ -1517,11 +1290,35 @@
       draw();
     });
     document.getElementById("ex-export").addEventListener("click", () => {
-      if (isLiveFY(fySel.value)) { showToast("This fiscal year isn't embedded -- use Live Lookup's own export/browse instead."); return; }
       downloadCsv("nasa_procurement_filtered_export.csv", rowsToCsv(currentFiltered()));
     });
 
     draw();
+
+    // Global Timeframe control: sync this tab's own Fiscal Year filter and
+    // redraw. Still just one of several local filters here (search,
+    // supplier, category, ...) -- changing it locally afterward overrides
+    // the header's selection for this tab, same as any other filter would.
+    // The Explorer table only embeds the most recent explorer_row_limit
+    // transactions (not the whole dataset), so a global year outside that
+    // window has no matching option here -- fall back to "All" and say so,
+    // rather than silently leaving the previous filter in place.
+    const explorerWindowFYs = [...new Set(rows.map(r => r.fiscal_year))].sort();
+    onGlobalTimeframeChange(fy => {
+      const note = document.getElementById("explorer-timeframe-note");
+      if (fy && explorerWindowFYs.includes(fy)) {
+        fySel.value = String(fy);
+        if (note) note.textContent = "";
+      } else {
+        fySel.value = "";
+        if (note) {
+          note.textContent = fy
+            ? `FY${fy} isn't in the Transaction Explorer's embedded window (only the most recent ${fmtNum(rows.length)} transactions are embedded here, covering ${explorerWindowFYs.map(y => "FY" + y).join(", ")}) -- showing all embedded transactions instead.`
+            : "";
+        }
+      }
+      draw();
+    });
   }
 
   // ---------------- Tab 4: Supplier Analysis ----------------
@@ -1691,175 +1488,6 @@
     if (names.length) { sel.value = names[0]; draw(); }
   }
 
-  // ---------------- Tab 7: Live Lookup ----------------
-  // A live, in-dashboard equivalent of the standalone Live Lookup page --
-  // built directly into this file so it never depends on a sibling file
-  // being present (see README.md "Live Lookup mode"). Loads lazily: nothing
-  // fires until this tab is actually opened.
-  function renderLiveLookupTab() {
-    const fySel = document.getElementById("live-fy");
-    const nowDate = new Date();
-    const currentLiveFY = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
-    for (let fy = currentLiveFY; fy >= 2008; fy--) {
-      fySel.appendChild(el("option", { value: fy }, ["FY" + fy + (fy === currentLiveFY ? " (in progress)" : "")]));
-    }
-    fySel.value = String(currentLiveFY - 1); // default to the most recently completed fiscal year
-
-    let activeType = null;
-    let sortKey = "Action Date";
-    let sortDir = -1;
-    let page = 1;
-    let registerToken = 0;
-    let summaryToken = 0;
-
-    function renderTypeChips() {
-      const wrap = document.getElementById("live-type-chips");
-      wrap.innerHTML = "";
-      [["", "All"], ...LIVE_AWARD_TYPE_CODES.map(c => [c, LIVE_AWARD_TYPE_NAMES[c]])].forEach(([code, label]) => {
-        const pressed = activeType === (code || null);
-        const btn = el("button", { class: "chip-btn", "aria-pressed": String(pressed) }, [label]);
-        btn.addEventListener("click", () => {
-          activeType = code || null;
-          page = 1;
-          renderTypeChips();
-          loadRegister();
-        });
-        wrap.appendChild(btn);
-      });
-    }
-
-    function registerFilters() {
-      const q = document.getElementById("live-search").value.trim();
-      const extra = {};
-      if (activeType) extra.award_type_codes = [activeType];
-      if (q) extra.keywords = [q];
-      return liveBaseFilters(parseInt(fySel.value, 10), extra);
-    }
-
-    const REGISTER_COLS = [["Action Date", "Date"], ["Recipient Name", "Recipient"], [null, "Award ID"], [null, "Type"], ["Transaction Amount", "Amount"], [null, "Description"]];
-
-    async function loadRegister() {
-      const myToken = ++registerToken;
-      const filters = registerFilters();
-      const tbl = document.getElementById("live-register-table");
-      tbl.innerHTML = "";
-      tbl.appendChild(el("thead", {}, [el("tr", {}, REGISTER_COLS.map(([key, label]) => {
-        if (!key) return el("th", {}, [label]);
-        const th = el("th", { class: "col-sortable" }, [label]);
-        if (sortKey === key) th.classList.add(sortDir === 1 ? "sort-asc" : "sort-desc");
-        th.addEventListener("click", () => {
-          sortDir = sortKey === key ? -sortDir : (key === "Action Date" || key === "Transaction Amount" ? -1 : 1);
-          sortKey = key;
-          page = 1;
-          loadRegister();
-        });
-        return th;
-      }))]));
-      tbl.appendChild(el("tbody", {}, [el("tr", {}, [el("td", { colspan: REGISTER_COLS.length, class: "small-note" }, ["Loading…"])])]));
-      document.getElementById("live-register-pagination").innerHTML = "";
-
-      try {
-        const [countRes, rowsRes] = await Promise.all([
-          liveApiPost("/search/spending_by_transaction_count/", { filters }),
-          liveApiPost("/search/spending_by_transaction/", {
-            filters, fields: ["Award ID", "Mod", "Recipient Name", "Action Date", "Transaction Amount", "Award Type", "Transaction Description"],
-            page, limit: 50, sort: sortKey, order: sortDir === 1 ? "asc" : "desc",
-          }),
-        ]);
-        if (myToken !== registerToken) return;
-
-        const total = countRes.results ? countRes.results.contracts : 0;
-        const rows = rowsRes.results || [];
-        const totalPages = Math.max(1, Math.ceil(total / 50));
-        if (page > totalPages) { page = totalPages; return loadRegister(); }
-
-        document.getElementById("live-register-count").textContent =
-          `Showing ${rows.length ? ((page - 1) * 50 + 1) : 0}–${(page - 1) * 50 + rows.length} of ${fmtNum(total)} transactions`;
-
-        const tbody = el("tbody");
-        if (!rows.length) {
-          tbody.appendChild(el("tr", {}, [el("td", { colspan: REGISTER_COLS.length, class: "small-note" }, ["No transactions match these filters."])]));
-        }
-        rows.forEach(r => {
-          tbody.appendChild(el("tr", {}, [
-            el("td", {}, [r["Action Date"]]),
-            el("td", {}, [r["Recipient Name"]]),
-            el("td", { class: "code-text" }, [r["Award ID"] + (r["Mod"] ? " (mod " + r["Mod"] + ")" : "")]),
-            el("td", {}, [r["Award Type"] || ""]),
-            el("td", {}, [fmtMoney(r["Transaction Amount"])]),
-            el("td", {}, [(r["Transaction Description"] || "").slice(0, 200)]),
-          ]));
-        });
-        tbl.querySelector("tbody").replaceWith(tbody);
-
-        const pag = document.getElementById("live-register-pagination");
-        const prevBtn = el("button", { class: "secondary" }, ["Prev"]);
-        const nextBtn = el("button", { class: "secondary" }, ["Next"]);
-        if (page <= 1) prevBtn.disabled = true;
-        if (page >= totalPages) nextBtn.disabled = true;
-        prevBtn.addEventListener("click", () => { page--; loadRegister(); });
-        nextBtn.addEventListener("click", () => { page++; loadRegister(); });
-        pag.appendChild(prevBtn);
-        pag.appendChild(el("span", { class: "small-note" }, [`Page ${fmtNum(page)} of ${fmtNum(totalPages)}`]));
-        pag.appendChild(nextBtn);
-      } catch (err) {
-        if (myToken !== registerToken) return;
-        tbl.querySelector("tbody").replaceWith(el("tbody", {}, [el("tr", {}, [el("td", { colspan: REGISTER_COLS.length, class: "live-error" }, [`Couldn't load transactions: ${err.message}`])])]));
-      }
-    }
-
-    async function loadSummary(fy) {
-      const myToken = ++summaryToken;
-      document.getElementById("live-status").textContent = `Loading live summary for FY${fy}…`;
-      const kpis = document.getElementById("live-kpis");
-      kpis.innerHTML = "";
-      const netTile = kpiTile("Net Obligations (live)", "—");
-      const txnTile = kpiTile("Transactions (live)", "—");
-      const recipTile = kpiTile("Top Recipient (live)", "—");
-      kpis.appendChild(netTile);
-      kpis.appendChild(txnTile);
-      kpis.appendChild(recipTile);
-
-      const { monthRes, recipientRes, typeRes } = await fetchLiveSummary(fy);
-      if (myToken !== summaryToken) return;
-      document.getElementById("live-status").textContent = "";
-
-      const totalAmount = renderLiveMonthChart("livetab-chart-month", monthRes);
-      const totalTxns = renderLiveTypeChart("livetab-chart-types", typeRes);
-      netTile.querySelector(".value").textContent = monthRes.status === "fulfilled" ? fmtMoney(totalAmount) : "—";
-      txnTile.querySelector(".value").textContent = typeRes.status === "fulfilled" ? fmtNum(totalTxns) : "—";
-      if (recipientRes.status === "fulfilled" && recipientRes.value.results.length) {
-        recipTile.querySelector(".value").textContent = recipientRes.value.results[0].name;
-      }
-    }
-
-    function loadYear() {
-      page = 1;
-      activeType = null;
-      document.getElementById("live-search").value = "";
-      renderTypeChips();
-      loadSummary(parseInt(fySel.value, 10));
-      loadRegister();
-    }
-
-    fySel.addEventListener("change", loadYear);
-    let liveSearchDebounce = null;
-    document.getElementById("live-search").addEventListener("input", () => {
-      clearTimeout(liveSearchDebounce);
-      liveSearchDebounce = setTimeout(() => { page = 1; loadRegister(); }, 400);
-    });
-
-    renderTypeChips();
-    liveLookupLoadFn = loadYear;
-
-    // Lazy: nothing is fetched until the tab is actually opened for the
-    // first time, whether by clicking it directly or via a jump-in link
-    // (jumpToLiveLookup calls liveLookupLoadFn() itself on every jump, so
-    // this only needs to cover the "clicked the tab button directly" path).
-    const liveTabBtn = document.querySelector('nav.tabs button[data-tab="live"]');
-    if (liveTabBtn) liveTabBtn.addEventListener("click", loadYear, { once: true });
-  }
-
   renderHeader();
   setupTabs();
   setupThemeToggle();
@@ -1875,7 +1503,18 @@
   renderExplorer();
   renderSupplierTab();
   renderCategoriesTab();
-  renderLiveLookupTab();
-  const liveLookupHeaderBtn = document.getElementById("live-lookup-trigger");
-  if (liveLookupHeaderBtn) liveLookupHeaderBtn.addEventListener("click", () => jumpToLiveLookup());
+
+  // Global Timeframe control (header select) -- wired up last, after every
+  // tab above has registered its onGlobalTimeframeChange() listener, so the
+  // first change event already reaches all of them.
+  const timeframeSel = document.getElementById("global-timeframe");
+  if (timeframeSel) {
+    const embeddedFYs = A.annual.map(r => r.fiscal_year);
+    timeframeSel.appendChild(el("option", { value: "all" }, [`All Years (${embeddedFYs.map(y => "FY" + y).join(", ")})`]));
+    embeddedFYs.forEach(fy => timeframeSel.appendChild(el("option", { value: fy }, ["FY" + fy])));
+    timeframeSel.value = "all";
+    timeframeSel.addEventListener("change", () => {
+      setGlobalTimeframe(timeframeSel.value === "all" ? null : parseInt(timeframeSel.value, 10));
+    });
+  }
 })();
