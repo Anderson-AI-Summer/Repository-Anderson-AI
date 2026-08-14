@@ -551,6 +551,22 @@
   }
 
   // ---------------- Tabs ----------------
+  // Plotly sizes a chart when it is created. Charts on inactive tabs are
+  // created inside a display:none panel, where the container measures zero,
+  // so Plotly falls back to its built-in 700px default and keeps it -- which
+  // silently overflows any column narrower than that (a tablet-width
+  // two-column grid gives each panel ~440px). Re-measuring on tab show is
+  // the actual fix; `window.resize` alone was not enough, because it fires
+  // before the panel has been laid out.
+  function resizePlotsIn(root) {
+    if (!root || typeof Plotly === "undefined" || !Plotly.Plots) return;
+    requestAnimationFrame(() => {
+      root.querySelectorAll(".js-plotly-plot").forEach(gd => {
+        try { Plotly.Plots.resize(gd); } catch (e) { /* chart not initialised yet */ }
+      });
+    });
+  }
+
   function setupTabs() {
     const buttons = document.querySelectorAll("nav.tabs button");
     buttons.forEach((btn, i) => {
@@ -558,8 +574,9 @@
         buttons.forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
         btn.classList.add("active");
-        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-        window.dispatchEvent(new Event("resize"));
+        const panel = document.getElementById("tab-" + btn.dataset.tab);
+        panel.classList.add("active");
+        resizePlotsIn(panel);
       });
       // Left/Right arrow-key navigation between tabs, standard for a tab
       // list (WAI-ARIA tabs pattern) -- keyboard users shouldn't be limited
@@ -633,7 +650,69 @@
     } else {
       wrap.appendChild(el("div", { class: "small-note" }, ["No contributing rows to show for this dataset."]));
     }
+    renderKpiModalWorkflowStarter(spec);
     document.getElementById("kpi-modal-overlay").classList.add("open");
+  }
+
+  // Any drill-down can become the starting point for a workflow: pick the
+  // playbook, and pick what it attaches to -- the metric itself, or one of
+  // the specific suppliers/awards listed in this popup's table. Without the
+  // target picker you could only ever track "the KPI", which is rarely the
+  // thing someone actually follows up on.
+  function renderKpiModalWorkflowStarter(spec) {
+    const host = document.getElementById("kpi-modal-workflow");
+    if (!host) return;
+    host.innerHTML = "";
+
+    // Candidate targets pulled out of the drill-down table. Supplier and
+    // award columns are the only ones a workflow can meaningfully attach to.
+    const targets = [{ key: "kpi:" + spec.title, label: spec.title, kind: "This metric" }];
+    const cols = (spec.columns || []).map(c => String(c).toLowerCase());
+    const supIdx = cols.findIndex(c => c.includes("supplier"));
+    const awdIdx = cols.findIndex(c => c.includes("award"));
+    const seen = new Set();
+    (spec.rows || []).forEach(r => {
+      if (supIdx >= 0 && r[supIdx]) {
+        const v = String(r[supIdx]);
+        if (!seen.has("s" + v)) { seen.add("s" + v); targets.push({ key: v, label: v, kind: "Supplier" }); }
+      }
+      if (awdIdx >= 0 && r[awdIdx]) {
+        const v = String(r[awdIdx]);
+        if (!seen.has("a" + v)) { seen.add("a" + v); targets.push({ key: "award:" + v, label: v, kind: "Award" }); }
+      }
+    });
+
+    const details = el("div", { class: "sc-details" });
+    const toggle = el("button", { class: "sc-details-toggle" }, ["▶ Start a workflow from this"]);
+    toggle.addEventListener("click", () => {
+      const open = details.classList.toggle("expanded");
+      toggle.textContent = open ? "▾ Start a workflow from this" : "▶ Start a workflow from this";
+    });
+
+    const pbSel = el("select", { id: "kpi-modal-playbook" },
+      Object.entries(PLAYBOOKS).map(([id, pb]) => el("option", { value: id }, [pb.name])));
+    const tgSel = el("select", { id: "kpi-modal-target" },
+      targets.slice(0, 60).map(t => el("option", { value: t.key }, [`${t.kind}: ${t.label}`])));
+
+    const startBtn = el("button", { class: "primary" }, ["Start workflow"]);
+    startBtn.addEventListener("click", () => {
+      const key = tgSel.value;
+      const chosen = targets.find(t => t.key === key) || targets[0];
+      document.getElementById("kpi-modal-overlay").classList.remove("open");
+      openWorkflowModal(key, { playbookId: pbSel.value, label: chosen.label });
+      refreshActionCenterIfOpen();
+    });
+
+    details.appendChild(el("div", { class: "controls", style: "margin-bottom:6px;" }, [
+      el("div", { style: "min-width:240px;" }, [el("label", {}, ["Playbook"]), pbSel]),
+      el("div", { style: "min-width:240px;" }, [el("label", {}, ["Apply to"]), tgSel]),
+      el("div", { style: "align-self:flex-end;" }, [startBtn]),
+    ]));
+    details.appendChild(el("div", { class: "small-note" }, [
+      "Workflow state is saved in this browser only -- see the Action Center's banner.",
+    ]));
+    host.appendChild(toggle);
+    host.appendChild(details);
   }
 
   // ---------------- Cross-tab "jump-in" navigation ----------------
@@ -1681,9 +1760,11 @@
     function draw(fromFY, toFY) {
       const name = sel.value;
       const d = DATA.suppliers_detail[name];
-      ["supplier-kpis", "chart-supplier-annual", "chart-supplier-category", "supplier-variants", "supplier-evidence", "supplier-offices", "supplier-flags", "supplier-headline"]
+      ["supplier-kpis", "chart-supplier-annual", "chart-supplier-category", "supplier-variants", "supplier-evidence", "supplier-offices", "supplier-flags", "supplier-headline", "supplier-action-area"]
         .forEach(id => { const e = document.getElementById(id); e.innerHTML = ""; });
       if (!d) return;
+
+      renderSupplierActionArea(name, fromFY, toFY);
 
       const headline = document.getElementById("supplier-headline");
       headline.appendChild(el("h3", { style: "margin:0; font-size:17px; color:var(--navy); text-transform:none; letter-spacing:0;" }, [name]));
@@ -1737,10 +1818,35 @@
         x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: annualColor },
       }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
+      // Many suppliers are effectively single-category, which rendered as
+      // "100%" plus an unreadable hairline (Caltech: 0.000277%). Roll
+      // everything under 1% into one "Other categories" slice and say how
+      // many were folded in, so the chart stays legible without hiding that
+      // the long tail exists.
+      const MIX_MIN_SHARE = 0.01;
+      const mix = d.category_mix.map(r => ({ category: r.category, value: Math.max(r.net_obligations, 0) }));
+      const mixTotal = mix.reduce((s, r) => s + r.value, 0);
+      const major = mix.filter(r => mixTotal > 0 && r.value / mixTotal >= MIX_MIN_SHARE);
+      const minor = mix.filter(r => !(mixTotal > 0 && r.value / mixTotal >= MIX_MIN_SHARE) && r.value > 0);
+      const mixSlices = major.slice();
+      if (minor.length) {
+        mixSlices.push({
+          category: `Other categories (${fmtNum(minor.length)})`,
+          value: minor.reduce((s, r) => s + r.value, 0),
+        });
+      }
       Plotly.newPlot("chart-supplier-category", [{
-        labels: d.category_mix.map(r => r.category), values: d.category_mix.map(r => Math.max(r.net_obligations, 0)), type: "pie", hole: 0.45,
+        labels: mixSlices.map(r => r.category), values: mixSlices.map(r => r.value), type: "pie", hole: 0.45,
         marker: { line: { color: "#ffffff", width: 2 } }, textfont: { color: "#0f1e33" },
+        texttemplate: "%{percent:.1%}", hovertemplate: "%{label}<br>%{value:$,.0f} (%{percent:.2%})<extra></extra>",
       }], darkLayout({ margin: { t: 10, r: 10, l: 10, b: 10 }, showlegend: true, legend: { font: { color: CHART_MUTED } } }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
+      const mixNote = document.getElementById("supplier-mix-note");
+      if (mixNote) {
+        mixNote.textContent = minor.length
+          ? `${fmtNum(minor.length)} categor${minor.length === 1 ? "y" : "ies"} under 1% grouped into "Other categories". Hover a slice for its exact share.`
+          : "";
+        mixNote.style.display = minor.length ? "" : "none";
+      }
 
       const variants = document.getElementById("supplier-variants");
       d.raw_name_variants.forEach(v => variants.appendChild(el("span", { class: "chip" }, [v])));
@@ -2108,6 +2214,82 @@
     });
   }
 
+  // Action state for one supplier, shown on the Supplier Analysis tab so the
+  // question "is anyone already dealing with this vendor?" is answerable
+  // without going to the Action Center. Three states: a workflow is running
+  // (continue it), one is suggested by a standout signal (start it), or
+  // nothing is flagged (say so, with the reasoning one click away).
+  function renderSupplierActionArea(supplier, fromFY, toFY) {
+    const wrap = document.getElementById("supplier-action-area");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+
+    const wf = getWorkflow(supplier);
+    if (wf) {
+      const pb = PLAYBOOKS[wf.playbookId];
+      const card = el("div", { class: "wf-action-card" + (NEGATIVE_PLAYBOOK_IDS.has(wf.playbookId) ? " wf-priority-negative" : "") }, [
+        el("div", { class: "wf-head" }, [
+          el("div", {}, [
+            el("div", { class: "wf-name" }, ["Workflow in progress for this supplier"]),
+            el("div", { class: "wf-playbook-name" }, [pb.name]),
+          ]),
+          workflowStatusBadge(wf.status),
+        ]),
+        buildMiniStepper(pb.steps.length, wf.stepIndex, wf.status),
+        el("div", { class: "small-note" }, [`Step ${wf.stepIndex + 1} of ${pb.steps.length}: ${pb.steps[wf.stepIndex]}`]),
+      ]);
+      if (wf.notes) card.appendChild(el("div", { class: "small-note", style: "margin-top:4px;" }, ["Notes: " + wf.notes.slice(0, 160) + (wf.notes.length > 160 ? "…" : "")]));
+      const cont = el("button", { class: "primary", style: "margin-top:8px;" }, ["▶ Continue workflow"]);
+      cont.addEventListener("click", () => openWorkflowModal(supplier, { playbookId: wf.playbookId, label: supplier }));
+      card.appendChild(cont);
+      wrap.appendChild(card);
+      return;
+    }
+
+    const suggested = collectSuggestedActions(fromFY, toFY).find(it => it.entityKey === supplier);
+    if (suggested) {
+      const pb = PLAYBOOKS[suggested.playbookId];
+      const card = el("div", { class: "wf-action-card" + (NEGATIVE_PLAYBOOK_IDS.has(suggested.playbookId) ? " wf-priority-negative" : "") }, [
+        el("div", { class: "wf-head" }, [
+          el("div", {}, [
+            el("div", { class: "wf-name" }, ["Suggested action for this supplier"]),
+            el("div", { class: "wf-playbook-name" }, [pb.name]),
+          ]),
+          el("span", { class: "reason-tag " + (NEGATIVE_PLAYBOOK_IDS.has(suggested.playbookId) ? "deobligation_flag" : "high_concentration") }, [pb.trigger]),
+        ]),
+        el("div", { class: "small-note" }, [pb.summary]),
+      ]);
+      const start = el("button", { class: "primary", style: "margin-top:8px;" }, [`▶ Start: ${pb.name}`]);
+      start.addEventListener("click", () => {
+        openWorkflowModal(supplier, { playbookId: suggested.playbookId, label: supplier });
+        renderSupplierActionArea(supplier, fromFY, toFY);
+      });
+      card.appendChild(start);
+      wrap.appendChild(card);
+      return;
+    }
+
+    // Nothing flagged. Say so plainly, and put the "why not" behind a click
+    // rather than asserting the supplier is fine.
+    const row = el("div", { class: "small-note" }, ["No workflow running and no action suggested for this supplier. "]);
+    const info = el("button", { class: "sc-details-toggle" }, ["Why? ⓘ"]);
+    info.addEventListener("click", () => openKpiModal({
+      title: `No suggested action -- ${supplier}`,
+      formula: "A supplier only gets a suggested action when one of this dashboard's disclosed signals fires for it: "
+        + "high spend concentration, notable deobligations, or a rapid year-over-year swing. "
+        + `${supplier} did not trigger any of those in the selected timeframe.`,
+      note: "This is the absence of a signal, not a clean bill of health -- the screens here cover a narrow set of "
+        + "patterns computed from obligation amounts, and plenty of things they do not look at could still warrant review. "
+        + "You can still start any playbook manually from the Action Center.",
+      columns: null, rows: null,
+    }));
+    row.appendChild(info);
+    const openAC = el("button", { class: "sc-details-toggle", style: "margin-left:8px;" }, ["Open Action Center →"]);
+    openAC.addEventListener("click", () => switchTab("actions"));
+    row.appendChild(openAC);
+    wrap.appendChild(row);
+  }
+
   function collectSuggestedActions(fromFY, toFY) {
     const key = standoutRangeKey(fromFY, toFY);
     const rangeData = (DATA.standout_by_range || {})[key];
@@ -2196,7 +2378,8 @@
     entries.sort((a, b) => new Date(b[1].updatedAt) - new Date(a[1].updatedAt));
     entries.forEach(([entityKey, wf]) => {
       const playbook = PLAYBOOKS[wf.playbookId];
-      const card = el("div", { class: "wf-action-card" }, [
+      const done = wf.status === "complete" ? playbook.steps.length : wf.stepIndex;
+      const card = el("div", { class: "wf-action-card" + (NEGATIVE_PLAYBOOK_IDS.has(wf.playbookId) ? " wf-priority-negative" : "") }, [
         el("div", { class: "wf-head" }, [
           el("div", {}, [
             el("div", { class: "wf-name" }, [wf.label]),
@@ -2205,8 +2388,42 @@
           workflowStatusBadge(wf.status),
         ]),
         buildMiniStepper(playbook.steps.length, wf.stepIndex, wf.status),
-        el("div", { class: "small-note" }, [`Step ${wf.stepIndex + 1} of ${playbook.steps.length}: ${playbook.steps[wf.stepIndex]}`]),
+        el("div", { class: "small-note" }, [
+          wf.status === "complete"
+            ? `All ${playbook.steps.length} steps complete.`
+            : `Step ${wf.stepIndex + 1} of ${playbook.steps.length}: ${playbook.steps[wf.stepIndex]}  ·  ${done} done`,
+        ]),
       ]);
+
+      // Which steps are actually finished, and any notes written -- the two
+      // things you need to pick a workflow back up without opening it first.
+      const stepList = el("ul", { class: "wf-step-list" });
+      playbook.steps.forEach((label, i) => {
+        const state = (wf.status === "complete" || i < wf.stepIndex) ? "done" : (i === wf.stepIndex ? "current" : "todo");
+        stepList.appendChild(el("li", { class: "wf-step-item " + state }, [
+          el("span", { class: "wf-step-mark" }, [state === "done" ? "✓" : state === "current" ? "▸" : "○"]),
+          el("span", {}, [label]),
+        ]));
+      });
+      card.appendChild(stepList);
+
+      if (wf.notes && wf.notes.trim()) {
+        card.appendChild(el("div", { class: "wf-notes-preview" }, [
+          el("strong", {}, ["Notes: "]),
+          wf.notes.trim().slice(0, 220) + (wf.notes.trim().length > 220 ? "…" : ""),
+        ]));
+      } else {
+        card.appendChild(el("div", { class: "small-note" }, ["No notes yet."]));
+      }
+
+      const cont = el("button", { class: "primary", style: "margin-top:8px;" },
+        [wf.status === "complete" ? "Review workflow" : "▶ Continue workflow"]);
+      cont.addEventListener("click", ev => {
+        ev.stopPropagation();
+        openWorkflowModal(entityKey, { playbookId: wf.playbookId, label: wf.label });
+      });
+      card.appendChild(cont);
+
       card.style.cursor = "pointer";
       card.addEventListener("click", () => openWorkflowModal(entityKey, { playbookId: wf.playbookId, label: wf.label }));
       container.appendChild(card);
@@ -2224,9 +2441,32 @@
     const all = Object.values(getWorkflows());
     const inProgress = all.filter(wf => wf.status === "in_progress").length;
     const complete = all.filter(wf => wf.status === "complete").length;
-    container.appendChild(kpiTile("Workflows Started", fmtNum(all.length)));
-    container.appendChild(kpiTile("In Progress", fmtNum(inProgress)));
-    container.appendChild(kpiTile("Complete", fmtNum(complete)));
+    const filterSel = document.getElementById("wf-status-filter");
+    const current = filterSel ? filterSel.value : "";
+
+    // Each counter is a filter for the Active Workflows list below, so the
+    // summary is a way into the detail rather than a dead readout.
+    const tile = (label, value, filterValue) => {
+      const t = kpiTile(label, fmtNum(value));
+      t.classList.add("clickable");
+      if (current === filterValue) t.classList.add("kpi-filter-active");
+      t.title = "Show these in Active Workflows below";
+      t.tabIndex = 0;
+      t.setAttribute("role", "button");
+      const apply = () => {
+        if (filterSel) { filterSel.value = filterValue; }
+        renderActiveWorkflows();
+        renderWorkflowStatusSummary();
+        const target = document.getElementById("active-workflows");
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+      t.addEventListener("click", apply);
+      t.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); apply(); } });
+      return t;
+    };
+    container.appendChild(tile("Workflows Started", all.length, ""));
+    container.appendChild(tile("In Progress", inProgress, "in_progress"));
+    container.appendChild(tile("Complete", complete, "complete"));
     if (!all.length) {
       container.appendChild(el("div", { class: "small-note" }, ["Nothing started yet -- pick something from Suggested Actions below."]));
     }
@@ -2276,7 +2516,12 @@
   onGlobalTimeframeChange(renderActionCenter);
   refreshActionCenterIfOpen = () => renderActionCenter(globalFromFY, globalToFY);
   const wfStatusFilter = document.getElementById("wf-status-filter");
-  if (wfStatusFilter) wfStatusFilter.addEventListener("change", renderActiveWorkflows);
+  // Keep the counter tiles' active-filter highlight in sync when the filter
+  // is changed from the dropdown rather than by clicking a tile.
+  if (wfStatusFilter) wfStatusFilter.addEventListener("change", () => {
+    renderActiveWorkflows();
+    renderWorkflowStatusSummary();
+  });
 
   // Global Timeframe control (header FY-from/FY-to range) -- wired up last,
   // after every tab above has registered its onGlobalTimeframeChange()
