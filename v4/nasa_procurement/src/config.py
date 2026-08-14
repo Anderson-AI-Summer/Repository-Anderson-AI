@@ -51,3 +51,9 @@ PRESENTATION_DASHBOARD_PATH = OUTPUTS_DIR / "nasa_procurement_dashboard_presenta
 EXPLORER_EMBED_ROW_LIMIT = int(os.environ.get("EXPLORER_EMBED_ROW_LIMIT", "8000"))
 
 TAXONOMY_VERSION_PATH = CONFIG_DIR / "taxonomy.json"
+
+# Product/Service Codes the Misuse Protection screen sets aside by default
+# (proprietary software licensing, where a single offer is the expected
+# outcome rather than a competition-avoidance signal). Editable without a
+# code change; see the file's own "_comment" for the inclusion rationale.
+MISUSE_EXCLUDED_PSC_PATH = CONFIG_DIR / "misuse_excluded_psc.json"

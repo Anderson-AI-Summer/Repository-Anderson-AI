@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -245,3 +246,83 @@ def test_bid_competition_review_excludes_well_competed_suppliers(make_txn):
     review = payload["bid_competition_review"]
     assert review["available"] is True
     assert review["suppliers"] == []  # well-competed -- nothing to flag
+
+
+def test_misuse_screen_sets_aside_proprietary_software_psc(make_txn):
+    # Two suppliers, both 100% single-bid below threshold. One sells a
+    # proprietary software license (PSC 7A20), which is expected to be
+    # sole-source; the other sells lab equipment, which is not.
+    txns = []
+    for i in range(1, 4):
+        txns.append(make_txn(
+            transaction_id=f"s{i}", award_id_piid=f"SOFT{i}", recipient_name_raw="COMSOL, INC.",
+            recipient_uei="UEISOFT01",
+            transaction_obligated_amount=100_000.0, current_award_amount=100_000.0,
+            number_of_offers_received=1, extent_competed="C", extent_competed_description="NOT COMPETED",
+            psc_code="7A20", award_detail_available=True,
+        ))
+        txns.append(make_txn(
+            transaction_id=f"l{i}", award_id_piid=f"LAB{i}", recipient_name_raw="GENERIC LAB SUPPLY CO",
+            recipient_uei="UEILAB001",
+            transaction_obligated_amount=100_000.0, current_award_amount=100_000.0,
+            number_of_offers_received=1, extent_competed="C", extent_competed_description="NOT COMPETED",
+            psc_code="6640", award_detail_available=True,
+        ))
+    stats = AgentRunStats()
+    payload = build_payload(enrich_transactions(txns, stats), compute_analytics(enrich_transactions(txns, AgentRunStats())),
+                            [], {"source": "test"}, "DETERMINISTIC_FALLBACK")
+    review = payload["bid_competition_review"]
+
+    ranked = {s["supplier"] for s in review["suppliers"]}
+    assert "GENERIC LAB SUPPLY CO" in ranked      # real competitive market -> still flagged
+    assert "COMSOL, INC." not in ranked           # proprietary licence -> set aside
+
+    # Set aside, not deleted: it is still reported with its award count.
+    set_aside = {s["supplier"]: s for s in review["set_aside"]["suppliers"]}
+    assert "COMSOL, INC." in set_aside
+    assert set_aside["COMSOL, INC."]["award_count"] == 3
+    assert review["set_aside"]["award_count"] == 3
+
+
+def test_supplier_detail_annual_carries_full_metric_set(make_txn):
+    txns = [
+        make_txn(transaction_id="a", award_id_piid="AWD1", action_date=dt.date(2020, 1, 5),
+                 fiscal_year=2020, transaction_obligated_amount=1000.0),
+        make_txn(transaction_id="b", award_id_piid="AWD1", action_date=dt.date(2021, 1, 5),
+                 fiscal_year=2021, transaction_obligated_amount=-250.0),
+        make_txn(transaction_id="c", award_id_piid="AWD2", action_date=dt.date(2021, 3, 5),
+                 fiscal_year=2021, transaction_obligated_amount=500.0),
+    ]
+    stats = AgentRunStats()
+    enriched = enrich_transactions(txns, stats)
+    payload = build_payload(enriched, compute_analytics(enriched), [], {"source": "test"}, "DETERMINISTIC_FALLBACK")
+    annual = {r["fiscal_year"]: r for r in payload["suppliers_detail"]["ACME CORP"]["annual"]}
+
+    # Per-year metrics are what lets the Timeframe control scope this tab.
+    assert annual[2020]["net_obligations"] == 1000.0
+    assert annual[2020]["gross_positive_obligations"] == 1000.0
+    assert annual[2020]["deobligations"] == 0.0
+    assert annual[2021]["deobligations"] == 250.0
+    assert annual[2021]["transaction_count"] == 2
+    assert annual[2021]["unique_awards"] == 2
+    # Summing the exactly-summable metrics reproduces the all-time totals.
+    d = payload["suppliers_detail"]["ACME CORP"]
+    assert sum(r["net_obligations"] for r in d["annual"]) == d["total_net_obligations"]
+    assert sum(r["transaction_count"] for r in d["annual"]) == d["transaction_count"]
+
+
+def test_category_detail_annual_carries_per_year_counts(make_txn):
+    txns = [
+        make_txn(transaction_id="a", action_date=dt.date(2020, 1, 5), fiscal_year=2020,
+                 transaction_obligated_amount=1000.0),
+        make_txn(transaction_id="b", action_date=dt.date(2021, 1, 5), fiscal_year=2021,
+                 transaction_obligated_amount=2000.0, recipient_name_raw="OTHER VENDOR LLC"),
+    ]
+    stats = AgentRunStats()
+    enriched = enrich_transactions(txns, stats)
+    payload = build_payload(enriched, compute_analytics(enriched), [], {"source": "test"}, "DETERMINISTIC_FALLBACK")
+    cat = next(iter(payload["categories_detail"].values()))
+    annual = {r["fiscal_year"]: r for r in cat["annual"]}
+    assert annual[2020]["transaction_count"] == 1
+    assert annual[2021]["unique_suppliers"] == 1
+    assert sum(r["net_obligations"] for r in cat["annual"]) == 3000.0

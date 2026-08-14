@@ -7,11 +7,12 @@ analytical model.
 from __future__ import annotations
 
 import datetime as dt
+import json
 
 import pandas as pd
 
 from src.analytics import to_dataframe
-from src.config import EXPLORER_EMBED_ROW_LIMIT
+from src.config import EXPLORER_EMBED_ROW_LIMIT, MISUSE_EXCLUDED_PSC_PATH
 from src.fiscal import is_partial_fiscal_year
 from src.schema import EnrichedTransaction
 
@@ -25,38 +26,84 @@ EXPLORER_COLUMNS = [
 
 
 def _supplier_detail(df: pd.DataFrame, total_net: float) -> dict:
+    """Per-supplier rollup backing the Supplier Analysis tab.
+
+    `annual` carries the full metric set per fiscal year, not just net
+    obligations, so the dashboard's Timeframe range control can scope this
+    tab's KPI tiles instead of leaving them stuck at all-time. Net, gross,
+    deobligations and transaction count sum exactly across a range; unique
+    awards does not (an award active in three of the selected years is
+    counted three times), and the UI discloses that rather than presenting
+    the sum as a distinct count.
+
+    Vectorized rather than looping per supplier -- _standout_by_range calls
+    this once per fiscal-year range.
+    """
     detail: dict[str, dict] = {}
-    for supplier, g in df.groupby("normalized_supplier"):
-        annual = []
-        for fy, gf in g.groupby("fiscal_year"):
-            annual.append({
-                "fiscal_year": int(fy),
-                "net_obligations": float(gf["transaction_obligation_signed"].sum()),
-            })
-        annual.sort(key=lambda r: r["fiscal_year"])
+    if df.empty:
+        return detail
 
-        gross = float(g.loc[g["transaction_obligation_signed"] > 0, "transaction_obligation_signed"].sum())
-        deob = float(-g.loc[g["transaction_obligation_signed"] < 0, "transaction_obligation_signed"].sum())
-        net = float(g["transaction_obligation_signed"].sum())
-        cat_mix = g.groupby("ai_spend_category")["transaction_obligation_signed"].sum().sort_values(ascending=False)
-        offices = sorted(x for x in g["awarding_office"].dropna().unique().tolist())
-        variants = sorted(g["recipient_name_raw"].unique().tolist())
-        flags = sorted({f for row in g["data_quality_flags"] for f in row})
+    d = df.copy()
+    amt = d["transaction_obligation_signed"]
+    d["_pos"] = amt.clip(lower=0)
+    d["_neg"] = (-amt).clip(lower=0)
 
+    totals = d.groupby("normalized_supplier", sort=False).agg(
+        total_net_obligations=("transaction_obligation_signed", "sum"),
+        gross_positive_obligations=("_pos", "sum"),
+        deobligations=("_neg", "sum"),
+        transaction_count=("transaction_obligation_signed", "size"),
+        unique_awards=("award_id_piid", "nunique"),
+        resolution_confidence=("supplier_resolution_confidence", "mean"),
+    )
+
+    per_year = d.groupby(["normalized_supplier", "fiscal_year"], sort=True).agg(
+        net_obligations=("transaction_obligation_signed", "sum"),
+        gross_positive_obligations=("_pos", "sum"),
+        deobligations=("_neg", "sum"),
+        transaction_count=("transaction_obligation_signed", "size"),
+        unique_awards=("award_id_piid", "nunique"),
+    )
+    annual_by_supplier: dict[str, list[dict]] = {}
+    for (supplier, fy), r in per_year.iterrows():
+        annual_by_supplier.setdefault(supplier, []).append({
+            "fiscal_year": int(fy),
+            "net_obligations": float(r.net_obligations),
+            "gross_positive_obligations": float(r.gross_positive_obligations),
+            "deobligations": float(r.deobligations),
+            "transaction_count": int(r.transaction_count),
+            "unique_awards": int(r.unique_awards),
+        })
+
+    cat = d.groupby(["normalized_supplier", "ai_spend_category"], sort=False)["transaction_obligation_signed"].sum()
+    cat = cat.sort_values(ascending=False)
+    cat_by_supplier: dict[str, list[dict]] = {}
+    for (supplier, category), v in cat.items():
+        cat_by_supplier.setdefault(supplier, []).append({"category": category, "net_obligations": float(v)})
+
+    offices = d.dropna(subset=["awarding_office"]).groupby("normalized_supplier")["awarding_office"].unique()
+    variants = d.groupby("normalized_supplier")["recipient_name_raw"].unique()
+    evidence = d.groupby("normalized_supplier")["supplier_resolution_evidence"].unique()
+    flags = d.groupby("normalized_supplier")["data_quality_flags"].agg(
+        lambda rows: sorted({f for row in rows for f in row})
+    )
+
+    for supplier, r in totals.iterrows():
+        net = float(r.total_net_obligations)
         detail[supplier] = {
             "total_net_obligations": net,
-            "gross_positive_obligations": gross,
-            "deobligations": deob,
-            "transaction_count": int(len(g)),
-            "unique_awards": int(g["award_id_piid"].nunique()),
-            "annual": annual,
-            "category_mix": [{"category": c, "net_obligations": float(v)} for c, v in cat_mix.items()],
-            "awarding_offices": offices,
+            "gross_positive_obligations": float(r.gross_positive_obligations),
+            "deobligations": float(r.deobligations),
+            "transaction_count": int(r.transaction_count),
+            "unique_awards": int(r.unique_awards),
+            "annual": annual_by_supplier.get(supplier, []),
+            "category_mix": cat_by_supplier.get(supplier, []),
+            "awarding_offices": sorted(offices[supplier].tolist()) if supplier in offices.index else [],
             "share_of_agency_obligations": (net / total_net) if total_net else 0.0,
-            "raw_name_variants": variants,
-            "resolution_confidence": float(g["supplier_resolution_confidence"].mean()),
-            "resolution_evidence": sorted(set(g["supplier_resolution_evidence"].tolist()))[:5],
-            "flags": flags,
+            "raw_name_variants": sorted(variants[supplier].tolist()) if supplier in variants.index else [],
+            "resolution_confidence": float(r.resolution_confidence),
+            "resolution_evidence": sorted(set(evidence[supplier].tolist()))[:5] if supplier in evidence.index else [],
+            "flags": flags[supplier] if supplier in flags.index else [],
         }
     return detail
 
@@ -90,11 +137,29 @@ def _kpi_drilldowns(df: pd.DataFrame, max_rows: int = 12) -> dict:
 
 
 def _category_detail(df: pd.DataFrame) -> dict:
+    """Per-category rollup backing the Categories & Opportunities tab.
+
+    Like `_supplier_detail`, `annual` carries the metrics that sum cleanly
+    across a fiscal-year range (net obligations, transaction count) plus
+    per-year supplier and review counts, so the Timeframe control can scope
+    this tab's KPI tiles. Concentration (HHI) and tail-spend share are
+    deliberately NOT broken out per year: both are ratios over the whole
+    supplier distribution within the scope, and averaging or summing yearly
+    values would not reproduce the range's real figure. Those two stay
+    all-time and the UI says so.
+    """
     detail: dict[str, dict] = {}
     for cat, g in df.groupby("ai_spend_category"):
         annual = []
         for fy, gf in g.groupby("fiscal_year"):
-            annual.append({"fiscal_year": int(fy), "net_obligations": float(gf["transaction_obligation_signed"].sum())})
+            annual.append({
+                "fiscal_year": int(fy),
+                "net_obligations": float(gf["transaction_obligation_signed"].sum()),
+                "transaction_count": int(len(gf)),
+                "unique_suppliers": int(gf["normalized_supplier"].nunique()),
+                "low_confidence_count": int((gf["classification_confidence"] < 0.6).sum()),
+                "needs_review_count": int((gf["review_status"] == "NEEDS_REVIEW").sum()),
+            })
         annual.sort(key=lambda r: r["fiscal_year"])
 
         supplier_agg = g.groupby("normalized_supplier")["transaction_obligation_signed"].sum().sort_values(ascending=False)
@@ -199,51 +264,88 @@ def _standout_suppliers(suppliers_detail: dict, max_results: int = 5) -> list[di
     return standout[:max_results]
 
 
+def _modal_value(d: pd.DataFrame, key: str, value_col: str, fallback: str) -> pd.Series:
+    """Most frequent `value_col` per `key`, ties broken by first occurrence --
+    the vectorized equivalent of `g[value_col].value_counts().idxmax()` per
+    group, which is far too slow to run once per award on a 142k-row frame.
+    """
+    counts = d.groupby([key, value_col], sort=False).size().reset_index(name="_n")
+    counts = counts.sort_values("_n", ascending=False, kind="mergesort").drop_duplicates(key)
+    return counts.set_index(key)[value_col].fillna(fallback)
+
+
 def _award_rows(df: pd.DataFrame) -> list[dict]:
     """Per-contract-award (award_id_piid) aggregation shared by the full
     awards summary and the standout-awards signal detector below, so both
     compute the same numbers from a single pass over the data.
+
+    Written as vectorized pandas aggregations rather than a Python loop over
+    groups: _standout_by_range calls this once per fiscal-year range (28 of
+    them on a 7-year dataset), and at 41k awards the per-group loop was the
+    single largest cost in the whole build.
     """
     if df.empty:
         return []
 
-    rows = []
-    for award_id, g in df.groupby("award_id_piid"):
-        if not award_id:
-            continue
-        g_sorted = g.sort_values("action_date")
-        net = float(g["transaction_obligation_signed"].sum())
-        gross = float(g.loc[g["transaction_obligation_signed"] > 0, "transaction_obligation_signed"].sum())
-        deob = float(-g.loc[g["transaction_obligation_signed"] < 0, "transaction_obligation_signed"].sum())
-        initial_amount = float(g_sorted.iloc[0]["transaction_obligation_signed"])
-        first_date = g_sorted.iloc[0]["action_date"]
-        first_date = first_date.date().isoformat() if pd.notna(first_date) else None
-        mod_count = int(g["modification_number"].nunique())
+    d = df[df["award_id_piid"].notna()].copy()
+    d["award_id_piid"] = d["award_id_piid"].astype(str)
+    d = d[d["award_id_piid"] != ""]
+    if d.empty:
+        return []
 
-        # Longest description is usually the most informative one on record.
-        # `if d` alone isn't enough -- missing values load as float NaN, and
-        # NaN is truthy in Python, so it survives the filter and then crashes
-        # max(..., key=len) with "object of type 'float' has no len()".
-        descriptions = [d for d in g["transaction_description"].tolist() if isinstance(d, str) and d]
-        description = max(descriptions, key=len) if descriptions else ""
+    amt = d["transaction_obligation_signed"]
+    d["_pos"] = amt.clip(lower=0)
+    d["_neg"] = (-amt).clip(lower=0)
 
-        supplier_counts = g["normalized_supplier"].value_counts()
-        category_counts = g["ai_spend_category"].value_counts()
+    # Longest description is usually the most informative one on record.
+    # Missing values load as float NaN, so coerce to str before measuring --
+    # NaN is truthy in Python and would otherwise survive a plain filter and
+    # crash max(..., key=len) with "object of type 'float' has no len()".
+    # Resolved BEFORE the sort below so length ties break on original row
+    # order, matching what `max(descriptions, key=len)` picked.
+    desc = d["transaction_description"].where(d["transaction_description"].apply(lambda x: isinstance(x, str)), "")
+    d["_desc"] = desc
+    d["_desc_len"] = desc.str.len()
+    longest_idx = d.groupby("award_id_piid", sort=False)["_desc_len"].idxmax()
+    longest_desc = d.loc[longest_idx].set_index("award_id_piid")["_desc"]
 
-        rows.append({
+    # Sorting once lets `.first()` stand in for "earliest transaction on this
+    # award" without re-sorting inside every group.
+    d = d.sort_values(["award_id_piid", "action_date"], kind="mergesort")
+    g = d.groupby("award_id_piid", sort=False)
+
+    agg = g.agg(
+        net_obligations=("transaction_obligation_signed", "sum"),
+        gross_positive_obligations=("_pos", "sum"),
+        deobligations=("_neg", "sum"),
+        initial_amount=("transaction_obligation_signed", "first"),
+        first_date=("action_date", "first"),
+        transaction_count=("transaction_obligation_signed", "size"),
+        modification_count=("modification_number", "nunique"),
+    )
+
+    agg["description"] = longest_desc.reindex(agg.index).fillna("")
+
+    agg["supplier"] = _modal_value(d, "award_id_piid", "normalized_supplier", "Unknown").reindex(agg.index).fillna("Unknown")
+    agg["category"] = _modal_value(d, "award_id_piid", "ai_spend_category", "Uncategorized").reindex(agg.index).fillna("Uncategorized")
+
+    first_dates = agg["first_date"]
+    return [
+        {
             "award_id": str(award_id),
-            "supplier": supplier_counts.idxmax() if not supplier_counts.empty else "Unknown",
-            "category": category_counts.idxmax() if not category_counts.empty else "Uncategorized",
-            "net_obligations": net,
-            "gross_positive_obligations": gross,
-            "deobligations": deob,
-            "initial_amount": initial_amount,
-            "first_date": first_date,
-            "transaction_count": int(len(g)),
-            "modification_count": mod_count,
-            "description": description[:400],
-        })
-    return rows
+            "supplier": str(r.supplier),
+            "category": str(r.category),
+            "net_obligations": float(r.net_obligations),
+            "gross_positive_obligations": float(r.gross_positive_obligations),
+            "deobligations": float(r.deobligations),
+            "initial_amount": float(r.initial_amount),
+            "first_date": (fd.date().isoformat() if pd.notna(fd) else None),
+            "transaction_count": int(r.transaction_count),
+            "modification_count": int(r.modification_count),
+            "description": str(r.description)[:400],
+        }
+        for (award_id, r), fd in zip(agg.iterrows(), first_dates)
+    ]
 
 
 def _award_summary(rows: list[dict], max_results: int = 300) -> list[dict]:
@@ -490,6 +592,25 @@ def _duplicate_purchase_candidates(rows: list[dict], max_results: int = 5) -> li
 _NOT_COMPETED_MARKERS = ("NOT COMPETED", "NOT AVAILABLE FOR COMPETITION")
 
 
+def _load_excluded_psc() -> dict:
+    """Loads the Misuse Protection PSC set-aside list. Missing/unreadable
+    config means "exclude nothing" -- the screen still works, it just has
+    more noise in it, which is the safe direction to fail."""
+    try:
+        raw = json.loads(MISUSE_EXCLUDED_PSC_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {"label": "", "codes": [], "prefixes": []}
+    return {
+        "label": raw.get("label", ""),
+        "codes": [c["code"].upper() for c in raw.get("codes", []) if c.get("code")],
+        "prefixes": [p["prefix"].upper() for p in raw.get("prefixes", []) if p.get("prefix")],
+        "reasons": (
+            [{"code": c["code"], "why": c.get("why", "")} for c in raw.get("codes", [])]
+            + [{"code": p["prefix"] + "*", "why": p.get("why", "")} for p in raw.get("prefixes", [])]
+        ),
+    }
+
+
 def _bid_competition_review(
     df: pd.DataFrame,
     threshold: float = 350_000.0,
@@ -508,6 +629,14 @@ def _bid_competition_review(
     the set-aside context (e.g. "8(A) SOLE SOURCE") alongside each award so
     a reviewer isn't looking at the number in isolation.
 
+    Awards whose PSC identifies a proprietary software license (see
+    config/misuse_excluded_psc.json) are set aside from the ranking by
+    default: a single offer for a named product only that vendor sells is
+    the expected outcome, not a signal, and leaving them in buried the
+    genuinely irregular patterns under routine license renewals. They are
+    counted and reported separately rather than dropped, so the screen never
+    silently hides a supplier.
+
     Needs award-detail fields (number_of_offers_received,
     extent_competed_description, current_award_amount) that only exist when
     that per-award API call was actually made -- large multi-year pulls in
@@ -515,90 +644,125 @@ def _bid_competition_review(
     Returns {"available": False, ...} rather than an empty/misleading table
     when none of that data is present in this build.
     """
-    empty = {"available": False, "threshold": threshold, "awards_total": 0, "awards_with_detail": 0, "suppliers": []}
+    excluded = _load_excluded_psc()
+    empty = {
+        "available": False, "threshold": threshold, "awards_total": 0,
+        "awards_with_detail": 0, "suppliers": [], "excluded_psc": excluded,
+        "set_aside": {"supplier_count": 0, "award_count": 0, "suppliers": []},
+    }
     if df.empty or "award_id_piid" not in df.columns:
         return empty
 
-    awards = []
-    for award_id, g in df.groupby("award_id_piid"):
-        if not award_id:
-            continue
-        detail_available = bool(g["award_detail_available"].any()) if "award_detail_available" in g.columns else False
-        offers = g["number_of_offers_received"].dropna() if "number_of_offers_received" in g.columns else pd.Series(dtype=float)
-        num_offers = int(offers.iloc[0]) if len(offers) else None
-        extent_desc = g["extent_competed_description"].dropna() if "extent_competed_description" in g.columns else pd.Series(dtype=str)
-        extent = str(extent_desc.iloc[0]) if len(extent_desc) else None
-        set_aside = g["set_aside_type_description"].dropna() if "set_aside_type_description" in g.columns else pd.Series(dtype=str)
-        set_aside_desc = str(set_aside.iloc[0]) if len(set_aside) else None
-        current_amt = g["current_award_amount"].dropna() if "current_award_amount" in g.columns else pd.Series(dtype=float)
-        award_value = float(current_amt.iloc[0]) if len(current_amt) else float(g["transaction_obligation_signed"].sum())
-        supplier_counts = g["normalized_supplier"].value_counts()
-        supplier = supplier_counts.idxmax() if not supplier_counts.empty else "Unknown"
-        awards.append({
-            "award_id": str(award_id), "supplier": supplier, "award_value": award_value,
-            "num_offers": num_offers, "extent_competed": extent, "set_aside": set_aside_desc,
-            "detail_available": detail_available,
-        })
+    # Vectorized award-level rollup. The previous implementation looped in
+    # Python over 41k groupby groups, which dominated build time; this does
+    # the same work as a handful of pandas aggregations.
+    d = df[df["award_id_piid"].notna() & (df["award_id_piid"].astype(str) != "")].copy()
+    if d.empty:
+        return empty
 
-    awards_total = len(awards)
-    detailed = [a for a in awards if a["detail_available"] and a["num_offers"] is not None]
-    if not detailed:
+    def _first_col(col: str):
+        return d.groupby("award_id_piid")[col].first() if col in d.columns else None
+
+    grouped = d.groupby("award_id_piid")
+    net = grouped["transaction_obligation_signed"].sum()
+    awards = pd.DataFrame({"net": net})
+
+    offers = d.dropna(subset=["number_of_offers_received"]).groupby("award_id_piid")["number_of_offers_received"].first() \
+        if "number_of_offers_received" in d.columns else pd.Series(dtype=float)
+    extent = d.dropna(subset=["extent_competed_description"]).groupby("award_id_piid")["extent_competed_description"].first() \
+        if "extent_competed_description" in d.columns else pd.Series(dtype=object)
+    set_aside = d.dropna(subset=["set_aside_type_description"]).groupby("award_id_piid")["set_aside_type_description"].first() \
+        if "set_aside_type_description" in d.columns else pd.Series(dtype=object)
+    cur_amt = d.dropna(subset=["current_award_amount"]).groupby("award_id_piid")["current_award_amount"].first() \
+        if "current_award_amount" in d.columns else pd.Series(dtype=float)
+    detail_ok = grouped["award_detail_available"].any() if "award_detail_available" in d.columns else pd.Series(False, index=awards.index)
+    psc = _first_col("psc_code")
+    supplier = grouped["normalized_supplier"].agg(lambda s: s.mode().iat[0] if not s.mode().empty else "Unknown")
+
+    awards["num_offers"] = offers
+    awards["extent_competed"] = extent
+    awards["set_aside"] = set_aside
+    awards["value"] = cur_amt.reindex(awards.index).fillna(awards["net"])
+    awards["detail_available"] = detail_ok.reindex(awards.index).fillna(False)
+    awards["psc"] = (psc.reindex(awards.index) if psc is not None else pd.Series("", index=awards.index)).fillna("")
+    awards["supplier"] = supplier
+
+    awards_total = int(len(awards))
+    detailed = awards[awards["detail_available"].astype(bool) & awards["num_offers"].notna()]
+    if detailed.empty:
         return {**empty, "awards_total": awards_total}
 
-    def is_low_competition(a: dict) -> bool:
-        if a["num_offers"] is not None and a["num_offers"] <= 1:
-            return True
-        return bool(a["extent_competed"] and any(m in a["extent_competed"] for m in _NOT_COMPETED_MARKERS))
+    ext_upper = detailed["extent_competed"].fillna("").astype(str).str.upper()
+    not_competed = ext_upper.str.contains("|".join(_NOT_COMPETED_MARKERS), regex=True)
+    detailed = detailed.assign(low_competition=(detailed["num_offers"] <= 1) | not_competed)
 
-    sub_threshold = [a for a in detailed if a["award_value"] < threshold]
+    psc_upper = detailed["psc"].astype(str).str.upper()
+    is_excluded = psc_upper.isin(excluded["codes"])
+    for pref in excluded["prefixes"]:
+        is_excluded = is_excluded | psc_upper.str.startswith(pref)
+    detailed = detailed.assign(psc_excluded=is_excluded)
 
-    by_supplier: dict[str, list[dict]] = {}
-    for a in sub_threshold:
-        by_supplier.setdefault(a["supplier"], []).append(a)
-
-    # "How many contracts is this supplier engaged in overall" -- counted over
-    # every award in the dataset, not just the ones with competition detail
-    # fetched, so the context column isn't silently narrowed to whatever the
-    # award-detail backfill happened to cover.
+    # Total contracts held by each supplier at any value -- context for
+    # whether flagged awards are their whole book of business or a sliver.
     total_awards_by_supplier = df.groupby("normalized_supplier")["award_id_piid"].nunique().to_dict()
-    detailed_awards_by_supplier: dict[str, int] = {}
-    for a in detailed:
-        detailed_awards_by_supplier[a["supplier"]] = detailed_awards_by_supplier.get(a["supplier"], 0) + 1
+    detailed_awards_by_supplier = detailed.groupby("supplier").size().to_dict()
+
+    sub = detailed[detailed["value"] < threshold]
+    ranked_pool = sub[~sub["psc_excluded"]]
+    set_aside_pool = sub[sub["psc_excluded"] & sub["low_competition"]]
+
+    def _award_records(g: pd.DataFrame) -> list[dict]:
+        g = g.sort_values("value", ascending=False).head(max_awards_per_supplier)
+        return [
+            {
+                "award_id": str(idx), "value": float(r["value"]),
+                "num_offers": None if pd.isna(r["num_offers"]) else int(r["num_offers"]),
+                "extent_competed": None if pd.isna(r["extent_competed"]) else str(r["extent_competed"]),
+                "set_aside": None if pd.isna(r["set_aside"]) else str(r["set_aside"]),
+                "psc": str(r["psc"]) or None,
+                "low_competition": bool(r["low_competition"]),
+            }
+            for idx, r in g.iterrows()
+        ]
 
     suppliers = []
-    for supplier, supplier_awards in by_supplier.items():
-        low_comp = [a for a in supplier_awards if is_low_competition(a)]
-        if not low_comp:
+    for name, g in ranked_pool.groupby("supplier"):
+        low_n = int(g["low_competition"].sum())
+        if not low_n:
             continue
-        # Every sub-threshold award is embedded (capped), not just the
-        # low-competition ones, so the dashboard's threshold control can
-        # recompute both the numerator and the denominator exactly for any
-        # threshold at or below this one rather than guessing from a sample.
-        ranked = sorted(supplier_awards, key=lambda x: -x["award_value"])
         suppliers.append({
-            "supplier": supplier,
-            "sub_threshold_award_count": len(supplier_awards),
-            "low_competition_award_count": len(low_comp),
-            "low_competition_share": len(low_comp) / len(supplier_awards),
-            "total_sub_threshold_value": sum(a["award_value"] for a in supplier_awards),
-            "total_award_count": int(total_awards_by_supplier.get(supplier, len(supplier_awards))),
-            "awards_with_detail": detailed_awards_by_supplier.get(supplier, len(supplier_awards)),
-            "awards_truncated": len(ranked) > max_awards_per_supplier,
-            "awards": [
-                {
-                    "award_id": a["award_id"], "value": a["award_value"], "num_offers": a["num_offers"],
-                    "extent_competed": a["extent_competed"], "set_aside": a["set_aside"],
-                    "low_competition": is_low_competition(a),
-                }
-                for a in ranked[:max_awards_per_supplier]
-            ],
+            "supplier": str(name),
+            "sub_threshold_award_count": int(len(g)),
+            "low_competition_award_count": low_n,
+            "low_competition_share": low_n / len(g),
+            "total_sub_threshold_value": float(g["value"].sum()),
+            "total_award_count": int(total_awards_by_supplier.get(name, len(g))),
+            "awards_with_detail": int(detailed_awards_by_supplier.get(name, len(g))),
+            "awards_truncated": bool(len(g) > max_awards_per_supplier),
+            "awards": _award_records(g),
         })
-
     suppliers.sort(key=lambda s: (-s["low_competition_share"], -s["sub_threshold_award_count"]))
+
+    set_aside_suppliers = []
+    for name, g in set_aside_pool.groupby("supplier"):
+        set_aside_suppliers.append({
+            "supplier": str(name),
+            "award_count": int(len(g)),
+            "value": float(g["value"].sum()),
+        })
+    set_aside_suppliers.sort(key=lambda s: -s["award_count"])
+
     return {
         "available": True, "threshold": threshold,
-        "awards_total": awards_total, "awards_with_detail": len(detailed),
+        "awards_total": awards_total, "awards_with_detail": int(len(detailed)),
         "suppliers": suppliers[:max_suppliers],
+        "excluded_psc": excluded,
+        "set_aside": {
+            "supplier_count": len(set_aside_suppliers),
+            "award_count": int(len(set_aside_pool)),
+            "value": float(set_aside_pool["value"].sum()) if len(set_aside_pool) else 0.0,
+            "suppliers": set_aside_suppliers[:15],
+        },
     }
 
 

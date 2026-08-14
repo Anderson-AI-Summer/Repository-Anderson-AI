@@ -1,0 +1,11 @@
+{
+  "_comment": "Product/Service Codes set aside by default in the Misuse Protection screen. These identify purchases of a *named proprietary license* -- where a single offer is the structurally expected outcome, not a competition-avoidance signal, because only one vendor sells the product (nobody but COMSOL sells COMSOL licenses). Set-aside awards are still counted and shown behind a toggle; they are never deleted from the analysis. Deliberately NOT excluded: labor/support-services codes (DA01, D311), hardware-plus-bundled-license products (7B*, 7C*, 7E*, 7G*, 7K*), and laboratory equipment (6640, 6695) -- those have real competitive markets, so a single bid there is worth the same second look as anywhere else.",
+  "label": "Proprietary software licensing",
+  "codes": [
+    {"code": "7030", "why": "Information technology software (legacy code)"},
+    {"code": "DA10", "why": "IT and telecom - business application / application development software as a service"}
+  ],
+  "prefixes": [
+    {"prefix": "7A", "why": "IT and telecom - perpetual license software (7A20 application development, 7A21 business application)"}
+  ]
+}

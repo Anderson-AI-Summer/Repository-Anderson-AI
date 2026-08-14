@@ -774,7 +774,8 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
         <div style="min-width:280px;"><label>Select supplier</label><select id="supplier-select"></select></div>
       </div>
       <div id="supplier-headline" style="display:flex; align-items:center; gap:12px; margin-bottom:14px;"></div>
-      <div class="small-note" style="margin-bottom:8px;">KPI tiles below are always all-time for this supplier. The header's Timeframe control highlights the matching fiscal year(s) in the Annual Net Obligations chart instead.</div>
+      <div class="small-note" style="margin-bottom:8px;">KPI tiles follow the header's Timeframe control; the Annual Net Obligations chart always shows every year, with the selected range highlighted.</div>
+      <div class="small-note" id="supplier-scope-note" style="margin-bottom:8px; display:none;"></div>
       <div class="kpi-row" id="supplier-kpis"></div>
       <div class="grid-2">
         <div><h3>Annual Net Obligations</h3><div id="chart-supplier-annual" style="height:260px;"></div></div>
@@ -803,7 +804,8 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       <div class="controls">
         <div style="min-width:280px;"><label>Select category</label><select id="category-select"></select></div>
       </div>
-      <div class="small-note" style="margin-bottom:8px;">KPI tiles below are always all-time for this category. The header's Timeframe control highlights the matching fiscal year(s) in the Annual Trend chart instead.</div>
+      <div class="small-note" style="margin-bottom:8px;">Net Obligations and Unique Suppliers follow the header's Timeframe control; Concentration (HHI) and Tail Spend Share stay all-time. The Annual Trend chart always shows every year, with the selected range highlighted.</div>
+      <div class="small-note" id="category-scope-note" style="margin-bottom:8px; display:none;"></div>
       <div class="kpi-row" id="category-kpis"></div>
       <div class="grid-2">
         <div><h3>Annual Trend</h3><div id="chart-category-annual" style="height:260px;"></div></div>
@@ -880,6 +882,10 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
           Sorted by how concentrated their below-threshold awards are in single-offer or non-competed procurements. Click a row for the underlying awards. "Total contracts" counts every contract that supplier holds in this dataset at any value -- context for whether the flagged awards are their whole book of business or a small slice of it.
         </div>
         <div class="table-wrap"><table class="data-table" id="table-misuse-suppliers"></table></div>
+      </div>
+      <div class="panel">
+        <h2>Set Aside as Proprietary Licensing</h2>
+        <div id="misuse-set-aside"></div>
       </div>
     </div>
   </section>

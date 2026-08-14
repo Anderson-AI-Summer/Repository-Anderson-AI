@@ -1688,19 +1688,50 @@
       const headline = document.getElementById("supplier-headline");
       headline.appendChild(el("h3", { style: "margin:0; font-size:17px; color:var(--navy); text-transform:none; letter-spacing:0;" }, [name]));
 
-      const kpis = document.getElementById("supplier-kpis");
-      kpis.appendChild(kpiTile("Total Net Obligations", fmtMoney(d.total_net_obligations), d.total_net_obligations < 0));
-      kpis.appendChild(kpiTile("Gross Positive", fmtMoney(d.gross_positive_obligations)));
-      kpis.appendChild(kpiTile("Deobligations", fmtMoney(d.deobligations)));
-      kpis.appendChild(kpiTile("Transactions", fmtNum(d.transaction_count)));
-      kpis.appendChild(kpiTile("Unique Awards", fmtNum(d.unique_awards)));
-      kpis.appendChild(kpiTile("Share of Total Obligations", fmtPct(d.share_of_agency_obligations)));
-
-      // KPI tiles above are always all-time for this supplier (only
-      // net_obligations is broken out per fiscal year server-side); the
-      // header's Timeframe range instead highlights the matching bars below.
       const inRange = fy => (fromFY == null || fy >= fromFY) && (toFY == null || fy <= toFY);
       const isFullRange = fromFY == null && toFY == null;
+
+      // KPI tiles follow the header's Timeframe range. Net, gross,
+      // deobligations and transaction count are exact sums over the
+      // selected years. Unique Awards is not: an award running across
+      // three selected years is counted once per year, so a multi-year
+      // range shows it as an upper bound rather than a distinct count.
+      const yearsInRange = d.annual.filter(r => inRange(r.fiscal_year));
+      const sum = key => yearsInRange.reduce((s, r) => s + (r[key] || 0), 0);
+      const scoped = isFullRange ? {
+        net: d.total_net_obligations, gross: d.gross_positive_obligations,
+        deob: d.deobligations, txns: d.transaction_count,
+        awards: d.unique_awards, awardsExact: true,
+      } : {
+        net: sum("net_obligations"), gross: sum("gross_positive_obligations"),
+        deob: sum("deobligations"), txns: sum("transaction_count"),
+        awards: sum("unique_awards"), awardsExact: yearsInRange.length <= 1,
+      };
+      // Share is recomputed against the same range's agency-wide total, so
+      // it stays a true share rather than a range numerator over an
+      // all-time denominator.
+      const agencyNet = isFullRange
+        ? A.totals.net_obligations
+        : A.annual.filter(r => inRange(r.fiscal_year)).reduce((s, r) => s + r.net_obligations, 0);
+
+      const rangeLabel = isFullRange ? "" : yearsInRange.length === 1
+        ? `FY${yearsInRange[0].fiscal_year}`
+        : yearsInRange.length ? `FY${yearsInRange[0].fiscal_year}–FY${yearsInRange[yearsInRange.length - 1].fiscal_year}` : "";
+      const scopeNote = document.getElementById("supplier-scope-note");
+      if (scopeNote) {
+        scopeNote.style.display = isFullRange ? "none" : "";
+        scopeNote.textContent = isFullRange ? "" :
+          `Showing ${rangeLabel}. Net, gross, deobligations, transactions and share are exact for that range.`
+          + (scoped.awardsExact ? "" : " Unique Awards is summed per year, so an award spanning several of the selected years is counted once per year -- treat it as an upper bound.");
+      }
+
+      const kpis = document.getElementById("supplier-kpis");
+      kpis.appendChild(kpiTile("Total Net Obligations", fmtMoney(scoped.net), scoped.net < 0));
+      kpis.appendChild(kpiTile("Gross Positive", fmtMoney(scoped.gross)));
+      kpis.appendChild(kpiTile("Deobligations", fmtMoney(scoped.deob)));
+      kpis.appendChild(kpiTile("Transactions", fmtNum(scoped.txns)));
+      kpis.appendChild(kpiTile((scoped.awardsExact ? "" : "≤ ") + "Unique Awards", fmtNum(scoped.awards)));
+      kpis.appendChild(kpiTile("Share of Total Obligations", fmtPct(agencyNet ? scoped.net / agencyNet : 0)));
       const annualColor = isFullRange ? BLUE : d.annual.map(r => inRange(r.fiscal_year) ? BLUE : "rgba(148,163,184,0.35)");
       Plotly.newPlot("chart-supplier-annual", [{
         x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: annualColor },
@@ -1747,20 +1778,44 @@
       if (!d) return;
 
       const kpis = document.getElementById("category-kpis");
-      const totalNet = d.annual.reduce((s, r) => s + r.net_obligations, 0);
+      const inRangeCat = fy => (fromFY == null || fy >= fromFY) && (toFY == null || fy <= toFY);
+      const isFullRangeCat = fromFY == null && toFY == null;
+      const catYears = d.annual.filter(r => inRangeCat(r.fiscal_year));
+      const catSum = key => catYears.reduce((s, r) => s + (r[key] || 0), 0);
+      const totalNet = isFullRangeCat
+        ? d.annual.reduce((s, r) => s + r.net_obligations, 0)
+        : catSum("net_obligations");
+      // Unique suppliers, like unique awards on the Supplier tab, is a
+      // distinct count that does not sum across years -- exact for a single
+      // year, an upper bound for a range.
+      const suppliersExact = isFullRangeCat || catYears.length <= 1;
+      const uniqueSuppliers = isFullRangeCat ? d.unique_suppliers : catSum("unique_suppliers");
+      const catRangeLabel = isFullRangeCat ? "" : catYears.length === 1
+        ? `FY${catYears[0].fiscal_year}`
+        : catYears.length ? `FY${catYears[0].fiscal_year}–FY${catYears[catYears.length - 1].fiscal_year}` : "";
+      const catScopeNote = document.getElementById("category-scope-note");
+      if (catScopeNote) {
+        catScopeNote.style.display = isFullRangeCat ? "none" : "";
+        catScopeNote.textContent = isFullRangeCat ? "" :
+          `Showing ${catRangeLabel}. Net Obligations is exact for that range.`
+          + (suppliersExact ? "" : " Unique Suppliers is summed per year, so a supplier active in several of the selected years is counted once per year -- treat it as an upper bound.")
+          + " Concentration (HHI) and Tail Spend Share stay all-time: both are ratios over the whole supplier distribution, and a range's real figure can't be derived by summing yearly values.";
+      }
       const leadingRows = () => d.leading_suppliers.map(r => [r.supplier, fmtMoney(r.net_obligations)]);
-      const leadingNote = `Showing the top ${d.leading_suppliers.length} of ${fmtNum(d.unique_suppliers)} suppliers active in this category, by net obligations.`;
+      const leadingNote = `Showing the top ${d.leading_suppliers.length} of ${fmtNum(d.unique_suppliers)} suppliers active in this category (all-time), by net obligations.`;
 
       kpis.appendChild(kpiTile("Net Obligations", fmtMoney(totalNet), totalNet < 0, () => ({
         title: `Net Obligations -- ${name}`,
-        formula: `Sum of signed obligation amounts for every transaction classified into "${name}", across all fiscal years in this dataset.`,
+        formula: `Sum of signed obligation amounts for every transaction classified into "${name}"`
+          + (isFullRangeCat ? ", across all fiscal years in this dataset." : `, across ${catRangeLabel}.`),
         note: leadingNote,
         columns: ["Supplier", "Net Obligations"],
         rows: leadingRows(),
       })));
-      kpis.appendChild(kpiTile("Unique Suppliers", fmtNum(d.unique_suppliers), false, () => ({
+      kpis.appendChild(kpiTile((suppliersExact ? "" : "≤ ") + "Unique Suppliers", fmtNum(uniqueSuppliers), false, () => ({
         title: `Unique Suppliers -- ${name}`,
-        formula: `Count of distinct normalized suppliers with at least one transaction classified into "${name}".`,
+        formula: `Count of distinct normalized suppliers with at least one transaction classified into "${name}"`
+          + (suppliersExact ? "." : `, summed across ${catRangeLabel} -- a supplier active in more than one of those years is counted once per year, so this is an upper bound on the distinct count.`),
         note: leadingNote,
         columns: ["Supplier", "Net Obligations"],
         rows: leadingRows(),
@@ -1900,7 +1955,44 @@
     kpis.appendChild(kpiTile("...of Total Awards Found", fmtNum(review.awards_total)));
     kpis.appendChild(kpiTile("Suppliers Worth a Look", fmtNum(review.suppliers.length)));
 
+    renderSetAsidePanel();
     drawMisuseTable();
+
+    // Awards whose PSC identifies a proprietary software license are kept
+    // out of the ranking (a single offer for a product only one vendor
+    // sells is the expected outcome, not a signal) -- but shown here, so
+    // the screen never silently hides a supplier from a reviewer.
+    function renderSetAsidePanel() {
+      const wrap = document.getElementById("misuse-set-aside");
+      if (!wrap) return;
+      wrap.innerHTML = "";
+      const sa = review.set_aside || { supplier_count: 0, award_count: 0, suppliers: [] };
+      const ex = review.excluded_psc || { label: "", reasons: [] };
+      if (!sa.award_count) {
+        wrap.appendChild(el("div", { class: "small-note" }, ["No awards were set aside for this dataset."]));
+        return;
+      }
+      const summary = el("div", { class: "small-note", style: "margin-bottom:8px;" }, [
+        `${fmtNum(sa.award_count)} single-bid/non-competed award(s) across ${fmtNum(sa.supplier_count)} supplier(s), worth ${fmtMoney(sa.value || 0)}, are excluded from the ranking above as `,
+        el("strong", {}, [ex.label || "excluded PSCs"]),
+        ". A single offer for a named proprietary product is the expected outcome, not a competition-avoidance signal. They are listed here so nothing is hidden.",
+      ]);
+      wrap.appendChild(summary);
+      if ((ex.reasons || []).length) {
+        wrap.appendChild(el("div", { class: "small-note", style: "margin-bottom:8px;" }, [
+          "Set-aside PSC codes: " + ex.reasons.map(r => `${r.code} (${r.why})`).join(" · "),
+        ]));
+      }
+      const tbl = el("table", { class: "data-table" }, [
+        el("thead", {}, [el("tr", {}, ["Supplier", "Set-Aside Awards", "Value"].map(h => el("th", {}, [h])))]),
+        el("tbody", {}, sa.suppliers.map(s => el("tr", {}, [
+          el("td", {}, [s.supplier]),
+          el("td", {}, [fmtNum(s.award_count)]),
+          el("td", {}, [fmtMoney(s.value)]),
+        ]))),
+      ]);
+      wrap.appendChild(el("div", { class: "table-wrap", style: "max-height:260px;" }, [tbl]));
+    }
 
     function drawMisuseTable() {
       // Every sub-threshold award (competed and not) is embedded per
