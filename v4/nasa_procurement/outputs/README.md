@@ -55,15 +55,18 @@ Real prime-contract transaction data pulled from the public
 - **Supplier Analysis** — per-supplier drill-down: annual spend, category mix, consolidated name variants, awarding offices, data-quality flags.
 - **Categories & Opportunities** — per-category spend, leading suppliers, concentration, tail spend, and a low-confidence review queue.
 - **Action Center** — mitigation workflow tracker. 9 playbooks (deobligation mitigation, supplier-continuity review, scope/ceiling review, market diversification, strategic sourcing, dedup audit, …) with visual step trackers.
-- **Misuse Protection** — screens for suppliers whose sub-threshold awards (default $350K) are concentrated in single-bid or non-competed procurements.
+- **Misuse Protection** — screens for suppliers whose sub-threshold awards (default $350K) are concentrated in single-bid or non-competed procurements. Proprietary-software licences (PSC `7030`, `DA10`, `7A*`) are set aside from the ranking, since a single offer for a product only one vendor sells is expected rather than notable; a panel below the table reports exactly what was set aside so nothing is hidden.
 
 ### The Timeframe control (header)
 
 The `FY … to FY …` range picker at the top scopes Executive Overview,
 Year-over-Year, Transaction Explorer, Standouts, and Action Center at once.
-Supplier and Category tabs highlight the selected range in their charts
-while keeping their KPI tiles all-time (only net obligations is broken out
-per year for those two — summing the rest would be invented precision).
+Supplier and Category KPI tiles follow it too. Sums (net, gross,
+deobligations, transactions) are exact for the range; distinct counts
+(Unique Awards, Unique Suppliers) are marked `≤` because an entity active in
+several selected years is counted once per year; HHI and Tail Spend stay
+all-time because no combination of yearly ratios reproduces a range's real
+figure.
 
 ---
 
@@ -77,15 +80,15 @@ executed. The tab says so in a banner. Two people opening the same URL will
 not see each other's workflows. Present it as a model of what such a tool
 could look like.
 
-**2. Misuse Protection flags legitimate contracts by design.**
-The top hits are COMSOL, ANSYS, Siemens, and DS Government Solutions — all
-at 100% single-bid. These are proprietary engineering-software vendors,
-where sole-source is correct: nobody else sells COMSOL licenses. This is the
-screen working as intended, not a finding against those companies. The tab
-leads with "Disclosed signal, not a finding" for exactly this reason. If
-someone asks "so did you find fraud?", the honest answer is no — this
-surfaces patterns a human reviewer would then clear or escalate, and the
-visible examples are ones a reviewer clears in seconds.
+**2. Misuse Protection produces review candidates, not findings.**
+Proprietary-software licences are now set aside automatically (see above),
+so the ranking surfaces instrument, materials and equipment vendors instead
+of license renewals. Those still are not accusations: a single bid below the
+Simplified Acquisition threshold is routine, and a specialised instrument
+often has one real supplier. The tab leads with "Disclosed signal, not a
+finding" for exactly this reason. If someone asks "so did you find fraud?",
+the honest answer is no — this surfaces patterns a human reviewer would then
+clear or escalate.
 
 ---
 
@@ -93,7 +96,7 @@ visible examples are ones a reviewer clears in seconds.
 
 - **Obligations ≠ spending.** Net obligations are signed transaction amounts, not payments or outlays.
 - **FY2026 is partial** (data ends 2026-08-11) and is not comparable to complete fiscal years. The dashboard shows a warning banner about this.
-- **The Explorer embeds 2,500 of 142,290 transactions** — the most recent ones, to keep the file hostable. All analytics are computed over the full dataset; only that one table's rows are capped. The complete processed dataset lives in `data/processed/`.
+- **The Explorer embeds 1,500 of 142,290 transactions** — the most recent ones, to keep the file hostable. All analytics are computed over the full dataset; only that one table's rows are capped. The complete processed dataset lives in `data/processed/`.
 - **Competition data covers 28,085 of 41,411 awards.** USASpending only exposes offers-received / extent-competed on its per-award endpoint, so it was backfilled for the sub-threshold awards Misuse Protection examines. Awards without it are excluded from that screen rather than assumed competitive.
 - **Supplier names are normalized heuristically** (UEI/DUNS match, then fuzzy name clustering). The Supplier Analysis tab shows the raw name variants merged into each supplier and a confidence score, so this is auditable rather than a black box.
 - **Spend categories are assigned** by deterministic PSC/NAICS/keyword rules with an AI pass for the remainder. Low-confidence rows are surfaced in a review queue rather than silently trusted, and "Other or Unclassified" is kept out of the ranked category chart because it's a review queue, not a real category.
@@ -104,12 +107,12 @@ visible examples are ones a reviewer clears in seconds.
 
 | File | Size | Use |
 |---|---|---|
-| `nasa_procurement_dashboard_web.html` | 13.3 MB | **Publish this one.** Full analytics, 2,500 Explorer rows. |
-| `nasa_fy2019_present_realdata_dashboard.html` | 17.7 MB | Same data, 8,000 Explorer rows. Better for local review, heavy for a web page. |
+| `nasa_procurement_dashboard_web.html` | 14.6 MB | **Publish this one.** Full analytics, 1,500 Explorer rows. Regenerate with `python3 tools/make_web_build.py`. |
+| `nasa_fy2019_present_realdata_dashboard.html` | 19.7 MB | Same data, 8,000 Explorer rows. Better for local review, too large to host or publish as an Artifact. |
 | `nasa_fy2025_realdata_dashboard.html` | 13.6 MB | FY2025 only, from the repo CSV. Misuse Protection is unavailable here (that CSV has no award IDs to look competition data up with) and the tab says so. |
 | `nasa_procurement_dashboard.html` | 5.4 MB | 200-transaction sample from a fast dev pull. Not for presenting. |
 
-Even the recommended file is 13 MB, so first load takes a few seconds on a
+Even the recommended file is ~15 MB, so first load takes a few seconds on a
 normal connection — worth knowing before you demo it live. It renders
 entirely client-side after that, with no further requests.
 
@@ -121,5 +124,5 @@ See `../README.md` for the pipeline. Short version, from `v4/nasa_procurement/`:
 pip install -r requirements.txt
 python -m src.cli refresh --start 2019-10-01   # full pull (slow)
 python -m src.cli build                        # rebuild HTML from processed data
-python -m pytest                               # 65 tests, offline
+python -m pytest                               # 68 tests, offline
 ```

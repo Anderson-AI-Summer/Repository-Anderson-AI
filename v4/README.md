@@ -21,7 +21,7 @@ Two tiers, unchanged from v3:
    category shifts), and narrates findings through a three-agent workflow —
    deterministic code owns all arithmetic; agents only adjudicate ambiguity
    or narrate results already computed — into one self-contained interactive
-   dashboard. 65 tests, all offline/deterministic.
+   dashboard. 68 tests, all offline/deterministic.
 
    Eight tabs: Executive Overview, Standout Suppliers & Contracts,
    Year-over-Year Trends, Transaction Explorer, Supplier Analysis,
@@ -38,7 +38,7 @@ Two tiers, unchanged from v3:
 ```bash
 cd v4/nasa_procurement
 pip install -r requirements.txt
-python -m pytest                # 65 tests, offline
+python -m pytest                # 68 tests, offline
 python -m src.cli build         # rebuild dashboard from processed data
 ```
 
@@ -106,7 +106,7 @@ minutes. Both are now vectorized aggregations, as is
 | stage | before | after |
 |---|---|---|
 | `_award_rows` | 96s | 4.5s (21x) |
-| full build | ~32 min | see commit |
+| full build | ~32 min | **2m 40s** (12x) |
 
 Output equivalence was checked award by award against the original
 implementation across all 41,411 awards. The only differences are 23 awards
@@ -123,3 +123,9 @@ code sorts stably, so it is. No metric changed.
 - Exact distinct counts across ranges, which would need per-year award and
   supplier ID sets in the payload (feasible: roughly 600 KB) rather than the
   current disclosed upper bound.
+- Shorter payload keys for the per-year blocks. The new per-year metrics
+  added ~2 MB to `suppliers_detail`, almost all of it repeated JSON key
+  names (`gross_positive_obligations` written 7,049 x 7 times). Renaming
+  them would recover most of that, at the cost of a rename across both
+  `data_prep.py` and `app.js`; for now the hostable build absorbs it by
+  caching 1,500 Explorer rows instead of 2,500.
