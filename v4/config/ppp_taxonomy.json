@@ -1,0 +1,24 @@
+{
+  "categories": [
+    {"name": "Agriculture, Forestry, Fishing and Hunting", "keywords": ["naics 11"]},
+    {"name": "Mining, Quarrying, and Oil and Gas Extraction", "keywords": ["naics 21"]},
+    {"name": "Utilities", "keywords": ["naics 22"]},
+    {"name": "Construction", "keywords": ["naics 23"]},
+    {"name": "Manufacturing", "keywords": ["naics 31", "naics 32", "naics 33"]},
+    {"name": "Wholesale Trade", "keywords": ["naics 42"]},
+    {"name": "Retail Trade", "keywords": ["naics 44", "naics 45"]},
+    {"name": "Transportation and Warehousing", "keywords": ["naics 48", "naics 49"]},
+    {"name": "Information", "keywords": ["naics 51"]},
+    {"name": "Finance and Insurance", "keywords": ["naics 52"]},
+    {"name": "Real Estate and Rental and Leasing", "keywords": ["naics 53"]},
+    {"name": "Professional, Scientific, and Technical Services", "keywords": ["naics 54"]},
+    {"name": "Management of Companies and Enterprises", "keywords": ["naics 55"]},
+    {"name": "Administrative and Support and Waste Management Services", "keywords": ["naics 56"]},
+    {"name": "Educational Services", "keywords": ["naics 61"]},
+    {"name": "Health Care and Social Assistance", "keywords": ["naics 62"]},
+    {"name": "Arts, Entertainment, and Recreation", "keywords": ["naics 71"]},
+    {"name": "Accommodation and Food Services", "keywords": ["naics 72"]},
+    {"name": "Other Services (except Public Administration)", "keywords": ["naics 81"]},
+    {"name": "Public Administration", "keywords": ["naics 92"]}
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "categories": [
+    {
+      "name": "Office Supplies",
+      "keywords": ["staples", "office depot", "office max", "paper", "toner", "printer ink"]
+    },
+    {
+      "name": "Cloud & Software",
+      "keywords": ["aws", "amazon web services", "azure", "software", "saas", "subscription", "github", "slack", "google workspace", "hosting", "digital ocean", "cloud"]
+    },
+    {
+      "name": "Travel",
+      "keywords": ["delta", "united air", "southwest", "airlines", "hotel", "marriott", "hilton", "uber", "lyft", "flight", "rental car"]
+    },
+    {
+      "name": "Professional Services",
+      "keywords": ["consulting", "legal", "law firm", "accounting", "audit", "advisory"]
+    },
+    {
+      "name": "Shipping & Logistics",
+      "keywords": ["fedex", "ups", "dhl", "freight", "shipping", "courier"]
+    },
+    {
+      "name": "Meals & Entertainment",
+      "keywords": ["restaurant", "catering", "coffee", "starbucks", "doordash", "grubhub"]
+    },
+    {
+      "name": "IT Hardware",
+      "keywords": ["dell", "lenovo", "laptop", "monitor", "hardware", "cdw", "apple store"]
+    },
+    {
+      "name": "Facilities",
+      "keywords": ["cleaning", "janitorial", "hvac", "utilities", "electric co", "water bill", "landscaping"]
+    }
+  ]
+}

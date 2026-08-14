@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NASA Procurement Intelligence Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<script>
+// Resolve theme (saved choice, else system preference) before first paint,
+// so switching or reloading never flashes the wrong theme.
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem("nasa_dashboard_theme"); } catch (e) {}
+  var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
+<style>
+:root {
+  /* Mission-control theme, bright variant: same technical language (crisp
+     panels, glow-accented readouts, uppercase mono labels) as the dark
+     version, but on a light background instead -- everything below still
+     themes purely via these var(--...) values. Only the header stays dark,
+     as a deliberate "instrument panel" accent bar; see its own rules. */
+  --navy: #0f1e33;         /* primary heading/dark text */
+  --navy-2: #3d5a75;       /* secondary readable text */
+  --blue: #0891b2;         /* primary accent -- bold technical teal */
+  --red: #dc2626;          /* danger / deobligation */
+  --bg: #eef2f7;           /* page background, light blue-grey */
+  --panel: #ffffff;        /* panel background */
+  --panel-2: #f1f5f9;      /* secondary panel accent (table headers etc) */
+  --border: #cbd5e1;       /* panel/table borders */
+  --text: #0f1e33;         /* primary body text */
+  --text-muted: #64748b;   /* muted labels/secondary text */
+  --ok: #059669;           /* green: positive / success */
+  --warn: #d97706;         /* amber: warning / growth flags */
+  --nasa-blue: #0891b2;
+  --nasa-red: #e8482c;
+  --glow-blue: 0 0 6px rgba(8,145,178,0.3);
+  --glow-green: 0 0 6px rgba(5,150,105,0.3);
+  --glow-red: 0 0 6px rgba(220,38,38,0.3);
+}
+/* Dark variant, toggled via the header's theme button. Values match the
+   earlier all-dark build; kept here so a viewer's preference decides,
+   rather than us deciding once for everyone. Resolved and applied before
+   first paint by the inline script in <head> so there's no flash. */
+:root[data-theme="dark"] {
+  --navy: #eaf2ff; --navy-2: #9fb4d6; --blue: #22d3ee; --red: #ff4d5e;
+  --bg: #05070c; --panel: #0b1220; --panel-2: #0e1626; --border: #1c2b42;
+  --text: #dbe6f5; --text-muted: #6b7d9c; --ok: #2bffa0; --warn: #ffb020;
+  --nasa-blue: #22d3ee; --nasa-red: #ff5b3d;
+  --glow-blue: 0 0 10px rgba(34,211,238,0.35);
+  --glow-green: 0 0 10px rgba(43,255,160,0.3);
+  --glow-red: 0 0 10px rgba(255,77,94,0.3);
+}
+:root[data-theme="dark"] body {
+  background:
+    linear-gradient(rgba(34,211,238,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,211,238,0.035) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% -10%, rgba(34,211,238,0.09), transparent 60%),
+    var(--bg);
+  background-size: 34px 34px, 34px 34px, 100% 100%, 100% 100%;
+}
+:root[data-theme="dark"] nav.tabs { box-shadow: none; }
+:root[data-theme="dark"] table.data-table th.sortable:hover { background: #142338; }
+:root[data-theme="dark"] table.data-table td { border-bottom-color: #131d2e; }
+:root[data-theme="dark"] .controls select, :root[data-theme="dark"] .controls input { background: #0e1728; }
+:root[data-theme="dark"] .controls button.secondary { background: rgba(255,255,255,0.05); }
+:root[data-theme="dark"] .chip { background: rgba(255,255,255,0.05); }
+:root[data-theme="dark"] .sc-actions button { background: rgba(255,255,255,0.04); }
+:root[data-theme="dark"] .sc-actions button:hover { filter: brightness(1.25); }
+:root[data-theme="dark"] .panel, :root[data-theme="dark"] .standout-card { box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
+* { box-sizing: border-box; }
+/* Page itself never scrolls sideways; anything genuinely wider than the
+   viewport (wide tables, the workflow stepper, the tab bar) scrolls inside
+   its own container instead. Deliberately NOT paired with a universal
+   `min-width: 0` -- that lets flex items shrink below their own text, which
+   makes `white-space: nowrap` content (tab labels, dollar amounts) spill
+   out of its box and overlap its neighbour. */
+html, body { max-width: 100%; overflow-x: hidden; }
+html { scrollbar-color: var(--border) var(--bg); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--blue); }
+body {
+  margin: 0; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  background:
+    linear-gradient(rgba(8,145,178,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(8,145,178,0.05) 1px, transparent 1px),
+    var(--bg);
+  background-size: 34px 34px, 34px 34px, 100% 100%;
+  color: var(--text); font-size: 14px;
+}
+header.top {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(34,211,238,0.10) 0, transparent 1.4px),
+    radial-gradient(circle at 78% 55%, rgba(34,211,238,0.08) 0, transparent 1.2px),
+    radial-gradient(circle at 45% 80%, rgba(34,211,238,0.07) 0, transparent 1.1px),
+    radial-gradient(circle at 92% 15%, rgba(34,211,238,0.09) 0, transparent 1.3px),
+    linear-gradient(120deg, #060a14, #0a1424);
+  background-size: 140px 140px, 160px 160px, 130px 130px, 150px 150px, 100% 100%;
+  color: #fff; border-bottom: 1px solid rgba(34,211,238,0.35);
+  box-shadow: 0 1px 24px rgba(34,211,238,0.12);
+}
+/* Same max-width/centering as <main> below, so the header, tab nav, and
+   page body always line up -- on any viewport wider than that cap, the
+   gutters on the header/nav match the ones around the content instead of
+   the header/nav running full-bleed past where the content actually ends. */
+header.top .header-row { max-width: 1880px; margin: 0 auto; padding: 18px 28px; }
+.header-row { display: flex; align-items: center; gap: 14px; }
+.nasa-mark { flex: 0 0 auto; filter: drop-shadow(0 0 6px rgba(34,211,238,0.55)); }
+.header-title-block { flex: 1 1 auto; min-width: 0; }
+.header-title-block .title-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+header.top h1 {
+  margin: 0; font-size: 21px; letter-spacing: 1px; text-transform: uppercase;
+  color: #f2f8ff; text-shadow: 0 0 12px rgba(34,211,238,0.45);
+}
+.nasa-wordmark {
+  font-weight: 800; letter-spacing: 2px; font-size: 15px;
+  background: linear-gradient(90deg, var(--nasa-red), #ffb27a);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.unofficial-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; color: #ffcf9e; border: 1px solid rgba(255,207,158,0.5);
+  border-radius: 3px; padding: 1px 8px; margin-left: 2px;
+}
+header.top .disclosure { font-size: 12px; color: #7fa8c4; margin: 6px 0 10px 0; }
+/* Single horizontal row -- scrolls instead of wrapping to multiple lines,
+   so the header stays compact on narrow/mobile viewports. */
+.meta-bar {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; font-size: 11px;
+  color: #7fa8c4; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  scrollbar-width: thin;
+}
+/* Header stays dark deliberately (instrument-panel accent bar), so its own
+   accent color is fixed bright cyan rather than following --blue, which is
+   tuned for readability on the light body below. */
+.meta-bar b { color: #22d3ee; text-shadow: 0 0 6px rgba(34,211,238,0.4); }
+.meta-bar .badge {
+  background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.25);
+  border-radius: 3px; padding: 2px 7px; white-space: nowrap; flex: 0 0 auto;
+}
+/* Narrow viewports: let the header buttons/timeframe control wrap onto
+   their own row under the title instead of squeezing the title block (and
+   therefore the meta-bar) down to a sliver. */
+@media (max-width: 760px) {
+  header.top { padding: 14px 16px; }
+  .header-row { flex-wrap: wrap; row-gap: 10px; }
+  .header-row > div:last-child { width: 100%; justify-content: flex-start; }
+}
+/* Same max-width/centering as <main> and the header row -- see the note on
+   header.top .header-row above. */
+nav.tabs {
+  display: flex; background: var(--panel); border-bottom: 1px solid var(--border);
+  padding: 0 20px; position: sticky; top: 0; z-index: 20; overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(15,30,51,0.04); max-width: 1880px; margin: 0 auto;
+}
+nav.tabs button {
+  background: none; border: none; padding: 13px 18px; font-size: 12.5px;
+  text-transform: uppercase; letter-spacing: 0.6px; border-radius: 6px 6px 0 0;
+  cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent;
+  white-space: nowrap; font-weight: 700; transition: background 0.15s ease, color 0.15s ease;
+  /* Never shrink below the label's own width -- the row scrolls instead. */
+  flex: 0 0 auto;
+}
+nav.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); text-shadow: var(--glow-blue); background: rgba(34,211,238,0.07); }
+nav.tabs button:hover { color: var(--navy); background: rgba(34,211,238,0.04); }
+main { padding: 16px 24px 40px; max-width: 1880px; margin: 0 auto; }
+.grid-2-even { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .grid-2-even { grid-template-columns: 1fr; } }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.warning-banner {
+  background: rgba(255,176,32,0.08); border: 1px solid rgba(255,176,32,0.4); color: #ffcf7d;
+  padding: 10px 14px; border-radius: 4px; font-size: 12.5px; margin-bottom: 16px;
+}
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 13px; margin-bottom: 18px; }
+.kpi {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 13px 15px; position: relative; border-top: 2px solid var(--blue);
+  box-shadow: 0 2px 10px rgba(15,30,51,0.05); transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.kpi .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 6px; }
+.kpi .value {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 19px; font-weight: 700;
+  color: var(--blue); text-shadow: var(--glow-blue);
+}
+.kpi .value.neg { color: var(--red); text-shadow: var(--glow-red); }
+.kpi.clickable { cursor: pointer; padding-right: 26px; }
+.kpi.clickable::after {
+  content: "⋯ how?"; position: absolute; top: 12px; right: 12px; font-size: 9.5px; letter-spacing: 0.3px;
+  color: var(--text-muted); text-transform: uppercase; opacity: 0.7;
+}
+.kpi.clickable:hover, .kpi.clickable:focus-visible {
+  border-color: var(--blue); box-shadow: 0 6px 18px rgba(8,145,178,0.16); transform: translateY(-1px);
+}
+.kpi.clickable:hover::after, .kpi.clickable:focus-visible::after { opacity: 1; color: var(--blue); }
+.panel {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 9px;
+  padding: 17px 18px; margin-bottom: 18px; box-shadow: 0 3px 14px rgba(15,30,51,0.055);
+}
+.panel h2 {
+  margin: 0 0 12px 0; font-size: 13px; color: var(--blue); text-transform: uppercase;
+  letter-spacing: 0.8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 7px;
+}
+.panel h2::before {
+  content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--blue); flex: 0 0 auto;
+  box-shadow: var(--glow-blue);
+}
+.panel h3 { margin: 14px 0 8px; font-size: 12px; color: var(--navy-2); text-transform: uppercase; letter-spacing: 0.5px; }
+.grid-2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.data-table th {
+  text-align: left; background: var(--panel-2); color: var(--blue); padding: 7px 8px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; position: sticky; top: 0;
+}
+table.data-table th.sortable:hover { background: #e2e8f0; }
+table.data-table td { padding: 6px 8px; border-bottom: 1px solid #eef1f6; vertical-align: top; color: var(--text); }
+table.data-table tr:hover td { background: rgba(34,211,238,0.06); }
+.pos { color: var(--ok); } .neg { color: var(--red); }
+.flag-pill {
+  display: inline-block; background: rgba(255,77,94,0.1); color: var(--red); border: 1px solid rgba(255,77,94,0.3);
+  border-radius: 3px; font-size: 10.5px; padding: 1px 7px; margin: 1px 2px 1px 0;
+}
+.flag-pill.review { background: rgba(255,176,32,0.1); color: var(--warn); border-color: rgba(255,176,32,0.35); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: center; }
+.controls label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); display: block; margin-bottom: 3px; }
+.controls select, .controls input {
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12.5px; min-width: 130px;
+  background: #ffffff; color: var(--text);
+}
+.controls button {
+  background: rgba(34,211,238,0.12); color: var(--blue); border: 1px solid var(--blue); border-radius: 4px; padding: 7px 14px;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer; font-weight: 700;
+}
+.controls button:hover { background: rgba(34,211,238,0.22); box-shadow: var(--glow-blue); }
+.controls button.secondary { background: #f1f5f9; color: var(--navy-2); border-color: var(--border); }
+.table-wrap { max-height: 560px; overflow: auto; border: 1px solid var(--border); border-radius: 5px; }
+.finding-card {
+  border-left: 3px solid var(--blue); background: rgba(34,211,238,0.05); padding: 10px 12px;
+  border-radius: 4px; margin-bottom: 10px; font-size: 12.5px;
+}
+.finding-card h4 { margin: 0 0 4px 0; font-size: 13px; color: var(--navy); }
+.finding-card .metrics { color: var(--text-muted); font-size: 11.5px; margin-top: 6px; }
+.finding-card.clickable-card { cursor: pointer; }
+.finding-card.clickable-card:hover, .finding-card.clickable-card:focus-visible { border-left-color: var(--navy); background: rgba(34,211,238,0.1); }
+.small-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.other-callout {
+  margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 4px;
+  font-size: 11.5px; color: var(--text-muted); cursor: pointer;
+}
+.other-callout:hover { border-color: var(--blue); color: var(--navy-2); }
+.other-callout strong { color: var(--navy); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.chip { background: #f1f5f9; border: 1px solid var(--border); border-radius: 3px; padding: 3px 10px; font-size: 11.5px; color: var(--navy-2); }
+footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 11.5px; }
+
+.standout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.standout-card {
+  border: 1px solid var(--border); border-left: 3px solid var(--nasa-blue); border-radius: 8px;
+  padding: 13px 15px; background: var(--panel); box-shadow: 0 3px 12px rgba(15,30,51,0.06);
+  transition: box-shadow 0.15s ease;
+}
+.standout-card:hover { box-shadow: 0 5px 18px rgba(15,30,51,0.1); }
+.standout-card .sc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+/* The name is the only part allowed to give way (it wraps); the amount
+   keeps its full width so it can't be squeezed out over the card edge. */
+.standout-card .sc-name {
+  font-weight: 700; color: var(--navy); font-size: 13.5px; display: flex; align-items: center; gap: 8px;
+  flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere;
+}
+
+.standout-card .sc-amount {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace; font-weight: 700; color: var(--blue);
+  font-size: 13px; white-space: nowrap; text-shadow: var(--glow-blue); flex: 0 0 auto;
+}
+.standout-card .sc-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.reason-tag {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  border-radius: 3px; padding: 2px 8px; margin: 0 4px 4px 0; border: 1px solid transparent;
+}
+.reason-tag.high_concentration { background: rgba(34,211,238,0.1); color: var(--nasa-blue); border-color: rgba(34,211,238,0.3); }
+.reason-tag.deobligation_flag { background: rgba(255,77,94,0.1); color: var(--red); border-color: rgba(255,77,94,0.3); }
+.reason-tag.rapid_growth { background: rgba(43,255,160,0.1); color: var(--ok); border-color: rgba(43,255,160,0.3); }
+.reason-tag.rapid_decline { background: rgba(255,176,32,0.1); color: var(--warn); border-color: rgba(255,176,32,0.3); }
+.standout-card .sc-reason-detail { font-size: 11.5px; color: var(--text); margin: 4px 0 8px; }
+.standout-card .sc-reason-detail:last-of-type { margin-bottom: 10px; }
+.sc-details { display: none; }
+.sc-details.expanded { display: block; }
+#playbook-library.expanded { display: grid; }
+.sc-details-toggle {
+  background: none; border: none; color: var(--blue); font-size: 11px; font-weight: 600;
+  cursor: pointer; padding: 2px 0; margin-bottom: 6px; text-decoration: underline;
+}
+.award-desc-short { font-size: 11.5px; color: var(--text-muted); margin: 4px 0 6px; }
+.sc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+tr.jump-row { cursor: pointer; }
+tr.jump-row:hover td { background: rgba(34,211,238,0.08); }
+tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
+.jump-cta {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  background: linear-gradient(90deg, rgba(34,211,238,0.08), rgba(34,211,238,0.02));
+  border: 1px solid rgba(34,211,238,0.3); border-radius: 6px;
+  padding: 10px 16px; margin-bottom: 16px; font-size: 12.5px; color: var(--navy-2);
+}
+.jump-cta button {
+  background: rgba(34,211,238,0.15); color: var(--blue); border: 1px solid var(--blue); border-radius: 4px; padding: 7px 14px;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.jump-cta button:hover { background: rgba(34,211,238,0.25); box-shadow: var(--glow-blue); }
+@keyframes flash-highlight-anim {
+  0%, 100% { box-shadow: none; }
+  25%, 75% { box-shadow: 0 0 0 3px var(--blue), var(--glow-blue); }
+}
+.flash-highlight { animation: flash-highlight-anim 1.4s ease-in-out; }
+.sc-actions button {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  border-radius: 4px; padding: 5px 9px; cursor: pointer;
+  border: 1px solid var(--border); background: #ffffff; color: var(--navy-2);
+}
+.sc-actions button.primary { background: rgba(34,211,238,0.15); color: var(--blue); border-color: var(--blue); }
+.sc-actions button.flag-btn.marked { background: rgba(255,176,32,0.12); color: var(--warn); border-color: var(--warn); }
+.sc-actions button:hover { filter: brightness(0.97); }
+
+.award-card { border-left-color: var(--nasa-red); }
+.award-head-row { display: flex; gap: 10px; align-items: flex-start; }
+.award-icon {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 6px; background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.25);
+  display: flex; align-items: center; justify-content: center;
+}
+.award-head-text { flex: 1 1 auto; min-width: 0; }
+.award-category { font-size: 11.5px; color: var(--navy-2); margin: 1px 0 2px; }
+/* Codes/IDs (award IDs, PSC, NAICS, mod numbers) are reference data, not the
+   headline -- rendered smaller, monospaced, and muted so names/categories/
+   amounts read first. */
+.code-text { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.1px; }
+.award-id { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--text-muted); }
+.award-desc {
+  font-size: 11.5px; color: var(--text); font-style: italic; background: rgba(34,211,238,0.05);
+  border-radius: 5px; padding: 7px 9px; margin: 6px 0 8px; max-height: 74px; overflow: auto;
+}
+.reason-tag.high_value { background: rgba(34,211,238,0.1); color: var(--nasa-blue); border-color: rgba(34,211,238,0.3); }
+.reason-tag.cost_growth { background: rgba(255,176,32,0.1); color: var(--warn); border-color: rgba(255,176,32,0.3); }
+
+/* "New since last run" -- snapshot-diffed items get a small badge next to
+   the amount so a repeat viewer can tell what changed without re-reading
+   every card. */
+.new-badge {
+  display: inline-block; background: var(--ok); color: #fff; font-size: 9.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.4px; border-radius: 3px; padding: 1px 6px;
+  margin-left: 6px; vertical-align: middle; box-shadow: var(--glow-green);
+}
+.duplicate-pair-row { display: flex; gap: 10px; font-size: 11.5px; color: var(--text); margin: 4px 0; }
+.duplicate-pair-row .code-text { display: block; }
+
+/* Keyboard accessibility: every interactive element gets a visible focus
+   ring on keyboard nav (not on mouse click, via :focus-visible) -- a
+   dashboard is not "interactive" if it only works with a mouse. */
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible,
+tr.jump-row:focus-visible, .duplicate-pair-row:focus-visible {
+  outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 2px;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.35); color: #22d3ee;
+  border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; cursor: pointer; white-space: nowrap;
+}
+.theme-toggle:hover { background: rgba(34,211,238,0.2); }
+
+/* Command palette (Ctrl/Cmd+K) */
+.cmdk-trigger {
+  background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.25); color: #7fa8c4;
+  border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; white-space: nowrap;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+.cmdk-trigger:hover { background: rgba(34,211,238,0.14); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* Global Timeframe control -- header FY-from/FY-to range that scopes
+   Executive Overview, Year-over-Year Trends, Transaction Explorer, Supplier
+   Analysis, and Categories & Opportunities to a fiscal-year range (both
+   ends default to the full embedded range, equivalent to "All Years").
+   Styled to sit alongside the other header buttons. */
+.header-timeframe {
+  display: flex; align-items: center; gap: 5px; background: rgba(34,211,238,0.06);
+  border: 1px solid rgba(34,211,238,0.25); border-radius: 4px; padding: 4px 10px;
+}
+.header-timeframe label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fa8c4; white-space: nowrap;
+}
+.header-timeframe-sep { font-size: 10px; color: #7fa8c4; }
+.header-timeframe select {
+  background: transparent; border: none; color: #e8f7ff; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; padding: 1px 2px; max-width: 72px;
+}
+.header-timeframe select:focus { outline: 1px solid rgba(34,211,238,0.5); }
+.header-timeframe select option { background: #0a1424; color: #e8f7ff; }
+.cmdk-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(5,7,12,0.55); z-index: 200;
+  align-items: flex-start; justify-content: center; padding-top: 12vh;
+}
+.cmdk-overlay.open { display: flex; }
+.cmdk-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: min(600px, 90vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4); overflow: hidden;
+}
+.cmdk-input {
+  width: 100%; border: none; border-bottom: 1px solid var(--border); padding: 14px 16px; font-size: 14px;
+  background: var(--panel); color: var(--text); outline: none;
+}
+.cmdk-results { max-height: 50vh; overflow-y: auto; }
+.cmdk-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; font-size: 13px;
+  color: var(--text); border-bottom: 1px solid var(--panel-2);
+}
+.cmdk-item.active { background: rgba(8,145,178,0.1); }
+.cmdk-item .cmdk-type {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; color: var(--blue);
+  background: rgba(8,145,178,0.1); border-radius: 3px; padding: 2px 6px; flex: 0 0 auto;
+}
+.cmdk-empty { padding: 20px 16px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+.cmdk-hint { padding: 8px 16px; font-size: 10.5px; color: var(--text-muted); border-top: 1px solid var(--border); }
+.cmdk-hint kbd {
+  font-family: ui-monospace, monospace; background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0 5px; font-size: 10px;
+}
+
+/* KPI drill-down modal -- "how does this number build up?" */
+.kpi-modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(5,7,12,0.55); z-index: 210;
+  align-items: flex-start; justify-content: center; padding-top: 8vh;
+}
+.kpi-modal-overlay.open { display: flex; }
+.kpi-modal-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: min(680px, 92vw);
+  max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.4); overflow: hidden;
+}
+.kpi-modal-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 14px 18px;
+  border-bottom: 1px solid var(--border); flex: 0 0 auto;
+}
+.kpi-modal-header h3 { margin: 0; font-size: 15px; color: var(--navy); text-transform: uppercase; letter-spacing: 0.4px; }
+.kpi-modal-close {
+  background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted);
+  cursor: pointer; font-size: 13px; padding: 3px 9px; line-height: 1.4;
+}
+.kpi-modal-close:hover { border-color: var(--blue); color: var(--blue); }
+.kpi-modal-formula {
+  padding: 12px 18px; font-size: 12.5px; color: var(--text); background: rgba(8,145,178,0.05);
+  border-bottom: 1px solid var(--border); flex: 0 0 auto; line-height: 1.5;
+}
+.kpi-modal-note { padding: 8px 18px 0 18px; font-size: 11px; color: var(--text-muted); flex: 0 0 auto; }
+.kpi-modal-table-wrap { overflow-y: auto; padding: 8px 18px 18px 18px; flex: 1 1 auto; }
+.kpi-modal-table-wrap table.data-table td, .kpi-modal-table-wrap table.data-table th { font-size: 12px; }
+
+/* ---------------- Action Center: mitigation-workflow tracker ----------------
+   Demonstration-only: every bit of state here (which step a workflow is on,
+   its notes, its status) lives in this browser's localStorage. Nothing is
+   sent anywhere, and nothing here executes a real contracting action --
+   it's a visual model of what a workflow tracker for these signals could
+   look like, not a connection to one. */
+.wf-disclosure {
+  font-size: 12px; color: var(--text-muted); background: rgba(217,119,6,0.06);
+  border: 1px solid rgba(217,119,6,0.3); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; line-height: 1.5;
+}
+.wf-stepper { display: flex; align-items: flex-start; overflow-x: auto; padding: 6px 2px 14px 2px; }
+.wf-step { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; width: 132px; text-align: center; }
+.wf-step-dot {
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; border: 2px solid var(--border); color: var(--text-muted); background: var(--panel);
+  flex: 0 0 auto;
+}
+.wf-step.active .wf-step-dot { border-color: var(--blue); color: var(--blue); box-shadow: var(--glow-blue); }
+.wf-step.done .wf-step-dot { border-color: #16a34a; background: #16a34a; color: #fff; }
+.wf-step-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; line-height: 1.3; padding: 0 4px; }
+.wf-step.active .wf-step-label { color: var(--navy); font-weight: 700; }
+.wf-step.done .wf-step-label { color: #16a34a; }
+.wf-step-connector { flex: 1 1 auto; height: 2px; background: var(--border); margin: 13px -4px 0 -4px; min-width: 20px; }
+.wf-step-connector.done { background: #16a34a; }
+/* Compact variant for list/card contexts -- dots only, no labels. */
+.wf-mini-stepper { display: flex; align-items: center; gap: 3px; margin: 6px 0; }
+.wf-mini-stepper .wf-mini-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); flex: 0 0 auto; }
+.wf-mini-stepper .wf-mini-dot.done { background: #16a34a; }
+.wf-mini-stepper .wf-mini-dot.active { background: var(--blue); box-shadow: 0 0 0 3px rgba(8,145,178,0.18); }
+.wf-status-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  border-radius: 3px; padding: 2px 8px;
+}
+.wf-status-badge.not_started { background: rgba(100,116,139,0.12); color: var(--text-muted); }
+.wf-status-badge.in_progress { background: rgba(8,145,178,0.12); color: var(--blue); }
+.wf-status-badge.complete { background: rgba(22,163,74,0.12); color: #16a34a; }
+.wf-action-card {
+  border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; background: var(--panel);
+  box-shadow: 0 3px 12px rgba(15,30,51,0.06); margin-bottom: 12px;
+}
+.wf-action-card .wf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+.wf-action-card .wf-head > div:first-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.wf-action-card .wf-head > .reason-tag, .wf-action-card .wf-head > .wf-status-badge { flex: 0 0 auto; }
+.wf-action-card .wf-name { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.wf-action-card .wf-playbook-name { font-size: 12px; color: var(--blue); font-weight: 600; margin-top: 2px; }
+.wf-priority-negative { border-left: 3px solid var(--nasa-red); }
+.wf-modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(5,7,12,0.55); z-index: 220;
+  align-items: flex-start; justify-content: center; padding-top: 6vh;
+}
+.wf-modal-overlay.open { display: flex; }
+.wf-modal-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: min(720px, 94vw);
+  max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.4); overflow: hidden;
+}
+.wf-modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+.wf-modal-header h3 { margin: 0 0 3px 0; font-size: 15px; color: var(--navy); text-transform: uppercase; letter-spacing: 0.4px; }
+.wf-modal-meta { font-size: 12px; color: var(--text-muted); }
+.wf-modal-body { overflow-y: auto; padding: 6px 18px 18px 18px; flex: 1 1 auto; }
+.wf-current-step {
+  background: rgba(8,145,178,0.06); border: 1px solid rgba(8,145,178,0.25); border-radius: 6px;
+  padding: 12px 14px; font-size: 13px; color: var(--navy); margin: 8px 0 14px 0; line-height: 1.5;
+}
+.wf-modal-body textarea {
+  width: 100%; min-height: 70px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+  font-family: inherit; font-size: 12.5px; resize: vertical; color: var(--text); background: var(--panel);
+}
+.wf-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.wf-tab-note { font-size: 11.5px; color: var(--text-muted); margin: -4px 0 12px 0; }
+
+/* Toast notifications */
+#toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--navy); color: var(--panel); padding: 10px 16px; border-radius: 6px; font-size: 12.5px;
+  font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease; max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* Sortable Top Suppliers/Contracts headers (complements the "Top by" select) */
+table.data-table th.col-sortable { position: relative; padding-right: 18px; }
+table.data-table th.col-sortable::after { content: "⇅"; position: absolute; right: 6px; opacity: 0.35; font-size: 10px; }
+table.data-table th.col-sortable.sort-asc::after { content: "▲"; opacity: 1; color: var(--blue); }
+table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; color: var(--blue); }
+
+/* Subtle entrance animation when a tab becomes active -- signals "this is
+   fresh," not just an instant show/hide toggle. */
+@keyframes tab-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.tab-panel.active { animation: tab-fade-in 0.25s ease; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="header-row">
+    <div class="nasa-mark" title="Stylized mark -- not the official NASA insignia">
+      <svg width="46" height="46" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="23" cy="23" r="21" fill="#0a1424" stroke="#22d3ee" stroke-width="1.5"/>
+        <ellipse cx="23" cy="23" rx="19" ry="7" fill="none" stroke="#22d3ee" stroke-width="1.1" opacity="0.6"/>
+        <ellipse cx="23" cy="23" rx="19" ry="7" fill="none" stroke="#22d3ee" stroke-width="1.1" opacity="0.6" transform="rotate(60 23 23)"/>
+        <ellipse cx="23" cy="23" rx="19" ry="7" fill="none" stroke="#22d3ee" stroke-width="1.1" opacity="0.6" transform="rotate(120 23 23)"/>
+        <path d="M23 10 C 25 16, 25 30, 23 36 C 21 30, 21 16, 23 10 Z" fill="#ff5b3d"/>
+        <circle cx="23" cy="23" r="2.6" fill="#e8f7ff"/>
+      </svg>
+    </div>
+    <div class="header-title-block">
+      <div class="title-line">
+        <h1 id="dash-title">NASA Procurement Intelligence Dashboard</h1>
+        <span class="nasa-wordmark">NASA</span>
+        <span class="unofficial-badge">Unofficial · Not NASA-affiliated</span>
+      </div>
+      <div class="disclosure" id="dash-disclosure"></div>
+      <div class="meta-bar" id="meta-bar"></div>
+    </div>
+    <div style="display:flex; gap:8px; flex:0 0 auto; align-self:flex-start; align-items:center;">
+      <div class="header-timeframe" title="Scope Executive Overview, Year-over-Year Trends, Transaction Explorer, Supplier Analysis, and Categories to a fiscal-year range">
+        <label for="global-timeframe-from">FY</label>
+        <select id="global-timeframe-from"></select>
+        <span class="header-timeframe-sep">to</span>
+        <label for="global-timeframe-to" class="sr-only">to FY</label>
+        <select id="global-timeframe-to"></select>
+      </div>
+      <button class="cmdk-trigger" id="cmdk-trigger" title="Search suppliers, awards, categories, tabs">🔍 Search <kbd style="margin-left:4px;">Ctrl K</kbd></button>
+      <button class="theme-toggle" id="theme-toggle-btn"></button>
+    </div>
+  </div>
+</header>
+
+<div class="cmdk-overlay" id="cmdk-overlay">
+  <div class="cmdk-box">
+    <input class="cmdk-input" id="cmdk-input" type="text" placeholder="Jump to a supplier, award, category, or tab…" autocomplete="off">
+    <div class="cmdk-results" id="cmdk-results"></div>
+    <div class="cmdk-hint"><kbd>↑</kbd> <kbd>↓</kbd> to navigate · <kbd>Enter</kbd> to jump · <kbd>Esc</kbd> to close</div>
+  </div>
+</div>
+
+<div class="kpi-modal-overlay" id="kpi-modal-overlay">
+  <div class="kpi-modal-box">
+    <div class="kpi-modal-header">
+      <h3 id="kpi-modal-title"></h3>
+      <button class="kpi-modal-close" id="kpi-modal-close">✕ Close</button>
+    </div>
+    <div class="kpi-modal-formula" id="kpi-modal-formula"></div>
+    <div class="kpi-modal-note" id="kpi-modal-note"></div>
+    <div class="kpi-modal-table-wrap" id="kpi-modal-table-wrap"></div>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button data-tab="overview" class="active">Executive Overview</button>
+  <button data-tab="highlights">Standout Suppliers &amp; Contracts</button>
+  <button data-tab="yoy">Year-over-Year Trends</button>
+  <button data-tab="explorer">Transaction Explorer</button>
+  <button data-tab="supplier">Supplier Analysis</button>
+  <button data-tab="categories">Categories &amp; Opportunities</button>
+  <button data-tab="actions">🎯 Action Center</button>
+  <button data-tab="misuse">🛡 Misuse Protection</button>
+</nav>
+
+<main>
+
+  <!-- ================= TAB 1: EXECUTIVE OVERVIEW ================= -->
+  <section id="tab-overview" class="tab-panel active">
+    <div id="overview-warning"></div>
+    <div class="small-note" id="overview-kpi-scope-note" style="display:none;"></div>
+    <div class="kpi-row" id="overview-kpis"></div>
+    <div class="jump-cta" id="overview-jump-cta"></div>
+    <div class="grid-2">
+      <div class="panel"><h2 id="trend-chart-title">Annual Obligation Trend</h2><div class="small-note" id="trend-chart-note" style="margin-bottom:4px; display:none;"></div><div id="chart-annual-trend" style="height:280px;"></div></div>
+      <div class="panel"><h2>Category Composition (Net Obligations)</h2><div class="small-note" style="margin-bottom:4px;">Click a bar to jump to that category. "Other or Unclassified" is shown separately below -- it's a review queue, not a spend category.</div><div id="chart-category-comp" style="height:264px;"></div><div id="category-other-callout"></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <h2>Top Suppliers</h2>
+        <div class="controls" style="margin-bottom:6px;">
+          <div>
+            <label>"Top" by</label>
+            <select id="top-suppliers-sort">
+              <option value="net_obligations">Net obligations ($)</option>
+              <option value="transaction_count">Transaction count</option>
+              <option value="unique_awards">Number of awards</option>
+              <option value="deobligations">Deobligations ($)</option>
+            </select>
+          </div>
+        </div>
+        <div class="small-note">Click a row to jump to that supplier's full analysis. Always all-time across every embedded year, regardless of the header's Timeframe selector.</div>
+        <div class="table-wrap" style="max-height:300px;"><table class="data-table" id="table-top-suppliers"></table></div>
+      </div>
+      <div class="panel">
+        <h2>Top Contracts</h2>
+        <div class="controls" style="margin-bottom:6px;">
+          <div>
+            <label>"Top" by</label>
+            <select id="top-contracts-sort">
+              <option value="net_obligations">Net obligations ($)</option>
+              <option value="transaction_count">Transaction count</option>
+              <option value="modification_count">Modification count</option>
+              <option value="deobligations">Deobligations ($)</option>
+            </select>
+          </div>
+        </div>
+        <div class="small-note">Ranked from up to the 300 largest-value awards in this dataset. Click a row to jump to it (Standouts tab if flagged there, otherwise the Transaction Explorer). Always all-time across every embedded year, regardless of the header's Timeframe selector.</div>
+        <div class="table-wrap" style="max-height:300px;"><table class="data-table" id="table-top-contracts"></table></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Key Findings</h2>
+      <div id="overview-findings"></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 1B: HIGHLIGHTS (Standout Suppliers & Contracts) ================= -->
+  <section id="tab-highlights" class="tab-panel">
+    <div id="snapshot-status" class="small-note" style="margin-bottom:4px;"></div>
+    <div id="standouts-scope-note" class="small-note" style="margin-bottom:10px;"></div>
+    <div class="grid-2-even">
+      <div class="panel">
+        <h2>Standout Suppliers</h2>
+        <div class="small-note">
+          Up to 5 suppliers, surfaced by disclosed signals -- not a performance rating. Click "Details" on a card for the supporting metric.
+        </div>
+        <div class="standout-grid" id="standout-suppliers" style="margin-top:10px;"></div>
+      </div>
+      <div class="panel">
+        <h2>Top Contracts &amp; Awards</h2>
+        <div class="small-note">
+          Up to 5 awards, surfaced by value and by disclosed signals -- not a cost-overrun finding. Icons are illustrative category icons, not product photos.
+          <button class="sc-details-toggle" id="award-photo-note-toggle" style="margin-left:4px;">Why no real photos?</button>
+          <div class="sc-details" id="award-photo-note">
+            This dashboard is self-contained and works fully offline (no network call at view
+            time), and this build environment's outbound network access is blocked, so no image
+            could be fetched and verified at generation time either -- the category icons are
+            generated locally, not pulled from the web.
+          </div>
+        </div>
+        <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
+      </div>
+    </div>
+    <div class="grid-2-even" style="margin-top:16px;">
+      <div class="panel">
+        <h2>Consolidation Opportunities</h2>
+        <div class="small-note">
+          Categories where spend is split across several suppliers with no dominant one --
+          a fragmentation signal, not a recommended vendor and not a savings estimate (no
+          per-vendor unit-price data available to compute one).
+        </div>
+        <div class="standout-grid" id="consolidation-opportunities" style="margin-top:10px;"></div>
+      </div>
+      <div class="panel">
+        <h2>Possible Duplicate Purchases</h2>
+        <div class="small-note">
+          Pairs of separate awards -- same supplier, same category, similar dollar amount,
+          close together in time -- that might reflect one need bought twice rather than
+          consolidated once. Not evidence of waste on its own.
+        </div>
+        <div class="standout-grid" id="duplicate-candidates" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 2: YEAR-OVER-YEAR TRENDS ================= -->
+  <section id="tab-yoy" class="tab-panel">
+    <div id="yoy-warning"></div>
+    <div class="small-note" style="margin-bottom:10px;">Compare range is set by the header's Timeframe control (top of page).</div>
+    <div class="grid-2">
+      <div class="panel"><h2>Net &amp; Gross Obligations by Fiscal Year</h2><div id="chart-yoy-obligations" style="height:300px;"></div></div>
+      <div class="panel"><h2>Deobligations by Fiscal Year</h2><div id="chart-yoy-deob" style="height:300px;"></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><h2>Supplier &amp; Award Counts</h2><div id="chart-yoy-counts" style="height:300px;"></div></div>
+      <div class="panel"><h2>Supplier Concentration Trend (HHI &amp; Top-5 Share)</h2><div id="chart-yoy-concentration" style="height:300px;"></div></div>
+    </div>
+    <div class="panel"><h2>Category Trends (Top Categories)</h2><div id="chart-yoy-category" style="height:340px;"></div></div>
+    <div class="panel">
+      <h2>FY Comparison Table</h2>
+      <div class="table-wrap"><table class="data-table" id="table-yoy"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 3: TRANSACTION EXPLORER ================= -->
+  <section id="tab-explorer" class="tab-panel">
+    <div class="panel">
+      <div class="small-note" id="explorer-disclosure"></div>
+      <div class="small-note" style="margin-bottom:8px;">Fiscal-year range is set by the header's Timeframe control (top of page); everything below is a local refinement of it.</div>
+      <div class="controls">
+        <div><label>Search</label><input id="ex-search" type="text" placeholder="supplier, award ID, description..."></div>
+        <div><label>Supplier</label><select id="ex-supplier"><option value="">All</option></select></div>
+        <div><label>Category</label><select id="ex-category"><option value="">All</option></select></div>
+        <div><label>Direction</label><select id="ex-direction"><option value="">All</option><option>OBLIGATION</option><option>DEOBLIGATION</option><option>ZERO_DOLLAR_ACTION</option></select></div>
+        <div><label>Min. Confidence</label><input id="ex-confidence" type="number" min="0" max="1" step="0.05" value="0"></div>
+        <div><label>Min. |Amount| ($)</label><input id="ex-amount" type="number" min="0" step="1000" value="0"></div>
+        <div style="align-self:flex-end;"><button id="ex-export">Export filtered CSV</button></div>
+        <div style="align-self:flex-end;"><button id="ex-reset" class="secondary">Reset filters</button></div>
+      </div>
+      <div class="small-note" id="explorer-count"></div>
+      <div class="small-note" id="explorer-timeframe-note"></div>
+      <div class="table-wrap"><table class="data-table" id="table-explorer"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 4: SUPPLIER ANALYSIS ================= -->
+  <section id="tab-supplier" class="tab-panel">
+    <div class="panel">
+      <div class="controls">
+        <div style="min-width:280px;"><label>Select supplier</label><select id="supplier-select"></select></div>
+      </div>
+      <div id="supplier-headline" style="display:flex; align-items:center; gap:12px; margin-bottom:14px;"></div>
+      <div class="small-note" style="margin-bottom:8px;">KPI tiles below are always all-time for this supplier. The header's Timeframe control highlights the matching fiscal year(s) in the Annual Net Obligations chart instead.</div>
+      <div class="kpi-row" id="supplier-kpis"></div>
+      <div class="grid-2">
+        <div><h3>Annual Net Obligations</h3><div id="chart-supplier-annual" style="height:260px;"></div></div>
+        <div><h3>Category Mix</h3><div id="chart-supplier-category" style="height:260px;"></div></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <h3>Raw Name Variants Consolidated</h3>
+          <div class="chip-row" id="supplier-variants"></div>
+          <h3>Resolution Evidence</h3>
+          <div id="supplier-evidence" class="small-note"></div>
+        </div>
+        <div>
+          <h3>NASA Awarding Offices</h3>
+          <div class="chip-row" id="supplier-offices"></div>
+          <h3>Flags</h3>
+          <div id="supplier-flags"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 5: CATEGORIES & OPPORTUNITIES ================= -->
+  <section id="tab-categories" class="tab-panel">
+    <div class="panel">
+      <div class="controls">
+        <div style="min-width:280px;"><label>Select category</label><select id="category-select"></select></div>
+      </div>
+      <div class="small-note" style="margin-bottom:8px;">KPI tiles below are always all-time for this category. The header's Timeframe control highlights the matching fiscal year(s) in the Annual Trend chart instead.</div>
+      <div class="kpi-row" id="category-kpis"></div>
+      <div class="grid-2">
+        <div><h3>Annual Trend</h3><div id="chart-category-annual" style="height:260px;"></div></div>
+        <div>
+          <h3>Leading Suppliers</h3>
+          <div class="table-wrap"><table class="data-table" id="table-category-suppliers"></table></div>
+        </div>
+      </div>
+      <h2>Grounded AI Insights (this category)</h2>
+      <div id="category-findings"></div>
+      <h2>Data Quality Summary</h2>
+      <div class="kpi-row" id="category-quality-kpis"></div>
+      <h2>Low-Confidence Review Queue</h2>
+      <div class="table-wrap"><table class="data-table" id="table-review-queue"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 6: ACTION CENTER ================= -->
+  <section id="tab-actions" class="tab-panel">
+    <div class="wf-disclosure">
+      ⚠ <strong>Demonstration workflow tracker.</strong> Everything below (which step a workflow is on, its notes,
+      its status) is saved to this browser's localStorage only. Nothing is sent to NASA, a contracting system, or
+      any external service, and nothing here executes a real contracting action -- this models what a
+      mitigation-tracking tool for these signals could look like, for demonstration purposes.
+    </div>
+    <div class="panel">
+      <h2>Workflow Status</h2>
+      <div class="small-note" style="margin-bottom:10px;">Where every workflow you've taken action on currently stands.</div>
+      <div class="kpi-row" id="workflow-status-summary"></div>
+    </div>
+    <div class="panel">
+      <h2>Suggested Actions</h2>
+      <div class="small-note" id="suggested-actions-note" style="margin-bottom:10px;"></div>
+      <div id="suggested-actions"></div>
+    </div>
+    <div class="panel">
+      <h2>Active Workflows</h2>
+      <div class="controls" style="margin-bottom:6px;">
+        <div><label>Status</label><select id="wf-status-filter"><option value="">All</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select></div>
+      </div>
+      <div id="active-workflows"></div>
+    </div>
+    <div class="panel">
+      <h2>Playbook Library</h2>
+      <div class="small-note" style="margin-bottom:10px;">
+        Reference workflows this dashboard suggests for each disclosed signal type.
+        <button class="sc-details-toggle" id="playbook-library-toggle">Show reference ▾</button>
+      </div>
+      <div id="playbook-library" class="grid-2-even sc-details" style="margin-top:0;"></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 7: MISUSE PROTECTION ================= -->
+  <section id="tab-misuse" class="tab-panel">
+    <div class="wf-disclosure">
+      ⚠ <strong>Disclosed signal, not a finding.</strong> A single-bid or non-competed award below this threshold
+      is routine and often fully legitimate -- Simplified Acquisition Procedures exist for exactly this range, and
+      programs like 8(a) sole-source set-asides are lawful by design. This table only surfaces suppliers whose
+      below-threshold awards are <em>concentrated</em> in low-competition procurements, a pattern worth a second
+      look for possible award-splitting ("structuring" a larger need into several below-threshold awards to avoid
+      the competition requirements that apply above it) -- not an accusation against any supplier named here.
+    </div>
+    <div class="panel" id="misuse-unavailable-note" style="display:none;"></div>
+    <div id="misuse-content">
+      <div class="panel">
+        <div class="controls" style="margin-bottom:6px;">
+          <div><label>Threshold ($)</label><input id="misuse-threshold" type="number" min="1000" step="1000" value="350000"></div>
+        </div>
+        <div class="kpi-row" id="misuse-kpis"></div>
+      </div>
+      <div class="panel">
+        <h2>Suppliers Worth a Second Look</h2>
+        <div class="small-note" style="margin-bottom:10px;">
+          Sorted by how concentrated their below-threshold awards are in single-offer or non-competed procurements. Click a row for the underlying awards. "Total contracts" counts every contract that supplier holds in this dataset at any value -- context for whether the flagged awards are their whole book of business or a small slice of it.
+        </div>
+        <div class="table-wrap"><table class="data-table" id="table-misuse-suppliers"></table></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="wf-modal-overlay" id="wf-modal-overlay">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header">
+      <div>
+        <h3 id="wf-modal-title"></h3>
+        <div class="wf-modal-meta" id="wf-modal-meta"></div>
+      </div>
+      <button class="kpi-modal-close" id="wf-modal-close">✕ Close</button>
+    </div>
+    <div class="wf-modal-body">
+      <div id="wf-modal-stepper"></div>
+      <div class="wf-current-step" id="wf-modal-current-step"></div>
+      <label class="small-note" for="wf-modal-notes" style="display:block; margin-bottom:4px;">Notes (saved locally)</label>
+      <textarea id="wf-modal-notes" placeholder="Optional notes about this workflow..."></textarea>
+      <div class="wf-modal-actions" id="wf-modal-actions"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  NASA Procurement Intelligence Dashboard — unofficial educational project, not affiliated with or endorsed by NASA.
+  Generated {{ generated_at }} · Data via USAspending.gov.
+</footer>
+
+<script id="dashboard-data" type="application/json">{{ payload_json }}</script>
+<script>
+{{ plotly_js }}
+</script>
+<script>
+{{ app_js }}
+</script>
+</body>
+</html>
