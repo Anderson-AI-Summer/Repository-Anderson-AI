@@ -378,18 +378,23 @@
     document.getElementById("tab-explorer").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // Global Timeframe control (header select) -- the one control that scopes
-  // the whole dashboard to a single embedded fiscal year, or back to "All
-  // Years". Every tab that can meaningfully react to a timeframe registers a
-  // listener here; setGlobalTimeframe() (wired to the header <select>) fires
-  // them all. Runs entirely against the embedded dataset -- no network call,
-  // so it always works regardless of the viewer's own connectivity.
-  let globalTimeframeFY = null;
+  // Global Timeframe control (header) -- a fiscal-year FROM/TO range that
+  // scopes the whole dashboard. null/null means the full embedded range
+  // ("All Years"); otherwise both bounds are always concrete fiscal years
+  // (the header's two <select> elements never show a blank state). Every
+  // tab that can meaningfully react registers a listener here;
+  // setGlobalTimeframe() (wired to the header selects) fires them all with
+  // (fromFY, toFY). Runs entirely against the embedded dataset -- no
+  // network call, so it always works regardless of the viewer's own
+  // connectivity.
+  let globalFromFY = null;
+  let globalToFY = null;
   const globalTimeframeListeners = [];
   function onGlobalTimeframeChange(fn) { globalTimeframeListeners.push(fn); }
-  function setGlobalTimeframe(fy) {
-    globalTimeframeFY = fy;
-    globalTimeframeListeners.forEach(fn => fn(fy));
+  function setGlobalTimeframe(fromFY, toFY) {
+    globalFromFY = fromFY;
+    globalToFY = toFY;
+    globalTimeframeListeners.forEach(fn => fn(fromFY, toFY));
   }
 
   // `drilldown` is a zero-arg function returning { title, formula, note,
@@ -441,13 +446,40 @@
     // (an embedded fiscal year, or "All Years"); Top Suppliers/Contracts and
     // Findings stay all-time regardless (noted in their own headers below --
     // there's no per-year breakdown of those two computed server-side yet).
-    function drawEmbeddedOverview(scopeFY) {
-      const yearRow = scopeFY ? A.annual.find(r => r.fiscal_year === scopeFY) : null;
-      const t = yearRow ? {
-        net_obligations: yearRow.net_obligations, gross_positive_obligations: yearRow.gross_positive_obligations,
-        deobligations: yearRow.deobligations, deobligation_rate: yearRow.deobligation_rate,
-        transaction_count: yearRow.transaction_count, unique_awards: yearRow.unique_awards, unique_suppliers: yearRow.unique_suppliers,
-      } : A.totals;
+    function drawEmbeddedOverview(fromFY, toFY) {
+      const inRange = fy => (fromFY == null || fy >= fromFY) && (toFY == null || fy <= toFY);
+      const isFullRange = fromFY == null && toFY == null;
+      const yearsInRange = A.annual.filter(r => inRange(r.fiscal_year));
+      const isSingleYear = !isFullRange && yearsInRange.length === 1;
+      const scopeFY = isSingleYear ? yearsInRange[0].fiscal_year : null;
+      const rangeLabel = yearsInRange.length
+        ? (yearsInRange.length === 1 ? `FY${yearsInRange[0].fiscal_year}` : `FY${yearsInRange[0].fiscal_year}–FY${yearsInRange[yearsInRange.length - 1].fiscal_year}`)
+        : "";
+
+      let t;
+      if (isFullRange) {
+        t = A.totals;
+      } else if (isSingleYear) {
+        const yearRow = yearsInRange[0];
+        t = {
+          net_obligations: yearRow.net_obligations, gross_positive_obligations: yearRow.gross_positive_obligations,
+          deobligations: yearRow.deobligations, deobligation_rate: yearRow.deobligation_rate,
+          transaction_count: yearRow.transaction_count, unique_awards: yearRow.unique_awards, unique_suppliers: yearRow.unique_suppliers,
+        };
+      } else {
+        // Multi-year partial range: net/gross/deob/transaction_count sum
+        // exactly. Unique Awards/Normalized Suppliers don't -- an award or
+        // supplier active in more than one of the selected years gets
+        // counted once per year, so these two are an upper bound, not an
+        // exact distinct count (flagged in the scope note below).
+        const sum = key => yearsInRange.reduce((s, r) => s + r[key], 0);
+        const gross = sum("gross_positive_obligations"), deob = sum("deobligations");
+        t = {
+          net_obligations: sum("net_obligations"), gross_positive_obligations: gross, deobligations: deob,
+          deobligation_rate: gross > 0 ? deob / gross : 0,
+          transaction_count: sum("transaction_count"), unique_awards: sum("unique_awards"), unique_suppliers: sum("unique_suppliers"),
+        };
+      }
       const KD = DATA.kpi_drilldowns || { top_gross_transactions: [], top_deobligation_transactions: [] };
       const txnRow = r => [r.action_date, r.supplier, r.award_id, fmtMoney(r.amount)];
 
@@ -455,13 +487,13 @@
       kpis.innerHTML = "";
       const scopeNote = document.getElementById("overview-kpi-scope-note");
       if (scopeNote) {
-        scopeNote.style.display = scopeFY ? "" : "none";
-        scopeNote.textContent = scopeFY
-          ? `Showing FY${scopeFY} only. Click-to-explain "HOW?" breakdowns are computed dataset-wide, so they're only offered in the "All Years" view.`
-          : "";
+        scopeNote.style.display = isFullRange ? "none" : "";
+        scopeNote.textContent = isFullRange ? "" : isSingleYear
+          ? `Showing ${rangeLabel} only. Click-to-explain "HOW?" breakdowns are computed dataset-wide, so they're only offered in the "All Years" view.`
+          : `Showing ${rangeLabel} (${yearsInRange.length} fiscal years). Net Obligations, Gross Positive, Deobligations, and Transactions are exact sums across those years. Unique Awards and Normalized Suppliers are also summed per year, so they may overcount anything active in more than one of the selected years. Click-to-explain "HOW?" breakdowns are computed dataset-wide, so they're only offered in the "All Years" view.`;
       }
 
-      kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0, scopeFY ? undefined : () => ({
+      kpis.appendChild(animatedKpiTile("Net Obligations", t.net_obligations, fmtMoney, t.net_obligations < 0, !isFullRange ? undefined : () => ({
         title: "Net Obligations",
         formula: `Sum of every transaction's signed obligation amount across all ${fmtNum(t.transaction_count)} transactions: `
           + `${fmtMoney(t.gross_positive_obligations)} gross positive − ${fmtMoney(t.deobligations)} deobligated = ${fmtMoney(t.net_obligations)} net.`,
@@ -471,21 +503,21 @@
           .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
           .map(txnRow),
       })));
-      kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney, false, scopeFY ? undefined : () => ({
+      kpis.appendChild(animatedKpiTile("Gross Positive Obligations", t.gross_positive_obligations, fmtMoney, false, !isFullRange ? undefined : () => ({
         title: "Gross Positive Obligations",
         formula: `Sum of the signed obligation amount for every transaction with a positive value (new obligations and upward modifications), across ${fmtNum(t.transaction_count)} transactions.`,
         note: `Showing the ${KD.top_gross_transactions.length} largest positive transactions, ranked by dollar amount.`,
         columns: ["Date", "Supplier", "Award", "Amount"],
         rows: KD.top_gross_transactions.map(txnRow),
       })));
-      kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney, false, scopeFY ? undefined : () => ({
+      kpis.appendChild(animatedKpiTile("Deobligations", t.deobligations, fmtMoney, false, !isFullRange ? undefined : () => ({
         title: "Deobligations",
         formula: `Sum of the absolute value of every transaction with a negative signed amount (downward contract modifications) -- equal to ${fmtPct(t.deobligation_rate)} of gross positive obligations.`,
         note: `Showing the ${KD.top_deobligation_transactions.length} largest deobligating transactions, ranked by dollar amount.`,
         columns: ["Date", "Supplier", "Award", "Amount"],
         rows: KD.top_deobligation_transactions.map(txnRow),
       })));
-      kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum, false, scopeFY ? undefined : () => {
+      kpis.appendChild(animatedKpiTile("Transactions", t.transaction_count, fmtNum, false, !isFullRange ? undefined : () => {
         const posCount = t.transaction_count - t.negative_transaction_count - t.zero_dollar_action_count;
         return {
           title: "Transactions",
@@ -498,7 +530,7 @@
           ],
         };
       }));
-      kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum, false, scopeFY ? undefined : () => {
+      kpis.appendChild(animatedKpiTile("Unique Awards", t.unique_awards, fmtNum, false, !isFullRange ? undefined : () => {
         const top = (DATA.awards_summary || []).slice().sort((a, b) => b.net_obligations - a.net_obligations).slice(0, 10);
         return {
           title: "Unique Awards",
@@ -508,7 +540,7 @@
           rows: top.map(a => [a.award_id, a.supplier, fmtMoney(a.net_obligations), fmtNum(a.transaction_count)]),
         };
       }));
-      kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum, false, scopeFY ? undefined : () => {
+      kpis.appendChild(animatedKpiTile("Normalized Suppliers", t.unique_suppliers, fmtNum, false, !isFullRange ? undefined : () => {
         const top = Object.entries(DATA.suppliers_detail || {})
           .sort((a, b) => b[1].total_net_obligations - a[1].total_net_obligations)
           .slice(0, 10);
@@ -525,8 +557,8 @@
       // too few points to show a trend at all, so fall back to monthly
       // granularity -- same three series, finer time axis. Otherwise the
       // chart always shows every embedded year (its whole point is
-      // comparing years), with the selected year's bars highlighted rather
-      // than the chart being collapsed down to a single bar.
+      // comparing years), with the selected range's bars highlighted rather
+      // than the chart being collapsed down to just those bars.
       const trendTitle = document.getElementById("trend-chart-title");
       const trendNote = document.getElementById("trend-chart-note");
       const useMonthly = A.annual.length < 2 && (A.monthly || []).length > 1;
@@ -537,11 +569,11 @@
         trendNote.textContent = "This dataset spans a single fiscal year, so monthly granularity is shown instead of a flat one-bar annual chart.";
         trendNote.style.display = "";
       } else {
-        trendTitle.textContent = scopeFY ? `Annual Obligation Trend (FY${scopeFY} highlighted)` : "Annual Obligation Trend";
+        trendTitle.textContent = isFullRange ? "Annual Obligation Trend" : `Annual Obligation Trend (${rangeLabel} highlighted)`;
         trendNote.style.display = "none";
       }
-      const highlightIdx = (scopeFY && !useMonthly) ? trendSeries.findIndex(r => r.fiscal_year === scopeFY) : -1;
-      const barColor = base => highlightIdx === -1 ? base : trendSeries.map((r, i) => i === highlightIdx ? base : "rgba(148,163,184,0.35)");
+      const highlightMask = (!isFullRange && !useMonthly) ? trendSeries.map(r => inRange(r.fiscal_year)) : null;
+      const barColor = base => !highlightMask ? base : trendSeries.map((r, i) => highlightMask[i] ? base : "rgba(148,163,184,0.35)");
       Plotly.newPlot("chart-annual-trend", [
         { x: trendX, y: trendSeries.map(r => r.gross_positive_obligations), type: "bar", name: "Gross Obligations", marker: { color: barColor(BLUE) } },
         { x: trendX, y: trendSeries.map(r => -r.deobligations), type: "bar", name: "Deobligations", marker: { color: barColor(RED) } },
@@ -557,13 +589,12 @@
       // ranked chart and surface it as a separate review-queue callout.
       const OTHER_CATEGORY = "Other or Unclassified";
       const cats = {};
-      if (scopeFY) {
-        Object.keys(DATA.categories_detail).forEach(cat => {
-          const row = DATA.categories_detail[cat].annual.find(r => r.fiscal_year === scopeFY);
-          cats[cat] = row ? row.net_obligations : 0;
-        });
-      } else {
+      if (isFullRange) {
         A.category_breakdown.forEach(r => { cats[r.category] = (cats[r.category] || 0) + r.net_obligations; });
+      } else {
+        Object.keys(DATA.categories_detail).forEach(cat => {
+          cats[cat] = DATA.categories_detail[cat].annual.filter(r => inRange(r.fiscal_year)).reduce((s, r) => s + r.net_obligations, 0);
+        });
       }
       const otherTotal = cats[OTHER_CATEGORY] || 0;
       const totalAll = Object.values(cats).reduce((a, b) => a + b, 0);
@@ -587,7 +618,7 @@
       if (otherTotal > 0 && totalAll > 0) {
         const pct = (otherTotal / totalAll * 100).toFixed(1);
         const box = el("div", { class: "other-callout" }, [
-          "📋 ", el("strong", {}, [fmtMoney(otherTotal)]), ` (${pct}% of net obligations${scopeFY ? ` in FY${scopeFY}` : ""}) fell into "${OTHER_CATEGORY}" -- `,
+          "📋 ", el("strong", {}, [fmtMoney(otherTotal)]), ` (${pct}% of net obligations${isFullRange ? "" : ` in ${rangeLabel}`}) fell into "${OTHER_CATEGORY}" -- `,
           "not shown above since it's a classification review queue, not a real spend category. Click to jump to it.",
         ]);
         box.addEventListener("click", () => jumpToCategory(OTHER_CATEGORY));
@@ -595,7 +626,7 @@
       }
     }
 
-    drawEmbeddedOverview(globalTimeframeFY);
+    drawEmbeddedOverview(globalFromFY, globalToFY);
     onGlobalTimeframeChange(drawEmbeddedOverview);
 
     drawTopSuppliers();
@@ -1082,20 +1113,12 @@
         `⚠ FY${DATA.meta.current_fiscal_year} is partial (in progress). Use the "Comparable year-to-date" view to compare fairly against prior years.`
       ]));
     }
-    const fyFrom = document.getElementById("yoy-fy-from"), fyTo = document.getElementById("yoy-fy-to");
-    allAnnual.forEach(r => {
-      fyFrom.appendChild(el("option", { value: r.fiscal_year }, ["FY" + r.fiscal_year]));
-      fyTo.appendChild(el("option", { value: r.fiscal_year }, ["FY" + r.fiscal_year]));
-    });
-    if (allAnnual.length >= 1) {
-      fyFrom.value = allAnnual[0].fiscal_year;
-      fyTo.value = allAnnual[allAnnual.length - 1].fiscal_year;
-    }
-
-    function draw() {
-      const fromNum = parseInt(fyFrom.value, 10);
-      const toNum = parseInt(fyTo.value, 10);
-      const lo = Math.min(fromNum, toNum), hi = Math.max(fromNum, toNum);
+    // Compare range comes from the header's global Timeframe control (see
+    // setGlobalTimeframe()/onGlobalTimeframeChange() near the top of this
+    // file) -- no local Fiscal Year selects on this tab anymore.
+    function draw(fromFY, toFY) {
+      const lo = fromFY == null ? allAnnual[0].fiscal_year : fromFY;
+      const hi = toFY == null ? allAnnual[allAnnual.length - 1].fiscal_year : toFY;
       const inRange = fy => fy >= lo && fy <= hi;
       const annual = allAnnual.filter(r => inRange(r.fiscal_year));
       const conc = A.concentration_by_year.filter(r => inRange(r.fiscal_year));
@@ -1157,22 +1180,8 @@
       tbl.appendChild(tbody);
     }
 
-    fyFrom.addEventListener("change", draw);
-    fyTo.addEventListener("change", draw);
-    draw();
-
-    // Global Timeframe control: a specific fiscal year narrows the compare
-    // range down to that single year; "All Years" restores the full range.
-    onGlobalTimeframeChange(fy => {
-      if (fy) {
-        fyFrom.value = fy;
-        fyTo.value = fy;
-      } else if (allAnnual.length >= 1) {
-        fyFrom.value = allAnnual[0].fiscal_year;
-        fyTo.value = allAnnual[allAnnual.length - 1].fiscal_year;
-      }
-      draw();
-    });
+    draw(globalFromFY, globalToFY);
+    onGlobalTimeframeChange(draw);
   }
 
   // ---------------- Tab 3: Transaction Explorer ----------------
@@ -1184,21 +1193,30 @@
       `The complete processed dataset is retained outside the HTML in data/processed/.`;
 
     const rows = DATA.explorer_rows;
-    const fySel = document.getElementById("ex-fy"), supSel = document.getElementById("ex-supplier"), catSel = document.getElementById("ex-category");
-    const fys = [...new Set(rows.map(r => r.fiscal_year))].sort();
-    fys.forEach(fy => fySel.appendChild(el("option", { value: fy }, ["FY" + fy])));
+    const supSel = document.getElementById("ex-supplier"), catSel = document.getElementById("ex-category");
+    // Fiscal-year filtering comes from the header's global Timeframe range
+    // (see setGlobalTimeframe()/onGlobalTimeframeChange() near the top of
+    // this file), not a local select here.
+    const explorerWindowFYs = [...new Set(rows.map(r => r.fiscal_year))].sort();
     const suppliers = [...new Set(rows.map(r => r.normalized_supplier))].sort();
     suppliers.forEach(s => supSel.appendChild(el("option", { value: s }, [s])));
     const cats = [...new Set(rows.map(r => r.ai_spend_category))].sort();
     cats.forEach(c => catSel.appendChild(el("option", { value: c }, [c])));
 
+    // Whether the header's global Timeframe range overlaps this tab's
+    // embedded window -- set by the onGlobalTimeframeChange listener below.
+    // When it doesn't overlap, the FY range is not applied (all embedded
+    // rows pass) and an explanatory note is shown instead.
+    let fyRangeApplies = true;
+
     function currentFiltered() {
       const q = document.getElementById("ex-search").value.trim().toLowerCase();
-      const fy = fySel.value, sup = supSel.value, cat = catSel.value, dir = document.getElementById("ex-direction").value;
+      const sup = supSel.value, cat = catSel.value, dir = document.getElementById("ex-direction").value;
       const minConf = parseFloat(document.getElementById("ex-confidence").value || "0");
       const minAmt = parseFloat(document.getElementById("ex-amount").value || "0");
       return rows.filter(r => {
-        if (fy && String(r.fiscal_year) !== String(fy)) return false;
+        if (fyRangeApplies && globalFromFY != null && r.fiscal_year < globalFromFY) return false;
+        if (fyRangeApplies && globalToFY != null && r.fiscal_year > globalToFY) return false;
         if (sup && r.normalized_supplier !== sup) return false;
         if (cat && r.ai_spend_category !== cat) return false;
         if (dir && r.obligation_direction !== dir) return false;
@@ -1277,13 +1295,13 @@
       return filtered;
     }
 
-    ["ex-search", "ex-fy", "ex-supplier", "ex-category", "ex-direction", "ex-confidence", "ex-amount"].forEach(id => {
+    ["ex-search", "ex-supplier", "ex-category", "ex-direction", "ex-confidence", "ex-amount"].forEach(id => {
       document.getElementById(id).addEventListener("input", draw);
       document.getElementById(id).addEventListener("change", draw);
     });
     document.getElementById("ex-reset").addEventListener("click", () => {
       document.getElementById("ex-search").value = "";
-      fySel.value = ""; supSel.value = ""; catSel.value = "";
+      supSel.value = ""; catSel.value = "";
       document.getElementById("ex-direction").value = "";
       document.getElementById("ex-confidence").value = "0";
       document.getElementById("ex-amount").value = "0";
@@ -1293,32 +1311,23 @@
       downloadCsv("nasa_procurement_filtered_export.csv", rowsToCsv(currentFiltered()));
     });
 
-    draw();
-
-    // Global Timeframe control: sync this tab's own Fiscal Year filter and
-    // redraw. Still just one of several local filters here (search,
-    // supplier, category, ...) -- changing it locally afterward overrides
-    // the header's selection for this tab, same as any other filter would.
-    // The Explorer table only embeds the most recent explorer_row_limit
-    // transactions (not the whole dataset), so a global year outside that
-    // window has no matching option here -- fall back to "All" and say so,
-    // rather than silently leaving the previous filter in place.
-    const explorerWindowFYs = [...new Set(rows.map(r => r.fiscal_year))].sort();
-    onGlobalTimeframeChange(fy => {
+    // Global Timeframe control: applies directly as a fiscal-year range
+    // filter above (see currentFiltered()). The Explorer table only embeds
+    // the most recent explorer_row_limit transactions (not the whole
+    // dataset), so a global range that doesn't overlap that window at all
+    // would otherwise silently show zero rows -- fall back to "no FY
+    // filter" and say so instead.
+    onGlobalTimeframeChange((fromFY, toFY) => {
       const note = document.getElementById("explorer-timeframe-note");
-      if (fy && explorerWindowFYs.includes(fy)) {
-        fySel.value = String(fy);
-        if (note) note.textContent = "";
-      } else {
-        fySel.value = "";
-        if (note) {
-          note.textContent = fy
-            ? `FY${fy} isn't in the Transaction Explorer's embedded window (only the most recent ${fmtNum(rows.length)} transactions are embedded here, covering ${explorerWindowFYs.map(y => "FY" + y).join(", ")}) -- showing all embedded transactions instead.`
-            : "";
-        }
+      const overlaps = explorerWindowFYs.some(fy => (fromFY == null || fy >= fromFY) && (toFY == null || fy <= toFY));
+      fyRangeApplies = overlaps;
+      if (note) {
+        note.textContent = overlaps ? "" :
+          `The selected timeframe isn't in the Transaction Explorer's embedded window (only the most recent ${fmtNum(rows.length)} transactions are embedded here, covering ${explorerWindowFYs.map(y => "FY" + y).join(", ")}) -- showing all embedded transactions instead.`;
       }
       draw();
     });
+    draw();
   }
 
   // ---------------- Tab 4: Supplier Analysis ----------------
@@ -1327,7 +1336,7 @@
     const names = Object.keys(DATA.suppliers_detail).sort((a, b) => DATA.suppliers_detail[b].total_net_obligations - DATA.suppliers_detail[a].total_net_obligations);
     names.forEach(n => sel.appendChild(el("option", { value: n }, [n])));
 
-    function draw() {
+    function draw(fromFY, toFY) {
       const name = sel.value;
       const d = DATA.suppliers_detail[name];
       ["supplier-kpis", "chart-supplier-annual", "chart-supplier-category", "supplier-variants", "supplier-evidence", "supplier-offices", "supplier-flags", "supplier-headline"]
@@ -1345,8 +1354,14 @@
       kpis.appendChild(kpiTile("Unique Awards", fmtNum(d.unique_awards)));
       kpis.appendChild(kpiTile("Share of Total Obligations", fmtPct(d.share_of_agency_obligations)));
 
+      // KPI tiles above are always all-time for this supplier (only
+      // net_obligations is broken out per fiscal year server-side); the
+      // header's Timeframe range instead highlights the matching bars below.
+      const inRange = fy => (fromFY == null || fy >= fromFY) && (toFY == null || fy <= toFY);
+      const isFullRange = fromFY == null && toFY == null;
+      const annualColor = isFullRange ? BLUE : d.annual.map(r => inRange(r.fiscal_year) ? BLUE : "rgba(148,163,184,0.35)");
       Plotly.newPlot("chart-supplier-annual", [{
-        x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: BLUE },
+        x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: annualColor },
       }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       Plotly.newPlot("chart-supplier-category", [{
@@ -1366,8 +1381,9 @@
       if (d.flags.length) d.flags.forEach(f => flagsDiv.appendChild(el("span", { class: "flag-pill review" }, [f])));
       else flagsDiv.appendChild(el("span", { class: "small-note" }, ["No data-quality flags."]));
     }
-    sel.addEventListener("change", draw);
-    if (names.length) { sel.value = names[0]; draw(); }
+    sel.addEventListener("change", () => draw(globalFromFY, globalToFY));
+    onGlobalTimeframeChange(draw);
+    if (names.length) { sel.value = names[0]; draw(globalFromFY, globalToFY); }
   }
 
   // ---------------- Tab 5: Categories & Opportunities ----------------
@@ -1380,7 +1396,7 @@
     });
     names.forEach(n => sel.appendChild(el("option", { value: n }, [n])));
 
-    function draw() {
+    function draw(fromFY, toFY) {
       const name = sel.value;
       const d = DATA.categories_detail[name];
       ["category-kpis", "chart-category-annual", "category-findings", "category-quality-kpis"].forEach(id => document.getElementById(id).innerHTML = "");
@@ -1427,8 +1443,14 @@
         rows: null,
       })));
 
+      // KPI tiles above are always all-time for this category (the
+      // per-category annual breakdown only has net_obligations); the
+      // header's Timeframe range instead highlights the matching bars here.
+      const inRange = fy => (fromFY == null || fy >= fromFY) && (toFY == null || fy <= toFY);
+      const isFullRange = fromFY == null && toFY == null;
+      const annualColor = isFullRange ? BLUE : d.annual.map(r => inRange(r.fiscal_year) ? BLUE : "rgba(148,163,184,0.35)");
       Plotly.newPlot("chart-category-annual", [{
-        x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: BLUE },
+        x: d.annual.map(r => "FY" + r.fiscal_year), y: d.annual.map(r => r.net_obligations), type: "bar", marker: { color: annualColor },
       }], darkLayout({ margin: { t: 10, r: 10, l: 55, b: 40 }, xaxis: darkAxis({}), yaxis: darkAxis({ tickformat: "~s" }) }), { displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false });
 
       const tbl = document.getElementById("table-category-suppliers");
@@ -1484,8 +1506,9 @@
       });
       rq.appendChild(rqBody);
     }
-    sel.addEventListener("change", draw);
-    if (names.length) { sel.value = names[0]; draw(); }
+    sel.addEventListener("change", () => draw(globalFromFY, globalToFY));
+    onGlobalTimeframeChange(draw);
+    if (names.length) { sel.value = names[0]; draw(globalFromFY, globalToFY); }
   }
 
   renderHeader();
@@ -1504,17 +1527,31 @@
   renderSupplierTab();
   renderCategoriesTab();
 
-  // Global Timeframe control (header select) -- wired up last, after every
-  // tab above has registered its onGlobalTimeframeChange() listener, so the
-  // first change event already reaches all of them.
-  const timeframeSel = document.getElementById("global-timeframe");
-  if (timeframeSel) {
+  // Global Timeframe control (header FY-from/FY-to range) -- wired up last,
+  // after every tab above has registered its onGlobalTimeframeChange()
+  // listener, so the first change event already reaches all of them. Both
+  // selects default to the full embedded range (equivalent to "All Years");
+  // that default is never sent through setGlobalTimeframe() explicitly --
+  // every listener above already treats its own (null, null) starting
+  // state as "full range", so there's nothing to fire on load.
+  const timeframeFromSel = document.getElementById("global-timeframe-from");
+  const timeframeToSel = document.getElementById("global-timeframe-to");
+  if (timeframeFromSel && timeframeToSel) {
     const embeddedFYs = A.annual.map(r => r.fiscal_year);
-    timeframeSel.appendChild(el("option", { value: "all" }, [`All Years (${embeddedFYs.map(y => "FY" + y).join(", ")})`]));
-    embeddedFYs.forEach(fy => timeframeSel.appendChild(el("option", { value: fy }, ["FY" + fy])));
-    timeframeSel.value = "all";
-    timeframeSel.addEventListener("change", () => {
-      setGlobalTimeframe(timeframeSel.value === "all" ? null : parseInt(timeframeSel.value, 10));
+    const minFY = embeddedFYs[0], maxFY = embeddedFYs[embeddedFYs.length - 1];
+    embeddedFYs.forEach(fy => {
+      timeframeFromSel.appendChild(el("option", { value: fy }, ["FY" + fy]));
+      timeframeToSel.appendChild(el("option", { value: fy }, ["FY" + fy]));
     });
+    timeframeFromSel.value = minFY;
+    timeframeToSel.value = maxFY;
+    const onRangeChange = () => {
+      let f = parseInt(timeframeFromSel.value, 10), t = parseInt(timeframeToSel.value, 10);
+      if (f > t) { [f, t] = [t, f]; timeframeFromSel.value = f; timeframeToSel.value = t; }
+      const isFull = f === minFY && t === maxFY;
+      setGlobalTimeframe(isFull ? null : f, isFull ? null : t);
+    };
+    timeframeFromSel.addEventListener("change", onRangeChange);
+    timeframeToSel.addEventListener("change", onRangeChange);
   }
 })();
