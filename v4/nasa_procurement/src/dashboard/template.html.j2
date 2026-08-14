@@ -342,22 +342,21 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
   25%, 75% { box-shadow: 0 0 0 3px var(--blue), var(--glow-blue); }
 }
 .flash-highlight { animation: flash-highlight-anim 1.4s ease-in-out; }
-.sc-actions button {
+/* .sc-actions holds both <button>s (export/mark-for-review/take-action,
+   which run JS) and <a>s (the USAspending.gov links, real navigation --
+   see viewBtn below) styled identically as a single row of pill controls. */
+.sc-actions button, .sc-actions a {
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
   border-radius: 4px; padding: 5px 9px; cursor: pointer;
   border: 1px solid var(--border); background: #ffffff; color: var(--navy-2);
+  text-decoration: none; display: inline-block;
 }
-.sc-actions button.primary { background: rgba(34,211,238,0.15); color: var(--blue); border-color: var(--blue); }
+.sc-actions button.primary, .sc-actions a.primary { background: rgba(34,211,238,0.15); color: var(--blue); border-color: var(--blue); }
 .sc-actions button.flag-btn.marked { background: rgba(255,176,32,0.12); color: var(--warn); border-color: var(--warn); }
-.sc-actions button:hover { filter: brightness(0.97); }
+.sc-actions button:hover, .sc-actions a:hover { filter: brightness(0.97); }
 
 .award-card { border-left-color: var(--nasa-red); }
 .award-head-row { display: flex; gap: 10px; align-items: flex-start; }
-.award-icon {
-  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 6px; background: rgba(34,211,238,0.08);
-  border: 1px solid rgba(34,211,238,0.25);
-  display: flex; align-items: center; justify-content: center;
-}
 .award-head-text { flex: 1 1 auto; min-width: 0; }
 .award-category { font-size: 11.5px; color: var(--navy-2); margin: 1px 0 2px; }
 /* Codes/IDs (award IDs, PSC, NAICS, mod numbers) are reference data, not the
@@ -378,7 +377,12 @@ tr.jump-row td:first-child { color: var(--blue); font-weight: 600; }
 .new-badge {
   display: inline-block; background: var(--ok); color: #fff; font-size: 9.5px; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.4px; border-radius: 3px; padding: 1px 6px;
-  margin-left: 6px; vertical-align: middle; box-shadow: var(--glow-green);
+  vertical-align: middle; box-shadow: var(--glow-green);
+  /* Sits next to a long, wrapping supplier name inside a flex row (.sc-name)
+     that has no room to spare -- without these, the flex algorithm can
+     shrink the badge itself below its content's width, wrapping "New" onto
+     several lines instead of leaving it to the name to wrap. */
+  flex: 0 0 auto; white-space: nowrap;
 }
 .duplicate-pair-row { display: flex; gap: 10px; font-size: 11.5px; color: var(--text); margin: 4px 0; }
 .duplicate-pair-row .code-text { display: block; }
@@ -750,14 +754,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       <div class="panel">
         <h2>Top Contracts &amp; Awards</h2>
         <div class="small-note">
-          Up to 5 awards, surfaced by value and by disclosed signals -- not a cost-overrun finding. Icons are illustrative category icons, not product photos.
-          <button class="sc-details-toggle" id="award-photo-note-toggle" style="margin-left:4px;">Why no real photos?</button>
-          <div class="sc-details" id="award-photo-note">
-            This dashboard is self-contained and works fully offline (no network call at view
-            time), and this build environment's outbound network access is blocked, so no image
-            could be fetched and verified at generation time either -- the category icons are
-            generated locally, not pulled from the web.
-          </div>
+          Up to 5 awards, surfaced by value and by disclosed signals -- not a cost-overrun finding.
         </div>
         <div class="standout-grid" id="standout-awards" style="margin-top:10px;"></div>
       </div>

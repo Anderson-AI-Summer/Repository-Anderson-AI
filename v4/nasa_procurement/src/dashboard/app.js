@@ -1387,11 +1387,18 @@
         showToast(nowMarked ? `Marked ${s.supplier} for review` : `Removed ${s.supplier} from review`);
       });
 
-      const viewBtn = el("button", { class: "primary" }, ["View on USAspending.gov ↗"]);
-      viewBtn.title = s.recipient_hash
-        ? "Opens this supplier's official recipient profile on usaspending.gov in a new tab."
-        : "Opens the official public search on usaspending.gov in a new tab (no direct recipient link available for this dataset).";
-      viewBtn.addEventListener("click", () => window.open(usaspendingRecipientUrl(s.recipient_hash, s.supplier), "_blank", "noopener"));
+      // A real <a href target="_blank"> rather than a button that calls
+      // window.open() -- Edge (and other browsers) can silently swallow a
+      // script-triggered popup even from a genuine click handler, especially
+      // when the page itself was opened from a local file. A direct link
+      // click is ordinary navigation, not a popup, so it isn't blockable.
+      const viewBtn = el("a", {
+        class: "primary", href: usaspendingRecipientUrl(s.recipient_hash, s.supplier),
+        target: "_blank", rel: "noopener noreferrer",
+        title: s.recipient_hash
+          ? "Opens this supplier's official recipient profile on usaspending.gov in a new tab."
+          : "Opens the official public search on usaspending.gov in a new tab (no direct recipient link available for this dataset).",
+      }, ["View on USAspending.gov ↗"]);
 
       const exportBtn = el("button", {}, ["Export supplier CSV"]);
       exportBtn.addEventListener("click", () => {
@@ -1417,27 +1424,6 @@
     });
   }
 
-  // ---------------- Category icons (generated locally, not fetched) ----------------
-  const CATEGORY_ICONS = {
-    "Aerospace, Spacecraft, and Mission Systems":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2c2 3 3 8 3 12 0 2-1 4-3 6-2-2-3-4-3-6 0-4 1-9 3-12Z" fill="#0891b2"/><path d="M9 14l-3 3 1 3 3-1" stroke="#3d5a75" stroke-width="1.2" fill="none"/><path d="M15 14l3 3-1 3-3-1" stroke="#3d5a75" stroke-width="1.2" fill="none"/><circle cx="12" cy="9" r="1.4" fill="#fff"/></svg>',
-    "Research, Engineering, and Technical Services":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 3h6v4l4 9c.6 1.4-.4 3-2 3H7c-1.6 0-2.6-1.6-2-3l4-9V3Z" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M9 3h6" stroke="#0891b2" stroke-width="1.3"/><path d="M8 14h8" stroke="#0891b2" stroke-width="1.1"/></svg>',
-    "Information Technology and Cybersecurity":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="12" rx="1.5" stroke="#0891b2" stroke-width="1.3"/><path d="M8 20h8M12 17v3" stroke="#0891b2" stroke-width="1.3"/><path d="M7 10l2 2-2 2M13 14h4" stroke="#3d5a75" stroke-width="1.1"/></svg>',
-    "Facilities, Construction, and Maintenance":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 21V10l8-6 8 6v11" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M9 21v-6h6v6" stroke="#3d5a75" stroke-width="1.2"/></svg>',
-    "Scientific Instruments and Laboratory Supplies":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10 2v6l-5 10a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V2" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M8 2h8M7 15h10" stroke="#0891b2" stroke-width="1.2"/></svg>',
-    "Professional and Administrative Services":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="1.5" stroke="#0891b2" stroke-width="1.3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#0891b2" stroke-width="1.3"/></svg>',
-    "Logistics, Transportation, and Operations":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="8" width="12" height="8" rx="1" stroke="#0891b2" stroke-width="1.3"/><path d="M14 11h4l3 3v2h-7" stroke="#0891b2" stroke-width="1.3"/><circle cx="6.5" cy="18" r="1.6" fill="#3d5a75"/><circle cx="17.5" cy="18" r="1.6" fill="#3d5a75"/></svg>',
-    "Communications and Electronics":
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 16 0" stroke="#0891b2" stroke-width="1.3" fill="none"/><path d="M7.5 12a4.5 4.5 0 0 1 9 0" stroke="#0891b2" stroke-width="1.1" fill="none"/><circle cx="12" cy="12" r="1.6" fill="#3d5a75"/><path d="M12 13.5V21" stroke="#0891b2" stroke-width="1.3"/></svg>',
-  };
-  const DEFAULT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#64748b" stroke-width="1.3"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 1.5-2.5 3.5" stroke="#64748b" stroke-width="1.3"/></svg>';
-  function categoryIcon(category) { return CATEGORY_ICONS[category] || DEFAULT_ICON; }
 
   function renderStandoutAwards(fromFY, toFY) {
     const container = document.getElementById("standout-awards");
@@ -1476,11 +1462,15 @@
         showToast(nowMarked ? `Marked award ${a.award_id} for review` : `Removed award ${a.award_id} from review`);
       });
 
-      const viewBtn = el("button", { class: "primary" }, ["View award on USAspending.gov ↗"]);
-      viewBtn.title = a.generated_award_id
-        ? "Opens this award's official profile page on usaspending.gov in a new tab."
-        : "Opens the official public search on usaspending.gov in a new tab (no direct award link available for this dataset).";
-      viewBtn.addEventListener("click", () => window.open(usaspendingAwardUrl(a.generated_award_id, a.award_id), "_blank", "noopener"));
+      // Real <a> for the same Edge popup-blocking reason as the supplier
+      // card's view button above.
+      const viewBtn = el("a", {
+        class: "primary", href: usaspendingAwardUrl(a.generated_award_id, a.award_id),
+        target: "_blank", rel: "noopener noreferrer",
+        title: a.generated_award_id
+          ? "Opens this award's official profile page on usaspending.gov in a new tab."
+          : "Opens the official public search on usaspending.gov in a new tab (no direct award link available for this dataset).",
+      }, ["View award on USAspending.gov ↗"]);
 
       const exportBtn = el("button", {}, ["Export contract CSV"]);
       exportBtn.addEventListener("click", () => {
@@ -1493,7 +1483,6 @@
 
       const card = el("div", { class: "standout-card award-card", "data-award-id": a.award_id }, [
         el("div", { class: "award-head-row" }, [
-          el("div", { class: "award-icon", html: categoryIcon(a.category) }),
           el("div", { class: "award-head-text" }, [
             el("div", { class: "sc-name" }, [a.supplier, newBadge(a.is_new)].filter(Boolean)),
             el("div", { class: "award-category" }, [a.category]),
@@ -1510,17 +1499,6 @@
       ]);
       container.appendChild(card);
     });
-  }
-
-  function setupStandoutAwardPhotoToggle() {
-    const photoToggle = document.getElementById("award-photo-note-toggle");
-    const photoNote = document.getElementById("award-photo-note");
-    if (photoToggle && photoNote) {
-      photoToggle.addEventListener("click", () => {
-        const nowExpanded = photoNote.classList.toggle("expanded");
-        photoToggle.textContent = nowExpanded ? "Why no real photos? (hide)" : "Why no real photos?";
-      });
-    }
   }
 
   function renderConsolidationOpportunities() {
@@ -2616,7 +2594,6 @@
   setupWorkflowModal();
   renderOverview();
   renderSnapshotStatus();
-  setupStandoutAwardPhotoToggle();
   renderStandoutSuppliers(globalFromFY, globalToFY);
   renderStandoutAwards(globalFromFY, globalToFY);
   onGlobalTimeframeChange((fromFY, toFY) => {
