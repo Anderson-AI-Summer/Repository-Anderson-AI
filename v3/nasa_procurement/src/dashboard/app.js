@@ -1853,6 +1853,116 @@
     if (names.length) { sel.value = names[0]; draw(globalFromFY, globalToFY); }
   }
 
+  // ---------------- Tab: Misuse Protection ----------------
+  // Server-side signal from _bid_competition_review() in data_prep.py:
+  // suppliers whose awards below a threshold (default $350,000, editable
+  // here -- this stays purely a client-side re-filter of DATA.awards_summary
+  // when the backend precomputed threshold doesn't match, see below) skew
+  // toward single-offer or non-competed procurements. Needs award-detail
+  // fields (number_of_offers_received, extent_competed_description) that
+  // only exist when that per-award API call actually ran -- large
+  // multi-year pulls in this project skip it for speed, so this tab is
+  // often unavailable there and says so rather than showing an empty or
+  // misleadingly-confident table.
+  function renderMisuseProtectionTab() {
+    const review = DATA.bid_competition_review || { available: false, suppliers: [] };
+    const unavailableNote = document.getElementById("misuse-unavailable-note");
+    const content = document.getElementById("misuse-content");
+    if (!review.available) {
+      content.style.display = "none";
+      unavailableNote.style.display = "";
+      unavailableNote.innerHTML = "";
+      unavailableNote.appendChild(el("div", { class: "small-note" }, [
+        `Award-detail data (number of offers received, extent competed) isn't available for this build`
+        + (review.awards_total ? ` -- ${fmtNum(review.awards_total)} awards were found, but none had that data fetched.` : ".")
+        + " That per-award lookup is skipped on large multi-year pulls for speed. It's included on the small-sample build (see the CLI's \"sample\" command) and on any refresh run without --skip-award-details.",
+      ]));
+      return;
+    }
+    content.style.display = "";
+    unavailableNote.style.display = "none";
+
+    const thresholdInput = document.getElementById("misuse-threshold");
+    if (!thresholdInput.dataset.wired) {
+      thresholdInput.dataset.wired = "1";
+      thresholdInput.value = review.threshold;
+      let debounce = null;
+      thresholdInput.addEventListener("input", () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(drawMisuseTable, 300);
+      });
+    }
+
+    const kpis = document.getElementById("misuse-kpis");
+    kpis.innerHTML = "";
+    kpis.appendChild(kpiTile("Awards With Bid Data", fmtNum(review.awards_with_detail)));
+    kpis.appendChild(kpiTile("...of Total Awards Found", fmtNum(review.awards_total)));
+    kpis.appendChild(kpiTile("Suppliers Worth a Look", fmtNum(review.suppliers.length)));
+
+    drawMisuseTable();
+
+    function drawMisuseTable() {
+      // Re-filtering client-side by the user-entered threshold against the
+      // server-precomputed suppliers list (whose sample_awards already
+      // carry each award's own value) -- swapping the threshold doesn't
+      // need a server round-trip since every candidate award's value and
+      // competition data is already embedded.
+      const threshold = parseFloat(thresholdInput.value) || review.threshold;
+      const tbl = document.getElementById("table-misuse-suppliers");
+      tbl.innerHTML = "";
+      const filtered = review.suppliers
+        .map(s => {
+          const matchingAwards = s.sample_awards.filter(a => a.value < threshold);
+          return matchingAwards.length ? Object.assign({}, s, { matchingAwards }) : null;
+        })
+        .filter(Boolean);
+      if (!filtered.length) {
+        tbl.appendChild(el("tbody", {}, [el("tr", {}, [el("td", { class: "small-note" }, [
+          "No supplier's below-threshold awards are concentrated in single-offer/non-competed procurements at this threshold.",
+        ])])]));
+        return;
+      }
+      tbl.appendChild(el("thead", {}, [el("tr", {}, [
+        "Supplier", "Below-Threshold Awards", "Low-Competition Awards", "Concentration", "Below-Threshold Value", "Total Awards (context)",
+      ].map(h => el("th", {}, [h])))]));
+      const tbody = el("tbody");
+      filtered.forEach(s => {
+        const row = el("tr", { class: "jump-row" }, [
+          el("td", {}, [s.supplier]),
+          el("td", {}, [fmtNum(s.sub_threshold_award_count)]),
+          el("td", {}, [fmtNum(s.low_competition_award_count)]),
+          el("td", {}, [fmtPct(s.low_competition_share)]),
+          el("td", {}, [fmtMoney(s.total_sub_threshold_value)]),
+          el("td", {}, [fmtNum(s.total_awards_with_detail)]),
+        ]);
+        row.title = "Click to see sample awards";
+        row.addEventListener("click", () => {
+          const existing = row.nextElementSibling;
+          if (existing && existing.classList.contains("misuse-detail-row")) { existing.remove(); return; }
+          const detail = el("tr", { class: "misuse-detail-row" }, [
+            el("td", { colspan: "6" }, [
+              el("div", { class: "table-wrap" }, [
+                el("table", { class: "data-table" }, [
+                  el("thead", {}, [el("tr", {}, ["Award", "Value", "Offers Received", "Extent Competed", "Set-Aside"].map(h => el("th", {}, [h])))]),
+                  el("tbody", {}, s.matchingAwards.map(a => el("tr", {}, [
+                    el("td", { class: "code-text" }, [a.award_id]),
+                    el("td", {}, [fmtMoney(a.value)]),
+                    el("td", {}, [a.num_offers == null ? "—" : fmtNum(a.num_offers)]),
+                    el("td", {}, [a.extent_competed || "—"]),
+                    el("td", {}, [a.set_aside || "—"]),
+                  ]))),
+                ]),
+              ]),
+            ]),
+          ]);
+          row.after(detail);
+        });
+        tbody.appendChild(row);
+      });
+      tbl.appendChild(tbody);
+    }
+  }
+
   // ---------------- Tab 6: Action Center ----------------
   // Reference library (static -- rendered once) plus two live sections:
   // Suggested Actions (flagged items with no workflow started yet, drawn
@@ -1978,8 +2088,38 @@
     });
   }
 
+  // Compact status summary of workflows actually acted on (started, in
+  // progress, or complete) -- the primary thing this tab leads with. The
+  // full step-by-step Playbook Library reference is collapsed below it
+  // (see setupPlaybookLibraryToggle()), not shown by default.
+  function renderWorkflowStatusSummary() {
+    const container = document.getElementById("workflow-status-summary");
+    if (!container) return;
+    container.innerHTML = "";
+    const all = Object.values(getWorkflows());
+    const inProgress = all.filter(wf => wf.status === "in_progress").length;
+    const complete = all.filter(wf => wf.status === "complete").length;
+    container.appendChild(kpiTile("Workflows Started", fmtNum(all.length)));
+    container.appendChild(kpiTile("In Progress", fmtNum(inProgress)));
+    container.appendChild(kpiTile("Complete", fmtNum(complete)));
+    if (!all.length) {
+      container.appendChild(el("div", { class: "small-note" }, ["Nothing started yet -- pick something from Suggested Actions below."]));
+    }
+  }
+
+  function setupPlaybookLibraryToggle() {
+    const toggle = document.getElementById("playbook-library-toggle");
+    const wrap = document.getElementById("playbook-library");
+    if (!toggle || !wrap) return;
+    toggle.addEventListener("click", () => {
+      const nowExpanded = wrap.classList.toggle("expanded");
+      toggle.textContent = nowExpanded ? "Show reference ▴" : "Show reference ▾";
+    });
+  }
+
   function renderActionCenter(fromFY, toFY) {
     renderPlaybookLibrary();
+    renderWorkflowStatusSummary();
     renderSuggestedActions(fromFY, toFY);
     renderActiveWorkflows();
   }
@@ -2005,6 +2145,8 @@
   renderExplorer();
   renderSupplierTab();
   renderCategoriesTab();
+  renderMisuseProtectionTab();
+  setupPlaybookLibraryToggle();
   renderActionCenter(globalFromFY, globalToFY);
   onGlobalTimeframeChange(renderActionCenter);
   refreshActionCenterIfOpen = () => renderActionCenter(globalFromFY, globalToFY);

@@ -69,7 +69,8 @@
 :root[data-theme="dark"] .sc-actions button { background: rgba(255,255,255,0.04); }
 :root[data-theme="dark"] .sc-actions button:hover { filter: brightness(1.25); }
 :root[data-theme="dark"] .panel, :root[data-theme="dark"] .standout-card { box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; min-width: 0; }
+html, body { max-width: 100%; overflow-x: hidden; }
 html { scrollbar-color: var(--border) var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -92,9 +93,14 @@ header.top {
     radial-gradient(circle at 92% 15%, rgba(34,211,238,0.09) 0, transparent 1.3px),
     linear-gradient(120deg, #060a14, #0a1424);
   background-size: 140px 140px, 160px 160px, 130px 130px, 150px 150px, 100% 100%;
-  color: #fff; padding: 18px 28px; border-bottom: 1px solid rgba(34,211,238,0.35);
+  color: #fff; border-bottom: 1px solid rgba(34,211,238,0.35);
   box-shadow: 0 1px 24px rgba(34,211,238,0.12);
 }
+/* Same max-width/centering as <main> below, so the header, tab nav, and
+   page body always line up -- on any viewport wider than that cap, the
+   gutters on the header/nav match the ones around the content instead of
+   the header/nav running full-bleed past where the content actually ends. */
+header.top .header-row { max-width: 1880px; margin: 0 auto; padding: 18px 28px; }
 .header-row { display: flex; align-items: center; gap: 14px; }
 .nasa-mark { flex: 0 0 auto; filter: drop-shadow(0 0 6px rgba(34,211,238,0.55)); }
 .header-title-block { flex: 1 1 auto; min-width: 0; }
@@ -137,10 +143,12 @@ header.top .disclosure { font-size: 12px; color: #7fa8c4; margin: 6px 0 10px 0; 
   .header-row { flex-wrap: wrap; row-gap: 10px; }
   .header-row > div:last-child { width: 100%; justify-content: flex-start; }
 }
+/* Same max-width/centering as <main> and the header row -- see the note on
+   header.top .header-row above. */
 nav.tabs {
   display: flex; background: var(--panel); border-bottom: 1px solid var(--border);
   padding: 0 20px; position: sticky; top: 0; z-index: 20; overflow-x: auto;
-  box-shadow: 0 2px 8px rgba(15,30,51,0.04);
+  box-shadow: 0 2px 8px rgba(15,30,51,0.04); max-width: 1880px; margin: 0 auto;
 }
 nav.tabs button {
   background: none; border: none; padding: 13px 18px; font-size: 12.5px;
@@ -272,6 +280,7 @@ footer { text-align: center; padding: 20px; color: var(--text-muted); font-size:
 .standout-card .sc-reason-detail:last-of-type { margin-bottom: 10px; }
 .sc-details { display: none; }
 .sc-details.expanded { display: block; }
+#playbook-library.expanded { display: grid; }
 .sc-details-toggle {
   background: none; border: none; color: var(--blue); font-size: 11px; font-weight: 600;
   cursor: pointer; padding: 2px 0; margin-bottom: 6px; text-decoration: underline;
@@ -599,6 +608,7 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
   <button data-tab="supplier">Supplier Analysis</button>
   <button data-tab="categories">Categories &amp; Opportunities</button>
   <button data-tab="actions">🎯 Action Center</button>
+  <button data-tab="misuse">🛡 Misuse Protection</button>
 </nav>
 
 <main>
@@ -805,9 +815,9 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
       mitigation-tracking tool for these signals could look like, for demonstration purposes.
     </div>
     <div class="panel">
-      <h2>Playbook Library</h2>
-      <div class="small-note" style="margin-bottom:10px;">Reference workflows this dashboard suggests for each disclosed signal type -- click a card to see its full step sequence.</div>
-      <div id="playbook-library" class="grid-2-even"></div>
+      <h2>Workflow Status</h2>
+      <div class="small-note" style="margin-bottom:10px;">Where every workflow you've taken action on currently stands.</div>
+      <div class="kpi-row" id="workflow-status-summary"></div>
     </div>
     <div class="panel">
       <h2>Suggested Actions</h2>
@@ -820,6 +830,42 @@ table.data-table th.col-sortable.sort-desc::after { content: "▼"; opacity: 1; 
         <div><label>Status</label><select id="wf-status-filter"><option value="">All</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select></div>
       </div>
       <div id="active-workflows"></div>
+    </div>
+    <div class="panel">
+      <h2>Playbook Library</h2>
+      <div class="small-note" style="margin-bottom:10px;">
+        Reference workflows this dashboard suggests for each disclosed signal type.
+        <button class="sc-details-toggle" id="playbook-library-toggle">Show reference ▾</button>
+      </div>
+      <div id="playbook-library" class="grid-2-even sc-details" style="margin-top:0;"></div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 7: MISUSE PROTECTION ================= -->
+  <section id="tab-misuse" class="tab-panel">
+    <div class="wf-disclosure">
+      ⚠ <strong>Disclosed signal, not a finding.</strong> A single-bid or non-competed award below this threshold
+      is routine and often fully legitimate -- Simplified Acquisition Procedures exist for exactly this range, and
+      programs like 8(a) sole-source set-asides are lawful by design. This table only surfaces suppliers whose
+      below-threshold awards are <em>concentrated</em> in low-competition procurements, a pattern worth a second
+      look for possible award-splitting ("structuring" a larger need into several below-threshold awards to avoid
+      the competition requirements that apply above it) -- not an accusation against any supplier named here.
+    </div>
+    <div class="panel" id="misuse-unavailable-note" style="display:none;"></div>
+    <div id="misuse-content">
+      <div class="panel">
+        <div class="controls" style="margin-bottom:6px;">
+          <div><label>Threshold ($)</label><input id="misuse-threshold" type="number" min="1000" step="1000" value="350000"></div>
+        </div>
+        <div class="kpi-row" id="misuse-kpis"></div>
+      </div>
+      <div class="panel">
+        <h2>Suppliers Worth a Second Look</h2>
+        <div class="small-note" style="margin-bottom:10px;">
+          Sorted by how concentrated their below-threshold awards are in single-offer or non-competed procurements. "Total awards" (context column) is every award with detail data for that supplier, not just the below-threshold ones.
+        </div>
+        <div class="table-wrap"><table class="data-table" id="table-misuse-suppliers"></table></div>
+      </div>
     </div>
   </section>
 

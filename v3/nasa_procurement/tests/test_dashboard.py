@@ -177,3 +177,64 @@ def test_snapshot_marks_genuinely_new_items_across_runs(tmp_path, monkeypatch):
     assert suppliers_by_name["Acme Corp"] is False  # present last run too
     assert suppliers_by_name["Globex LLC"] is True  # genuinely new
     assert second_payload["standout_awards"][0]["is_new"] is True
+
+
+def test_bid_competition_review_flags_concentrated_low_competition_supplier(make_txn):
+    txns = [
+        make_txn(
+            transaction_id=f"t{i}", award_id_piid=f"AWD00{i}", recipient_name_raw="ACME CORP",
+            transaction_obligated_amount=100_000.0, current_award_amount=100_000.0,
+            number_of_offers_received=1, extent_competed="C", extent_competed_description="NOT COMPETED",
+            set_aside_type_description="8(A) SOLE SOURCE", award_detail_available=True,
+        )
+        for i in range(1, 4)
+    ]
+    stats = AgentRunStats()
+    enriched = enrich_transactions(txns, stats)
+    analytics = compute_analytics(enriched)
+    payload = build_payload(enriched, analytics, [], {"source": "test"}, "DETERMINISTIC_FALLBACK")
+
+    review = payload["bid_competition_review"]
+    assert review["available"] is True
+    assert review["awards_with_detail"] == 3
+    suppliers = {s["supplier"]: s for s in review["suppliers"]}
+    assert "ACME CORP" in suppliers
+    assert suppliers["ACME CORP"]["sub_threshold_award_count"] == 3
+    assert suppliers["ACME CORP"]["low_competition_award_count"] == 3
+    assert suppliers["ACME CORP"]["low_competition_share"] == 1.0
+    assert suppliers["ACME CORP"]["sample_awards"][0]["set_aside"] == "8(A) SOLE SOURCE"
+
+
+def test_bid_competition_review_unavailable_without_award_detail(make_txn):
+    # Large multi-year pulls in this project skip the per-award detail
+    # fetch for speed, so number_of_offers_received/extent_competed are
+    # absent -- the review must say so rather than showing an empty or
+    # misleadingly-confident table.
+    txns = [make_txn(transaction_id="1", award_detail_available=False, number_of_offers_received=None)]
+    stats = AgentRunStats()
+    enriched = enrich_transactions(txns, stats)
+    analytics = compute_analytics(enriched)
+    payload = build_payload(enriched, analytics, [], {"source": "test"}, "DETERMINISTIC_FALLBACK")
+
+    review = payload["bid_competition_review"]
+    assert review["available"] is False
+    assert review["suppliers"] == []
+
+
+def test_bid_competition_review_excludes_well_competed_suppliers(make_txn):
+    txns = [
+        make_txn(
+            transaction_id="1", award_id_piid="AWD100", recipient_name_raw="GLOBEX LLC",
+            transaction_obligated_amount=50_000.0, current_award_amount=50_000.0,
+            number_of_offers_received=6, extent_competed="A", extent_competed_description="FULL AND OPEN COMPETITION",
+            award_detail_available=True,
+        ),
+    ]
+    stats = AgentRunStats()
+    enriched = enrich_transactions(txns, stats)
+    analytics = compute_analytics(enriched)
+    payload = build_payload(enriched, analytics, [], {"source": "test"}, "DETERMINISTIC_FALLBACK")
+
+    review = payload["bid_competition_review"]
+    assert review["available"] is True
+    assert review["suppliers"] == []  # well-competed -- nothing to flag

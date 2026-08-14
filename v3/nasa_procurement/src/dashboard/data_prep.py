@@ -487,6 +487,102 @@ def _duplicate_purchase_candidates(rows: list[dict], max_results: int = 5) -> li
     return candidates[:max_results]
 
 
+_NOT_COMPETED_MARKERS = ("NOT COMPETED", "NOT AVAILABLE FOR COMPETITION")
+
+
+def _bid_competition_review(df: pd.DataFrame, threshold: float = 350_000.0, max_suppliers: int = 25) -> dict:
+    """Surfaces suppliers whose awards *below* `threshold` are concentrated
+    in single-offer or non-competed procurements -- a "structuring" signal
+    reviewers watch for (splitting one larger need into several
+    below-threshold awards to avoid the competition requirements that kick
+    in above it), not a fraud finding. A single-bid or non-competed award
+    under a threshold like this is routine and often fully legitimate
+    (Simplified Acquisition Procedures exist for exactly this range, and
+    programs like 8(a) sole-source are lawful by design) -- this only flags
+    *concentration* of that pattern for a human to look at, and always shows
+    the set-aside context (e.g. "8(A) SOLE SOURCE") alongside each award so
+    a reviewer isn't looking at the number in isolation.
+
+    Needs award-detail fields (number_of_offers_received,
+    extent_competed_description, current_award_amount) that only exist when
+    that per-award API call was actually made -- large multi-year pulls in
+    this project skip it for speed (see README "award-detail enrichment").
+    Returns {"available": False, ...} rather than an empty/misleading table
+    when none of that data is present in this build.
+    """
+    empty = {"available": False, "threshold": threshold, "awards_total": 0, "awards_with_detail": 0, "suppliers": []}
+    if df.empty or "award_id_piid" not in df.columns:
+        return empty
+
+    awards = []
+    for award_id, g in df.groupby("award_id_piid"):
+        if not award_id:
+            continue
+        detail_available = bool(g["award_detail_available"].any()) if "award_detail_available" in g.columns else False
+        offers = g["number_of_offers_received"].dropna() if "number_of_offers_received" in g.columns else pd.Series(dtype=float)
+        num_offers = int(offers.iloc[0]) if len(offers) else None
+        extent_desc = g["extent_competed_description"].dropna() if "extent_competed_description" in g.columns else pd.Series(dtype=str)
+        extent = str(extent_desc.iloc[0]) if len(extent_desc) else None
+        set_aside = g["set_aside_type_description"].dropna() if "set_aside_type_description" in g.columns else pd.Series(dtype=str)
+        set_aside_desc = str(set_aside.iloc[0]) if len(set_aside) else None
+        current_amt = g["current_award_amount"].dropna() if "current_award_amount" in g.columns else pd.Series(dtype=float)
+        award_value = float(current_amt.iloc[0]) if len(current_amt) else float(g["transaction_obligation_signed"].sum())
+        supplier_counts = g["normalized_supplier"].value_counts()
+        supplier = supplier_counts.idxmax() if not supplier_counts.empty else "Unknown"
+        awards.append({
+            "award_id": str(award_id), "supplier": supplier, "award_value": award_value,
+            "num_offers": num_offers, "extent_competed": extent, "set_aside": set_aside_desc,
+            "detail_available": detail_available,
+        })
+
+    awards_total = len(awards)
+    detailed = [a for a in awards if a["detail_available"] and a["num_offers"] is not None]
+    if not detailed:
+        return {**empty, "awards_total": awards_total}
+
+    def is_low_competition(a: dict) -> bool:
+        if a["num_offers"] is not None and a["num_offers"] <= 1:
+            return True
+        return bool(a["extent_competed"] and any(m in a["extent_competed"] for m in _NOT_COMPETED_MARKERS))
+
+    sub_threshold = [a for a in detailed if a["award_value"] < threshold]
+
+    by_supplier: dict[str, list[dict]] = {}
+    for a in sub_threshold:
+        by_supplier.setdefault(a["supplier"], []).append(a)
+    total_awards_by_supplier: dict[str, int] = {}
+    for a in detailed:
+        total_awards_by_supplier[a["supplier"]] = total_awards_by_supplier.get(a["supplier"], 0) + 1
+
+    suppliers = []
+    for supplier, supplier_awards in by_supplier.items():
+        low_comp = [a for a in supplier_awards if is_low_competition(a)]
+        if not low_comp:
+            continue
+        suppliers.append({
+            "supplier": supplier,
+            "sub_threshold_award_count": len(supplier_awards),
+            "low_competition_award_count": len(low_comp),
+            "low_competition_share": len(low_comp) / len(supplier_awards),
+            "total_sub_threshold_value": sum(a["award_value"] for a in supplier_awards),
+            "total_awards_with_detail": total_awards_by_supplier.get(supplier, len(supplier_awards)),
+            "sample_awards": [
+                {
+                    "award_id": a["award_id"], "value": a["award_value"], "num_offers": a["num_offers"],
+                    "extent_competed": a["extent_competed"], "set_aside": a["set_aside"],
+                }
+                for a in sorted(low_comp, key=lambda x: -x["award_value"])[:5]
+            ],
+        })
+
+    suppliers.sort(key=lambda s: (-s["low_competition_share"], -s["sub_threshold_award_count"]))
+    return {
+        "available": True, "threshold": threshold,
+        "awards_total": awards_total, "awards_with_detail": len(detailed),
+        "suppliers": suppliers[:max_suppliers],
+    }
+
+
 def build_payload(
     transactions: list[EnrichedTransaction],
     analytics: dict,
@@ -551,6 +647,7 @@ def build_payload(
         "awards_summary": _award_summary(award_rows),
         "consolidation_opportunities": _consolidation_opportunities(categories_detail),
         "duplicate_purchase_candidates": _duplicate_purchase_candidates(award_rows),
+        "bid_competition_review": _bid_competition_review(df),
         "kpi_drilldowns": _kpi_drilldowns(df),
     }
     return payload
